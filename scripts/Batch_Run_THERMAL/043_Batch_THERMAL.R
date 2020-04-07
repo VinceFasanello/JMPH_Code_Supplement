@@ -15,8 +15,8 @@ require(raster)
 require(gdistance)
 
 # directories -----------------------------------------------------------------
-wdscripts <- "/Users/boterolab1/Box Sync/JMPH_2020/scripts/Batch_Run_THERMAL"
-wddata <-  "/Users/boterolab1/Box Sync/JMPH_2020/data/Batch_Run_THERMAL"
+wdscripts <- "/Users/boterolab1/Box Sync/JMPH/scripts/Batch_Run_THERMAL"
+wddata <-  "/Users/boterolab1/Box Sync/JMPH/data/Batch_Run_THERMAL"
 
 
 # load required files & sources  -----------------------------------------------

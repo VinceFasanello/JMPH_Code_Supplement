@@ -18,7 +18,7 @@ require(gridExtra)
 require(mapproj)
 
 # open and concatonate all results file sets -------------------------------------------
-inwd <- "~/Box Sync/JMPH_2020/data/Batch_Run"
+inwd <- "~/Box Sync/JMPH/data/Batch_Run"
 setwd(inwd)
 outputs <- c("mydata", "m_a_ids", "m_a_lons", "m_a_lats", "m_a_eles", "m_a_bblons", 
              "m_a_bblats", "m_a_bbeles", "m_aB_mcosts", "m_aB_plengths")
@@ -40,10 +40,10 @@ for (i in 1:slices){
 mymelt <- cbind(mydata_ag, m_a_ids_ag)
 
 # remove problematic paths.
-# m_aB_mcosts_ag[m_aB_mcosts_ag == "sPath_extentpoint"] <- NA; mode(m_aB_mcosts_ag) <- "numeric" # more conservative, assumes these are problem data. 
-# m_aB_plengths_ag[m_aB_plengths_ag == "sPath_extentpoint"] <- NA; mode(m_aB_plengths_ag) <- "numeric"
-m_aB_mcosts_ag[m_aB_mcosts_ag == "sPath_extentpoint"] <- 0; mode(m_aB_mcosts_ag) <- "numeric" # less conservative, assumes thesea re all sympatric start ends
-m_aB_plengths_ag[m_aB_plengths_ag == "sPath_extentpoint"] <- 0; mode(m_aB_plengths_ag) <- "numeric"
+m_aB_mcosts_ag[m_aB_mcosts_ag == "sPath_extentpoint"] <- NA; mode(m_aB_mcosts_ag) <- "numeric" # more conservative, assumes these are problem data.
+m_aB_plengths_ag[m_aB_plengths_ag == "sPath_extentpoint"] <- NA; mode(m_aB_plengths_ag) <- "numeric"
+# m_aB_mcosts_ag[m_aB_mcosts_ag == "sPath_extentpoint"] <- 0; mode(m_aB_mcosts_ag) <- "numeric" # less conservative, assumes thesea re all sympatric start ends
+# m_aB_plengths_ag[m_aB_plengths_ag == "sPath_extentpoint"] <- 0; mode(m_aB_plengths_ag) <- "numeric"
 
 
 # melt to create a long format data frame --------------------------------------
@@ -66,7 +66,6 @@ mymelt <- mymelt[!is.na(mymelt$m_aB_mcosts_ag),] # remove NA entries
 
 
 # load the richness data -------------------------------------------------------
-inwd <- "~/Box Sync/JMPH_2020/data/Batch_Run"
 setwd(inwd)
 load(file = "rasterpam.rdata")
 
@@ -236,6 +235,17 @@ save(myworld, file = "lcp_elevation_results_1rowper_sampledgridcell.rdata")
 #
 #
 # --------------------------------------------------------------------------------------------------------------
+
+
+require(lme4)
+require(lmerTest)
+
+
+mymod <- lmer(scale(m_aB_mcosts_ag) ~ scale(m_a_eles_ag)*scale(abs(m_a_lats_ag)) + (1|pairID/Species.1bl), data = mydata); summary(mymod) 
+
+mymod <- lmer(scale(mydata$m_aB_mcosts_ag) ~ scale(mydata$m_a_eles_ag)*scale(abs(mydata$m_a_lats_ag)) + (1|mydata$Species.1bl)); summary(mymod) 
+
+mymod <- lm(scale(mydata$m_aB_mcosts_ag) ~ scale(mydata$m_a_eles_ag)*scale(abs(mydata$m_a_lats_ag))); summary(mymod)
 
 
 

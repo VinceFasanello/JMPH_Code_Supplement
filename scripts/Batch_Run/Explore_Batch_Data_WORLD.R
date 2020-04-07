@@ -18,86 +18,9 @@ require(gridExtra)
 require(mapproj)
 
 # open and concatonate all results file sets -------------------------------------------
-inwd <- "~/Box Sync/JMPH_2020/data/Batch_Run"
+inwd <- "~/Box Sync/JMPH/data/Batch_Run"
 setwd(inwd)
-
-
-
-
-
-
-# Load elevation data and view -------------------------------------------------
-setwd(inwd)
-load(file = "000_Setup_elev_raster_outputs.Rdata")
-elev_raster_hold <- elev_raster
-elev_raster[elev_raster$layer <= 0,] <- NA
-elev_raster <- as.data.frame(elev_raster, xy=TRUE)
-
-# view elevations
-ggplot(data = elev_raster, aes(x = x , y =y, color = (layer)))+
-  geom_point(cex = 0.5)+
-  coord_equal()+
-  theme_bw()+
-  scale_color_viridis()
-
-# view points where it is POSSIBLE to have an ai (will be background on our plots below.)
-ggplot(data = elev_raster, aes(x = x , y =y))+
-  geom_point(cex = 0.5, color = "darkgray")+
-  coord_equal()+
-  theme_bw()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+load(file = "lcp_elevation_results_1rowper_sampledgridcell.rdata")
 
 
 data_summary <- function(x) {
@@ -107,96 +30,315 @@ data_summary <- function(x) {
   return(c(y=m,ymin=ymin,ymax=ymax))
 }
 
-sort(tapply(myworld$n_sp_sampled, myworld$BIOME, mean)) # so some variation in # species sampled per biome. 
-sort(tapply(myworld$n_sp_sampled, myworld$BIOME, sum)) # so some variation in # total cells sampled per biome as well. 
+# Load elevation data and view -------------------------------------------------
+setwd(inwd)
+load(file = "000_Setup_elev_raster_outputs.Rdata")
+elev_raster_hold <- elev_raster
+elev_raster[elev_raster$layer <= 0,] <- NA
+elev_raster <- as.data.frame(elev_raster, xy=TRUE)
+back_raster <- elev_raster
+back_raster$layer[!is.na(back_raster$layer)] <- "darkgray"
+
+# # view elevations
+# ggplot(data = elev_raster, aes(x = x , y =y, color = (layer)))+
+#   geom_point(cex = 0.5)+
+#   coord_equal()+
+#   theme_bw()+
+#   scale_color_viridis()
+# 
+# # view points where it is POSSIBLE to have an ai (will be background on our plots below.)
+# ggplot(data = back_raster, aes(x = x , y =y, color = layer))+
+#   geom_point(cex = 0.5)+
+#   coord_equal()+
+#   theme_bw()
+
+
+
+
+
+# plot LCP COST ----------------------------------------------------------------
+pdata <- myworld
+pdata$value <- pdata$m_aB_mcosts_ag
+toremove <- 0.01
+
+pdata$value <- log(pdata$value + 1)
+pdata <- pdata[order(pdata$value),]
+mymin <- quantile(pdata$value, c(0 + toremove, 1 - toremove))[1]  # remove outliers for color scaling ease. 
+mymax <- quantile(pdata$value, c(0 + toremove, 1 - toremove))[2] 
+# hist(pdata$value, breaks = 100); abline(v=mymin, col = "blue"); abline(v=mymax, col= "red")
+pdata <- pdata[pdata$value < mymax & pdata$value > mymin,]
+pdata$value <- scale(pdata$value)
+p1 <- ggplot(data = back_raster, aes(x = x , y =y))+
+  geom_point(cex = 0.5, color = back_raster$layer)+
+  geom_point(cex = 0.5, data = pdata, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = value), inherit.aes = F)+
+  coord_equal()+
+  theme_minimal() + theme(axis.text.x = element_blank(), axis.text.y = element_blank()) +
+  scale_color_viridis()+
+  ggtitle("LCP COST") + xlab("") +ylab("")
+p1
+
+
+# plot LCP Length ----------------------------------------------------------------
+pdata <- myworld
+pdata$value <- pdata$m_aB_plengths_ag
+toremove <- 0.01
+
+pdata$value <- log(pdata$value + 1)
+pdata <- pdata[order(pdata$value),]
+mymin <- quantile(pdata$value, c(0 + toremove, 1 - toremove))[1]  # remove outliers for color scaling ease. 
+mymax <- quantile(pdata$value, c(0 + toremove, 1 - toremove))[2] 
+# hist(pdata$value, breaks = 100); abline(v=mymin, col = "blue"); abline(v=mymax, col= "red")
+pdata <- pdata[pdata$value < mymax & pdata$value > mymin,]
+pdata$value <- scale(pdata$value)
+p1 <- ggplot(data = back_raster, aes(x = x , y =y))+
+  geom_point(cex = 0.5, color = back_raster$layer)+
+  geom_point(cex = 0.5, data = pdata, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = value), inherit.aes = F)+
+  coord_equal()+
+  theme_minimal() + theme(axis.text.x = element_blank(), axis.text.y = element_blank()) +
+  scale_color_viridis()+
+  ggtitle("LCP LENGTH") + xlab("") +ylab("")
+p1
+
+# plot LCP DIRECTNESS ----------------------------------------------------------------
+pdata <- myworld
+pdata$value <- pdata$m_aB_mcosts_ag / pdata$m_aB_plengths_ag
+toremove <- 0.01
+
+pdata$value <- log(pdata$value + 1)
+pdata <- pdata[order(pdata$value),]
+mymin <- quantile(pdata$value, c(0 + toremove, 1 - toremove))[1]  # remove outliers for color scaling ease. 
+mymax <- quantile(pdata$value, c(0 + toremove, 1 - toremove))[2] 
+# hist(pdata$value, breaks = 100); abline(v=mymin, col = "blue"); abline(v=mymax, col= "red")
+pdata <- pdata[pdata$value < mymax & pdata$value > mymin,]
+pdata$value <- scale(pdata$value)
+p1 <- ggplot(data = back_raster, aes(x = x , y =y))+
+  geom_point(cex = 0.5, color = back_raster$layer)+
+  geom_point(cex = 0.5, data = pdata, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = value), inherit.aes = F)+
+  coord_equal()+
+  theme_minimal() + theme(axis.text.x = element_blank(), axis.text.y = element_blank()) +
+  scale_color_viridis()+
+  ggtitle("LCP DIRECTNESS (COST / LENGTH)") + xlab("") +ylab("")
+p1
+
+
+
+# MODELS ----------------------------------
+mymod <- lm(scale(m_aB_mcosts_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F), data = myworld); summary(mymod); hist(residuals(mymod), breaks = 100)
+plot(scale(m_aB_mcosts_ag, center = F) ~ scale(m_a_eles_ag, center = F), data = myworld, col = rgb(0,0,0,0.5), pch = 19)
+plot(scale(m_aB_mcosts_ag, center = F) ~ scale(abs(m_a_lats_ag), center = F), data = myworld, col = rgb(0,0,0,0.15), pch = 19)
+
+mymod <- lm(scale(m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F), data = myworld); summary(mymod); hist(residuals(mymod), breaks = 100)
+plot(scale(m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F), data = myworld, col = rgb(0,0,0,0.5), pch = 19)
+plot(scale(m_aB_plengths_ag, center = F) ~ scale(abs(m_a_lats_ag), center = F), data = myworld, col = rgb(0,0,0,0.15), pch = 19)
+
+# mymod <- lm(scale(m_aB_mcosts_ag/m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F)+I(scale(abs(m_a_lats_ag), center = F)^2), data = myworld); summary(mymod); hist(residuals(mymod), breaks = 100)
+mymod <- lm(scale(m_aB_mcosts_ag/m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F), data = myworld); summary(mymod); hist(residuals(mymod), breaks = 100)
+plot(scale(m_aB_mcosts_ag/m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F), data = myworld, col = rgb(0,0,0,0.5), pch = 19)
+plot(scale(m_aB_mcosts_ag/m_aB_plengths_ag, center = F) ~ scale(abs(m_a_lats_ag), center = F), data = myworld, col = rgb(0,0,0,0.15), pch = 19)
+
+
+mymod <- lm(scale(div, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center=F)+scale(m_aB_mcosts_ag, center = F), data = myworld); summary(mymod); hist(residuals(mymod), breaks = 100)
+car::vif(mymod)
+plot(scale(div) ~ scale(m_a_eles_ag, center = F), data = myworld, col = rgb(0,0,0,0.5), pch = 19)
+plot(scale(div) ~ scale(abs(m_a_lats_ag), center = F), data = myworld, col = rgb(0,0,0,0.15), pch = 19)
+plot(scale(div) ~ scale(m_aB_mcosts_ag, center = F), data = myworld, col = rgb(0,0,0,0.15), pch = 19)
+mymod <- lm(scale(div, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center=F)+scale(m_aB_mcosts_ag, center = F)+scale(m_aB_plengths_ag, center = F), data = myworld); summary(mymod); hist(residuals(mymod), breaks = 100)
+plot(scale(div) ~ scale(m_aB_plengths_ag, center = F), data = myworld, col = rgb(0,0,0,0.15), pch = 19)
+
+
+mymod <- lm(scale(m_aB_mcosts_ag, center = F) ~scale(m_aB_plengths_ag, center = F), data = myworld); summary(mymod); hist(residuals(mymod), breaks = 100)
+
+
+
+
+
+# LETS LOOK AT SOME BIOMESSSS -------------
+# first, look at how many species per biome
+# sort(tapply(myworld$n_sp_sampled, myworld$BIOME, mean)) # so some variation in # species sampled per biome. (could also be driven by variation in richness!)
+# sort(tapply(myworld$n_sp_sampled, myworld$BIOME, sum)) # so some variation in # total cells sampled per biome as well. (could also be driven by variation in area covered by each biome!)
+
+
 # with these caveats, lets look at some more interesting things...
-sort(tapply(myworld$m_aB_mcosts_ag, myworld$BIOME, mean))# cost by biome
-myorder <- names(sort(tapply(myworld$m_aB_mcosts_ag[myworld$m_aB_mcosts_ag < quantile(myworld$m_aB_mcosts_ag, 0.9999)], myworld$BIOME[myworld$m_aB_mcosts_ag < quantile(myworld$m_aB_mcosts_ag, 0.9999)], mean)))
-
-myworldp <- myworld[!is.na(myworld$BIOME),]
-myworldp$BIOME <- factor(myworldp$BIOME, levels = myorder) # reorder the treat factor
-p <- ggplot(myworldp[myworldp$m_aB_mcosts_ag < quantile(myworldp$m_aB_mcosts_ag, 0.9999),], aes(x=BIOME, y=m_aB_mcosts_ag)) + 
-  geom_jitter(width = 0.05, alpha = 0.05, color = "blue")+
-  geom_violin()+
-  stat_summary(fun.data=data_summary, color = "red")+
-  coord_flip()
-p
+sort(tapply(scale(myworld$m_aB_mcosts_ag), myworld$BIOME, mean), decreasing = T)# cost by biome
+sort(tapply(scale(myworld$m_a_eles_ag), myworld$BIOME, mean), decreasing = T)# elevation by biome
 
 
+pdata <- myworld[!is.na(myworld$BIOME),]
+pdata$BIOME <- factor(pdata$BIOME, levels = names(sort(tapply(scale(pdata$m_aB_mcosts_ag), pdata$BIOME, mean), decreasing = F))) # reorder the treat factor
+p1 <- ggplot(pdata, aes(x=BIOME, y=m_aB_mcosts_ag)) + 
+  geom_jitter(width = 0.05, alpha = 0.05, color = rgb(0,0,1,0.5))+
+  geom_violin(scale = "width", fill = rgb(0,0,0,0.1))+
+  stat_summary(fun.data=data_summary, color = "darkred")+
+  coord_flip()+
+  theme_minimal() + theme(axis.text.x = element_blank()) + ylab("COST")
+# p1
 
-p <- ggplot(myworldp[myworldp$m_aB_mcosts_ag < quantile(myworldp$m_aB_mcosts_ag, 0.9999),], aes(x=m_a_lons_ag, y=m_a_lats_ag, color = BIOME)) + 
-  geom_point(size = 1.25, shape = "square")
-p
-p <- ggplot(myworldp[myworldp$m_aB_mcosts_ag < quantile(myworldp$m_aB_mcosts_ag, 0.9999),], aes(x=m_a_lons_ag, y=m_a_lats_ag, color = BIOME)) + 
-  geom_point(size = 1.25, shape = "square")+
-  coord_equal()
-p
-p <- ggplot(myworldp[myworldp$m_aB_mcosts_ag < quantile(myworldp$m_aB_mcosts_ag, 0.9999),], aes(x=m_a_lons_ag, y=m_a_lats_ag, color = BIOME)) + 
-  geom_point(size = 1.25, shape = "square")+
-  coord_cartesian()
-p
-p <- ggplot(myworldp[myworldp$m_aB_mcosts_ag < quantile(myworldp$m_aB_mcosts_ag, 0.9999),], aes(x=m_a_lons_ag, y=m_a_lats_ag, color = BIOME)) + 
-  geom_point(size = 1.25, shape = "square")+
-  coord_polar()
-p
+pdata <- myworld[!is.na(myworld$BIOME),]
+pdata$BIOME <- factor(pdata$BIOME, levels = names(sort(tapply(scale(pdata$m_aB_mcosts_ag), pdata$BIOME, mean), decreasing = F))) # reorder the treat factor
+p2 <- ggplot(pdata, aes(x=BIOME, y=m_a_eles_ag)) + 
+  geom_jitter(width = 0.05, alpha = 0.05, color = rgb(0,0,1,0.5))+
+  geom_violin(scale = "width", fill = rgb(0,0,0,0.1))+
+  stat_summary(fun.data=data_summary, color = "darkred")+
+  coord_flip()+
+  theme_minimal() + theme(axis.text.x = element_blank(), axis.text.y = element_blank()) + xlab("") + ylab("ELEVATION")
+# p2
+
+grid.arrange(p1,p2,layout_matrix = rbind(c(1,1,1,2,2)))
 
 
 
 
-sort(tapply(myworld$n_sp_sampled, myworld$REALM, mean)) # so some variation in # species sampled per biome. 
-sort(tapply(myworld$n_sp_sampled, myworld$REALM, sum)) # so some variation in # total cells sampled per biome as well. 
+
+
+# LETS LOOK AT SOME REALM DATA -------------
+# first, look at how many species per biome
+sort(tapply(myworld$n_sp_sampled, myworld$REALM, mean)) # so some variation in # species sampled per biome. (could also be driven by variation in richness!)
+sort(tapply(myworld$n_sp_sampled, myworld$REALM, sum)) # so some variation in # total cells sampled per REALM as well. (could also be driven by variation in area covered by each REALM!)
+
+
 # with these caveats, lets look at some more interesting things...
-sort(tapply(myworld$m_aB_mcosts_ag, myworld$REALM, mean))# cost by biome
-myorder <- names(sort(tapply(myworld$m_aB_mcosts_ag, myworld$REALM, median)))
-
-myworldp <- myworld[!is.na(myworld$REALM),]
-myworldp$REALM <- factor(myworldp$REALM, levels = myorder) # reorder the treat factor
-p <- ggplot(myworldp[myworldp$m_aB_mcosts_ag < quantile(myworldp$m_aB_mcosts_ag, 0.999),], aes(x=REALM, y=m_aB_mcosts_ag)) + 
-  geom_jitter(width = 0.05, alpha = 0.05, color = "blue")+
-  geom_violin()+
-  stat_summary(fun.data=data_summary, color = "red")+
-  coord_flip()
-p
+sort(tapply(scale(myworld$m_aB_mcosts_ag), myworld$REALM, mean), decreasing = T)# cost by REALM
+sort(tapply(scale(myworld$m_a_eles_ag), myworld$REALM, mean), decreasing = T)# elevation by REALM
 
 
+pdata <- myworld[!is.na(myworld$REALM),]; pdata <- pdata[pdata$REALM != "Oceania",]
+pdata$REALM <- factor(pdata$REALM, levels = names(sort(tapply(scale(pdata$m_aB_mcosts_ag), pdata$REALM, mean), decreasing = F))) # reorder the treat factor
+p1 <- ggplot(pdata, aes(x=REALM, y=m_aB_mcosts_ag)) + 
+  geom_jitter(width = 0.05, alpha = 0.05, color = rgb(0,0,1,0.5))+
+  geom_violin(scale = "width", fill = rgb(0,0,0,0.1))+
+  stat_summary(fun.data=data_summary, color = "darkred")+
+  coord_flip()+
+  theme_minimal() + theme(axis.text.x = element_blank()) + ylab("COST")
+p1
 
-p <- ggplot(myworldp[myworldp$m_aB_mcosts_ag < quantile(myworldp$m_aB_mcosts_ag, 0.9999),], aes(x=m_a_lons_ag, y=m_a_lats_ag, color = REALM)) + 
-  geom_point(size = 1.25, shape = "square")
-p
+pdata <- myworld[!is.na(myworld$REALM),]; pdata <- pdata[pdata$REALM != "Oceania",]
+pdata$REALM <- factor(pdata$REALM, levels = names(sort(tapply(scale(pdata$m_aB_mcosts_ag), pdata$REALM, mean), decreasing = F))) # reorder the treat factor
+p2 <- ggplot(pdata, aes(x=REALM, y=m_a_eles_ag)) + 
+  geom_jitter(width = 0.05, alpha = 0.05, color = rgb(0,0,1,0.5))+
+  geom_violin(scale = "width", fill = rgb(0,0,0,0.1))+
+  stat_summary(fun.data=data_summary, color = "darkred")+
+  coord_flip()+
+  theme_minimal() + theme(axis.text.x = element_blank(), axis.text.y = element_blank()) + xlab("") + ylab("ELEVATION")
+p2
 
-p <- ggplot(myworldp[myworldp$m_aB_mcosts_ag < quantile(myworldp$m_aB_mcosts_ag, 0.9999),], aes(x=m_a_lons_ag, y=m_a_lats_ag, color = -GBL_STAT)) + 
-  geom_point(size = 1.25, shape = "square")
-p
-
-mycol <- viridis(n = length(unique(myworld$ECO_NAME)), option = "C")
-p <- ggplot(myworldp[myworldp$m_aB_mcosts_ag < quantile(myworldp$m_aB_mcosts_ag, 0.9999),], aes(x=m_a_lons_ag, y=m_a_lats_ag, color = ECO_NAME)) + 
-  geom_point(size = 1.25, shape = "square")+ 
-  theme(legend.position = "none") +
-  scale_color_manual(values = mycol)
-
-p
+grid.arrange(p1,p2,layout_matrix = rbind(c(1,1,1,2,2)))
 
 
-myworldp$REALM <- relevel(myworldp$REALM, ref = "Oceania") # reorder the treat factor
-summary(glm(myworldp$m_aB_mcosts_ag ~ myworldp$REALM ))
+# quick models look good here too! 
+pdata$value <- scale(pdata$m_aB_mcosts_ag)
+pdata <- pdata[!is.na(pdata$REALM),]; pdata <- pdata[pdata$REALM != "Oceania",]
+pdata$REALM <- as.factor(pdata$REALM)
 
-myworldp$REALM <- relevel(myworldp$REALM, ref = "Australasia") # reorder the treat factor
-summary(glm(myworldp$m_aB_mcosts_ag ~ myworldp$REALM ))
+pdata$REALM <- relevel(pdata$REALM, ref = "Australasia") # reorder the treat factor
+summary(glm(pdata$value ~ pdata$REALM ))
 
-myworldp$REALM <- relevel(myworldp$REALM, ref = "IndoMalay") # reorder the treat factor
-summary(glm(myworldp$m_aB_mcosts_ag ~ myworldp$REALM ))
+pdata$REALM <- relevel(pdata$REALM, ref = "IndoMalay") # reorder the treat factor
+summary(glm(pdata$value ~ pdata$REALM ))
 
-myworldp$REALM <- relevel(myworldp$REALM, ref = "Nearctic") # reorder the treat factor
-summary(glm(myworldp$m_aB_mcosts_ag ~ myworldp$REALM ))
+pdata$REALM <- relevel(pdata$REALM, ref = "Nearctic") # reorder the treat factor
+summary(glm(pdata$value ~ pdata$REALM ))
 
-myworldp$REALM <- relevel(myworldp$REALM, ref = "Afrotropics") # reorder the treat factor
-summary(glm(myworldp$m_aB_mcosts_ag ~ myworldp$REALM ))
+pdata$REALM <- relevel(pdata$REALM, ref = "Afrotropics") # reorder the treat factor
+summary(glm(pdata$value ~ pdata$REALM ))
 
-myworldp$REALM <- relevel(myworldp$REALM, ref = "Palearctic") # reorder the treat factor
-summary(glm(myworldp$m_aB_mcosts_ag ~ myworldp$REALM ))
+pdata$REALM <- relevel(pdata$REALM, ref = "Palearctic") # reorder the treat factor
+summary(glm(pdata$value ~ pdata$REALM ))
 
-myworldp$REALM <- relevel(myworldp$REALM, ref = "Neotropics") # reorder the treat factor
-summary(glm(myworldp$m_aB_mcosts_ag ~ myworldp$REALM ))
+pdata$REALM <- relevel(pdata$REALM, ref = "Neotropics") # reorder the treat factor
+summary(glm(pdata$value ~ pdata$REALM ))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pdata <- myworld
+pdata$value <- pdata$m_aB_mcosts_ag
+pdata$value <- scale(pdata$value, center = F)
+
+myx1 <- scale(abs(pdata$m_a_lats_ag), center = F)
+myx2 <- scale(pdata$m_a_eles_ag, center = F)
+myy <- pdata$value
+# myr <- myworld$Species.1bl
+# x <- summary(lmer(myy ~ myx1 + myx2 + (1|myr))); x
+x <- lm(myy ~ myx1 + myx2)
+plotline <- data.frame(seq(min(myx1, na.rm = T),max(myx1, na.rm = T), length.out = 1000), seq(min(myx1, na.rm = T),max(myx1, na.rm = T),length.out = 1000)); colnames(plotline) <- c("x", "y")
+# plotline$y <- x$coefficients["(Intercept)","Estimate"] + plotline$x*x$coefficients["myx1", "Estimate"]
+plotline$y <- x$coefficients["(Intercept)"] + plotline$x*x$coefficients["myx1"]
+plot(jitter(myy[myy < 5]) ~ myx1[myy < 5], col = rgb(0,0,0,0.1), pch = 19)
+points(plotline$x, plotline$y, type = "l", col = "red", lwd = 2)
+
+
+
+
+pdata <- myworld
+pdata$value <- pdata$m_aB_mcosts_ag
+toretain <- 0.999
+
+pdata$value <- log(pdata$value + 1)
+pdata <- pdata[order(pdata$value),]
+mymin <- quantile(pdata$value, 0.01)  # remove outliers for color scaling ease. 
+mymax <- quantile(pdata$value, toretain)  # hist(pdata$value, breaks = 100); abline(v=mymin, col = "blue"); abline(v=mymax, col= "red")
+pdata <- pdata[pdata$value < mymax & pdata$value > mymin,]
+pdata$value <- scale(pdata$value, center = F)
+
+
+myx1 <- scale(abs(pdata$m_a_lats_ag), center = F)
+myx2 <- scale(pdata$m_a_eles_ag, center = F)
+myy <- pdata$value; # hist(myy)
+# myr <- myworld$Species.1bl
+# x <- summary(lmer(myy ~ myx1 + myx2 + (1|myr))); x
+x <- lm(myy ~ myx1 + myx2); summary(x)
+plotline <- data.frame(seq(min(myx1, na.rm = T),max(myx1, na.rm = T), length.out = 1000), seq(min(myx1, na.rm = T),max(myx1, na.rm = T),length.out = 1000)); colnames(plotline) <- c("x", "y")
+# plotline$y <- x$coefficients["(Intercept)","Estimate"] + plotline$x*x$coefficients["myx1", "Estimate"]
+plotline$y <- x$coefficients["(Intercept)"] + plotline$x*x$coefficients["myx1"]
+plot(jitter(myy[myy < 5]) ~ myx1[myy < 5], col = rgb(0,0,0,0.1), pch = 19)
+points(plotline$x, plotline$y, type = "l", col = "red", lwd = 2)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -219,62 +361,6 @@ summary(glm(myworld$m_aB_mcosts_ag ~myworld$m_a_lats_ag )) # negative relationsh
 
 
 
-
-
-
-
-
-
-# Exploratory World Plots ------------------------------------------------------
-# LEAST COST PATH SUM COST -------------------------------------------
-pdata <- myworld[order(mymelt$m_aB_mcosts_ag),]
-pdata$m_aB_mcosts_ag <- scale(pdata$m_aB_mcosts_ag, center = F)
-plot(pdata$m_aB_mcosts_ag~pdata$m_a_lats_ag) # notice that there are some natural breaks that will influence our interpretations...
-
-
-# exclude top 0.01% of data points -------------------------
-pd1 <- pdata[pdata$m_aB_mcosts_ag <= quantile(pdata$m_aB_mcosts_ag, na.rm = T, probs = 0.9999),];# plot(pd$m_aB_mcosts_ag~pd$m_a_lats_ag)
-p1 <- ggplot(data = elev_raster, aes(x = x , y =y))+
-  geom_point(cex = 0.5, color = "darkgray")+
-  geom_point(cex = 0.5, data = pd1, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = m_aB_mcosts_ag), inherit.aes = F)+
-  coord_equal()+
-  theme_bw()+
-  scale_color_viridis()
-
-# exclude top 0.10% of data points -------------------------
-pd2 <- pdata[pdata$m_aB_mcosts_ag <= quantile(pdata$m_aB_mcosts_ag, na.rm = T, probs = 0.999),];# plot(pd$m_aB_mcosts_ag~pd$m_a_lats_ag)
-p2 <- ggplot(data = elev_raster, aes(x = x , y =y))+
-  geom_point(cex = 0.5, color = "darkgray")+
-  geom_point(cex = 0.5, data = pd2, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = m_aB_mcosts_ag), inherit.aes = F)+
-  coord_equal()+
-  theme_bw()+
-  scale_color_viridis()
-
-# exclude top 1.00% of data points -------------------------
-pd3 <- pdata[pdata$m_aB_mcosts_ag <= quantile(pdata$m_aB_mcosts_ag, na.rm = T, probs = 0.99),];# plot(pd$m_aB_mcosts_ag~pd$m_a_lats_ag)
-p3 <- ggplot(data = elev_raster, aes(x = x , y =y))+
-  geom_point(cex = 0.5, color = "darkgray")+
-  geom_point(cex = 0.5, data = pd3, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = m_aB_mcosts_ag), inherit.aes = F)+
-  coord_equal()+
-  theme_bw()+
-  scale_color_viridis()
-
-# exclude top 10.0% of data points -------------------------
-pd4 <- pdata[pdata$m_aB_mcosts_ag <= quantile(pdata$m_aB_mcosts_ag, na.rm = T, probs = 0.9),];# plot(pd$m_aB_mcosts_ag~pd$m_a_lats_ag)
-p4 <- ggplot(data = elev_raster, aes(x = x , y =y))+
-  geom_point(cex = 0.5, color = "darkgray")+
-  geom_point(cex = 0.5, data = pd4, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = m_aB_mcosts_ag), inherit.aes = F)+
-  coord_equal()+
-  theme_bw()+
-  scale_color_viridis()
-
-lay <- rbind(c(1),
-             c(2),
-             c(3),
-             c(4))
-x <- grid.arrange(p1, p2, p3, p4, layout_matrix = lay)
-grid::grid.draw(x)
-pdf(file = paste("000_test_world.pdf"),height = 36, width = 18); grid::grid.draw(x); dev.off()
 
 
 

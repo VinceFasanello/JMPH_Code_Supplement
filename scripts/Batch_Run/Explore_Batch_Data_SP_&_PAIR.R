@@ -18,13 +18,17 @@ require(gridExtra)
 require(mapproj)
 
 # open and concatonate all results file sets -------------------------------------------
-inwd <- "~/Box Sync/JMPH_2020/data/Batch_Run"
+inwd <- "~/Box Sync/JMPH/data/Batch_Run"
 setwd(inwd)
+load(file = "lcp_elevation_results_1rowper_origin.rdata")
 
 
-
-
-
+data_summary <- function(x) {
+  m <- mean(x)
+  ymin <- m-sd(x)
+  ymax <- m+sd(x)
+  return(c(y=m,ymin=ymin,ymax=ymax))
+}
 
 # Load elevation data and view -------------------------------------------------
 setwd(inwd)
@@ -32,21 +36,77 @@ load(file = "000_Setup_elev_raster_outputs.Rdata")
 elev_raster_hold <- elev_raster
 elev_raster[elev_raster$layer <= 0,] <- NA
 elev_raster <- as.data.frame(elev_raster, xy=TRUE)
+back_raster <- elev_raster
+back_raster$layer[!is.na(back_raster$layer)] <- "darkgray"
 
-# view elevations
-ggplot(data = elev_raster, aes(x = x , y =y, color = (layer)))+
-  geom_point(cex = 0.5)+
-  coord_equal()+
-  theme_bw()+
-  scale_color_viridis()
+# # view elevations
+# ggplot(data = elev_raster, aes(x = x , y =y, color = (layer)))+
+#   geom_point(cex = 0.5)+
+#   coord_equal()+
+#   theme_bw()+
+#   scale_color_viridis()
+# 
+# # view points where it is POSSIBLE to have an ai (will be background on our plots below.)
+# ggplot(data = back_raster, aes(x = x , y =y, color = layer))+
+#   geom_point(cex = 0.5)+
+#   coord_equal()+
+#   theme_bw()
+
+# MODELS ----------------------------------
+mymod <- lmer(scale(m_aB_mcosts_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F) + (1|pairID/Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+mymod <- lmer(scale(m_aB_mcosts_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F) + (1|Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+# plot(scale(m_aB_mcosts_ag, center = F) ~ scale(m_a_eles_ag, center = F), data = mydata, col = rgb(0,0,0,0.5), pch = 19)
+# plot(scale(m_aB_mcosts_ag, center = F) ~ scale(abs(m_a_lats_ag), center = F), data = mydata, col = rgb(0,0,0,0.15), pch = 19)
 
 
-# view points where it is POSSIBLE to have an ai (will be background on our plots below.)
-ggplot(data = elev_raster, aes(x = x , y =y))+
-  geom_point(cex = 0.5, color = "darkgray")+
-  coord_equal()+
-  theme_bw()
+myx1 <- scale(abs(mydata$m_a_lats_ag), center = F)
+myx2 <- scale(mydata$m_a_eles_ag, center = F)
+myy <- scale(mydata$m_aB_mcosts_ag, center = F); hist(myy)
+myr <- mydata$Species.1bl
+x <- summary(lmer(myy ~ myx1 + myx2 + (1|myr))); x
+plotline <- data.frame(seq(min(myx1, na.rm = T),max(myx1, na.rm = T), length.out = 1000), seq(min(myx1, na.rm = T),max(myx1, na.rm = T),length.out = 1000)); colnames(plotline) <- c("x", "y")
+plotline$y <- x$coefficients["(Intercept)","Estimate"] + plotline$x*x$coefficients["myx1", "Estimate"]
+plot(jitter(myy[myy < 5]) ~ myx1[myy < 5], col = rgb(0,0,0,0.025), pch = 19)
+points(plotline$x, plotline$y, type = "l", col = "red")
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mymod <- lmer(scale(m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F) + (1|pairID/Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+mymod <- lmer(scale(m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F) + (1|Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+# plot(scale(m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F), data = mydata, col = rgb(0,0,0,0.5), pch = 19)
+# plot(scale(m_aB_plengths_ag, center = F) ~ scale(abs(m_a_lats_ag), center = F), data = mydata, col = rgb(0,0,0,0.15), pch = 19)
+
+mymod <- lmer(scale(m_aB_mcosts_ag/m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F) + (1|pairID/Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+mymod <- lmer(scale(m_aB_mcosts_ag/m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center = F) + (1|Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+# plot(scale(m_aB_mcosts_ag/m_aB_plengths_ag, center = F) ~ scale(m_a_eles_ag, center = F), data = mydata, col = rgb(0,0,0,0.5), pch = 19)
+# plot(scale(m_aB_mcosts_ag/m_aB_plengths_ag, center = F) ~ scale(abs(m_a_lats_ag), center = F), data = mydata, col = rgb(0,0,0,0.15), pch = 19)
+
+
+mymod <- lmer(scale(div, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center=F)+scale(m_aB_mcosts_ag, center = F) + (1|pairID/Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+mymod <- lmer(scale(div, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center=F)+scale(m_aB_mcosts_ag, center = F) + (1|Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+car::vif(mymod)
+plot(scale(div) ~ scale(m_a_eles_ag, center = F), data = mydata, col = rgb(0,0,0,0.5), pch = 19)
+plot(scale(div) ~ scale(abs(m_a_lats_ag), center = F), data = mydata, col = rgb(0,0,0,0.15), pch = 19)
+plot(scale(div) ~ scale(m_aB_mcosts_ag, center = F), data = mydata, col = rgb(0,0,0,0.15), pch = 19)
+mymod <- lmer(scale(div, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center=F)+scale(m_aB_mcosts_ag, center = F)+scale(m_aB_plengths_ag, center = F) + (1|pairID/Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+mymod <- lmer(scale(div, center = F) ~ scale(m_a_eles_ag, center = F)+scale(abs(m_a_lats_ag), center=F)+scale(m_aB_mcosts_ag, center = F)+scale(m_aB_plengths_ag, center = F) + (1|Species.1bl), data = mydata); summary(mymod); hist(residuals(mymod), breaks = 100)
+plot(scale(div) ~ scale(m_aB_plengths_ag, center = F), data = myworld, col = rgb(0,0,0,0.15), pch = 19)
+
+
+mymod <- lm(scale(m_aB_mcosts_ag, center = F) ~scale(m_aB_plengths_ag, center = F), data = myworld); summary(mymod); hist(residuals(mymod), breaks = 100)
 
 
 
