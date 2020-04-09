@@ -214,8 +214,8 @@ plot(myy ~ myx1, col = rgb(0,0,0,0.25), pch = 19, xlab = myxlab, ylab = myylab)
 points(plotline$x, plotline$y, type = "l", col = "red", lwd = 2)
 
 
-# probably see similarity in wedges because.....
-summary(lm(cost ~ len, data = temp)) # higher cost with higher length.. makes sense. .....could also be that we need MORE SAMPLING in northern areas to catch shorter paths (this is more likely...)
+# # probably see similarity in wedges because.....
+# summary(lm(cost ~ len, data = temp)) # higher cost with higher length.. makes sense. .....could also be that we need MORE SAMPLING in northern areas to catch shorter paths (this is more likely...)
 
 
 # full data, y = len, x = elevation ----
@@ -268,40 +268,37 @@ p1
 mymod <- lm(scale((temp$cost/temp$len), center = F) ~ scale(temp$ele, center = F) + scale(abs(temp$lat), center = F)); summary(mymod); # hist(residuals(mymod), breaks = 50)
 
 
-# model plots ------------------------------------
-# full data, y = Directness, x = latitude ----
-pdata <- temp
-pdata$value <- temp$cost/temp$len
-pdata$value <- scale(pdata$value, center = F)
-myx1 <- scale(abs(pdata$lat), center = F)
-myx2 <- scale(pdata$ele, center = F)
-myy <- pdata$value
-x <- lm(myy ~ myx1 + myx2); summary(x)
-myxlab <- "Absolute Latitude"
-myylab <- "LCP Directness"
-plotline <- data.frame(seq(min(myx1, na.rm = T),max(myx1, na.rm = T), length.out = 1000), seq(min(myx1, na.rm = T),max(myx1, na.rm = T),length.out = 1000)); colnames(plotline) <- c("x", "y")
-plotline$y <- x$coefficients["(Intercept)"] + plotline$x*x$coefficients["myx1"]
-plot(myy ~ myx1, col = rgb(0,0,0,0.25), pch = 19, xlab = myxlab, ylab = myylab)
-points(plotline$x, plotline$y, type = "l", col = "red", lwd = 2)
+# # model plots ------------------------------------
+# # full data, y = Directness, x = latitude ----
+# pdata <- temp
+# pdata$value <- temp$cost/temp$len
+# pdata$value <- scale(pdata$value, center = F)
+# myx1 <- scale(abs(pdata$lat), center = F)
+# myx2 <- scale(pdata$ele, center = F)
+# myy <- pdata$value
+# x <- lm(myy ~ myx1 + myx2); summary(x)
+# myxlab <- "Absolute Latitude"
+# myylab <- "LCP Directness"
+# plotline <- data.frame(seq(min(myx1, na.rm = T),max(myx1, na.rm = T), length.out = 1000), seq(min(myx1, na.rm = T),max(myx1, na.rm = T),length.out = 1000)); colnames(plotline) <- c("x", "y")
+# plotline$y <- x$coefficients["(Intercept)"] + plotline$x*x$coefficients["myx1"]
+# plot(myy ~ myx1, col = rgb(0,0,0,0.25), pch = 19, xlab = myxlab, ylab = myylab)
+# points(plotline$x, plotline$y, type = "l", col = "red", lwd = 2)
 
 
-# full data, y = Directness, x = elevation ----
-pdata <- temp
-pdata$value <- temp$cost/temp$len
-pdata$value <- scale(pdata$value, center = F)
-myx2 <- scale(abs(pdata$lat), center = F)
-myx1 <- scale(pdata$ele, center = F)
-myy <- pdata$value
-x <- lm(myy ~ myx1 + myx2); summary(x)
-myxlab <- "elevation"
-myylab <- "LCP Directness"
-plotline <- data.frame(seq(min(myx1, na.rm = T),max(myx1, na.rm = T), length.out = 1000), seq(min(myx1, na.rm = T),max(myx1, na.rm = T),length.out = 1000)); colnames(plotline) <- c("x", "y")
-plotline$y <- x$coefficients["(Intercept)"] + plotline$x*x$coefficients["myx1"]
-plot(myy ~ myx1, col = rgb(0,0,0,0.25), pch = 19, xlab = myxlab, ylab = myylab)
-points(plotline$x, plotline$y, type = "l", col = "red", lwd = 2)
-
-
-
+# # full data, y = Directness, x = elevation ----
+# pdata <- temp
+# pdata$value <- temp$cost/temp$len
+# pdata$value <- scale(pdata$value, center = F)
+# myx2 <- scale(abs(pdata$lat), center = F)
+# myx1 <- scale(pdata$ele, center = F)
+# myy <- pdata$value
+# x <- lm(myy ~ myx1 + myx2); summary(x)
+# myxlab <- "elevation"
+# myylab <- "LCP Directness"
+# plotline <- data.frame(seq(min(myx1, na.rm = T),max(myx1, na.rm = T), length.out = 1000), seq(min(myx1, na.rm = T),max(myx1, na.rm = T),length.out = 1000)); colnames(plotline) <- c("x", "y")
+# plotline$y <- x$coefficients["(Intercept)"] + plotline$x*x$coefficients["myx1"]
+# plot(myy ~ myx1, col = rgb(0,0,0,0.25), pch = 19, xlab = myxlab, ylab = myylab)
+# points(plotline$x, plotline$y, type = "l", col = "red", lwd = 2)
 
 
 
@@ -313,7 +310,10 @@ points(plotline$x, plotline$y, type = "l", col = "red", lwd = 2)
 
 
 
-# LETS LOOK AT SOME BIOMESSSS -------------
+
+
+
+# LETS LOOK AT SOME BIOMES -------------
 tempbiome <- sort(tapply(scale(myworld$m_aB_mcosts_ag, center = F), myworld$BIOME, mean), decreasing = F)# cost by biome
 hold <- names(tempbiome)
 tempbiome <- data.frame(tempbiome); colnames(tempbiome) <- c("cost")
@@ -355,37 +355,37 @@ p1 <- ggplot(pdata, aes(x=BIOME, y=scale(m_aB_mcosts_ag, center = F))) +
  
  
  
- # plot LCP DIRECTNESS --------------------------------------------
-pdata <- myworld
-myworld$biome_cost <- NA
-# myworld$biome_ele <- NA
- 
- for (i in 1:nrow(myworld)) {
-   if (!is.na(myworld$BIOME[i])){
-     myworld$biome_cost[i] <-  tempbiome$cost[tempbiome$name == myworld$BIOME[i]]
-     # myworld$biome_ele[i] <-  tempbiome$ele[tempbiome$name == myworld$BIOME[i]]
-   }
-   
- }
- pdata$value  <- myworld$biome_cost
- pdata$value <- scale(log10(pdata$value+1))
- p1 <- ggplot(data = back_raster, aes(x = x , y =y))+
-   geom_point(cex = 0.5, color = back_raster$layer)+
-   geom_point(cex = 0.5, data = pdata, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = value), inherit.aes = F)+
-   coord_equal()+
-   theme_minimal() + theme(axis.text.x = element_blank(), axis.text.y = element_blank()) +
-   scale_color_viridis()+
-   ggtitle( "Barrier Magnitude Sufficient for Speciation") + xlab("") +ylab("")
- p1
-
- pdata$value  <- as.factor(myworld$BIOME)
- p1 <- ggplot(data = back_raster, aes(x = x , y =y))+
-   geom_point(cex = 0.5, color = back_raster$layer)+
-   geom_point(cex = 0.5, data = pdata, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = value), inherit.aes = F)+
-   coord_equal()+
-   theme_minimal() + theme(axis.text.x = element_blank(), axis.text.y = element_blank()) +
-   ggtitle( "BIOMES OF THE WORLD") + xlab("") +ylab("")+
-   scale_color_viridis(discrete = TRUE, option = "C")+ 
-   guides(color = guide_legend(override.aes = list(size=5)))
- p1
+ # Look at biomes map --------------------------------------------
+# pdata <- myworld
+# myworld$biome_cost <- NA
+# # myworld$biome_ele <- NA
+#  
+#  for (i in 1:nrow(myworld)) {
+#    if (!is.na(myworld$BIOME[i])){
+#      myworld$biome_cost[i] <-  tempbiome$cost[tempbiome$name == myworld$BIOME[i]]
+#      # myworld$biome_ele[i] <-  tempbiome$ele[tempbiome$name == myworld$BIOME[i]]
+#    }
+#    
+#  }
+#  pdata$value  <- myworld$biome_cost
+#  pdata$value <- scale(log10(pdata$value+1))
+#  p1 <- ggplot(data = back_raster, aes(x = x , y =y))+
+#    geom_point(cex = 0.5, color = back_raster$layer)+
+#    geom_point(cex = 0.5, data = pdata, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = value), inherit.aes = F)+
+#    coord_equal()+
+#    theme_minimal() + theme(axis.text.x = element_blank(), axis.text.y = element_blank()) +
+#    scale_color_viridis()+
+#    ggtitle( "Barrier Magnitude Sufficient for Speciation") + xlab("") +ylab("")
+#  p1
+# 
+#  pdata$value  <- as.factor(myworld$BIOME)
+#  p1 <- ggplot(data = back_raster, aes(x = x , y =y))+
+#    geom_point(cex = 0.5, color = back_raster$layer)+
+#    geom_point(cex = 0.5, data = pdata, aes(x = m_a_lons_ag , y =m_a_lats_ag, color = value), inherit.aes = F)+
+#    coord_equal()+
+#    theme_minimal() + theme(axis.text.x = element_blank(), axis.text.y = element_blank()) +
+#    ggtitle( "BIOMES OF THE WORLD") + xlab("") +ylab("")+
+#    scale_color_viridis(discrete = TRUE, option = "C")+ 
+#    guides(color = guide_legend(override.aes = list(size=5)))
+#  p1
 

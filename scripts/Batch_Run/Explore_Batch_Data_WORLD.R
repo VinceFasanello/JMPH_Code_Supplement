@@ -16,6 +16,7 @@ require(ggplot2)
 require(viridis)
 require(gridExtra)
 require(mapproj)
+require(ggthemes)
 
 # open and concatonate all results file sets -------------------------------------------
 inwd <- "~/Box Sync/JMPH/data/Batch_Run"
@@ -224,28 +225,217 @@ p2
 grid.arrange(p1,p2,layout_matrix = rbind(c(1,1,1,2,2)))
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # quick models look good here too! 
+pdata <- myworld[!is.na(myworld$REALM),]; pdata <- pdata[pdata$REALM != "Oceania",]
 pdata$value <- scale(pdata$m_aB_mcosts_ag)
-pdata <- pdata[!is.na(pdata$REALM),]; pdata <- pdata[pdata$REALM != "Oceania",]
-pdata$REALM <- as.factor(pdata$REALM)
+pdata$REALM <- as.character(pdata$REALM); pdata$REALM <- factor(pdata$REALM, levels = c(names(sort(tapply(scale(pdata$m_aB_mcosts_ag, center = F), pdata$REALM, mean), decreasing = F))))
 
 pdata$REALM <- relevel(pdata$REALM, ref = "Australasia") # reorder the treat factor
-summary(glm(pdata$value ~ pdata$REALM ))
+mymod <- glm(pdata$value ~ pdata$REALM )
 
-pdata$REALM <- relevel(pdata$REALM, ref = "IndoMalay") # reorder the treat factor
-summary(glm(pdata$value ~ pdata$REALM ))
+mysumm <- summary(mymod)$coefficients
+myres <- matrix(nrow = 6, ncol=6)
+rownames(myres) <- c("pdata$REALMAustralasia","pdata$REALMNeotropics","pdata$REALMIndoMalay", "pdata$REALMAfrotropics","pdata$REALMNearctic","pdata$REALMPalearctic")
+colnames(myres) <- rownames(myres)
+myres_p <- myres; myres_est <- myres
+for(i in c("pdata$REALMNeotropics","pdata$REALMIndoMalay", "pdata$REALMAfrotropics","pdata$REALMNearctic","pdata$REALMPalearctic")){
+  myres_est["pdata$REALMAustralasia",i] <- mysumm[i, "Estimate"]
+  myres_p["pdata$REALMAustralasia",i] <- mysumm[i, "Pr(>|t|)"]
+}
 
-pdata$REALM <- relevel(pdata$REALM, ref = "Nearctic") # reorder the treat factor
-summary(glm(pdata$value ~ pdata$REALM ))
 
-pdata$REALM <- relevel(pdata$REALM, ref = "Afrotropics") # reorder the treat factor
-summary(glm(pdata$value ~ pdata$REALM ))
-
-pdata$REALM <- relevel(pdata$REALM, ref = "Palearctic") # reorder the treat factor
-summary(glm(pdata$value ~ pdata$REALM ))
 
 pdata$REALM <- relevel(pdata$REALM, ref = "Neotropics") # reorder the treat factor
-summary(glm(pdata$value ~ pdata$REALM ))
+mymod <- glm(pdata$value ~ pdata$REALM )
+
+mysumm <- summary(mymod)$coefficients
+for(i in c("pdata$REALMAustralasia","pdata$REALMIndoMalay", "pdata$REALMAfrotropics","pdata$REALMNearctic","pdata$REALMPalearctic")){
+  myres_est["pdata$REALMNeotropics",i] <- mysumm[i, "Estimate"]
+  myres_p["pdata$REALMNeotropics",i] <- mysumm[i, "Pr(>|t|)"]
+}
+
+
+
+pdata$REALM <- relevel(pdata$REALM, ref = "IndoMalay") # reorder the treat factor
+mymod <- glm(pdata$value ~ pdata$REALM )
+
+mysumm <- summary(mymod)$coefficients
+for(i in c("pdata$REALMAustralasia","pdata$REALMNeotropics", "pdata$REALMAfrotropics","pdata$REALMNearctic","pdata$REALMPalearctic")){
+  myres_est["pdata$REALMIndoMalay",i] <- mysumm[i, "Estimate"]
+  myres_p["pdata$REALMIndoMalay",i] <- mysumm[i, "Pr(>|t|)"]
+}
+
+pdata$REALM <- relevel(pdata$REALM, ref = "Afrotropics") # reorder the treat factor
+mymod <- glm(pdata$value ~ pdata$REALM )
+
+mysumm <- summary(mymod)$coefficients
+for(i in c("pdata$REALMAustralasia","pdata$REALMNeotropics","pdata$REALMIndoMalay","pdata$REALMNearctic","pdata$REALMPalearctic")){
+  myres_est["pdata$REALMAfrotropics",i] <- mysumm[i, "Estimate"]
+  myres_p["pdata$REALMAfrotropics",i] <- mysumm[i, "Pr(>|t|)"]
+}
+
+pdata$REALM <- relevel(pdata$REALM, ref = "Nearctic") # reorder the treat factor
+mymod <- glm(pdata$value ~ pdata$REALM )
+
+mysumm <- summary(mymod)$coefficients
+for(i in c("pdata$REALMAustralasia","pdata$REALMNeotropics","pdata$REALMIndoMalay", "pdata$REALMAfrotropics","pdata$REALMPalearctic")){
+  myres_est["pdata$REALMNearctic",i] <- mysumm[i, "Estimate"]
+  myres_p["pdata$REALMNearctic",i] <- mysumm[i, "Pr(>|t|)"]
+}
+
+pdata$REALM <- relevel(pdata$REALM, ref = "Palearctic") # reorder the treat factor
+mymod <- glm(pdata$value ~ pdata$REALM )
+
+mysumm <- summary(mymod)$coefficients
+for(i in c("pdata$REALMAustralasia","pdata$REALMNeotropics","pdata$REALMIndoMalay", "pdata$REALMAfrotropics","pdata$REALMNearctic")){
+  myres_est["pdata$REALMPalearctic",i] <- mysumm[i, "Estimate"]
+  myres_p["pdata$REALMPalearctic",i] <- mysumm[i, "Pr(>|t|)"]
+}
+
+
+
+
+myp <- 0.05
+myres_est[myres_p >= myp] <- NA
+m <- round(myres_est, 2)
+colnames(m) <- c("Australasia", "Neotropics", "IndoMalay", "Afrotropics", "Nearctic", "Palearctic")
+rownames(m) <- colnames(m)
+# m <- get_lower_tri(m) # uncomment for just lower triangle
+melt_m <- reshape::melt(m)
+melt_m$X1 <- factor(melt_m$X1, levels = c("Australasia", "Neotropics", "IndoMalay", "Afrotropics", "Nearctic", "Palearctic"))
+melt_m$X2 <- factor(melt_m$X2, levels = c("Australasia", "Neotropics", "IndoMalay", "Afrotropics", "Nearctic", "Palearctic"))
+
+pp <- ggplot(melt_m, aes(x = X1, y = X2, fill = value)) + 
+  geom_tile(show.legend = F)+
+  geom_text(aes(X1, X2, label = value), color = "black", size = 2, angle = 0) +
+  theme_tufte(base_family="Helvetica")+
+  scale_y_discrete(position = "right")+
+  theme(axis.ticks = element_blank(),
+        plot.title = element_text(face = "bold"),
+        panel.background = element_rect(colour = NA, fill = "transparent"),
+        plot.background = element_rect(fill = "transparent",colour = NA),
+        axis.title = element_blank(),
+        axis.text = element_text(size = 6),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, margin = margin(t=-2.5, b = -2.5)),
+        axis.text.y.left = element_text(angle = 0, hjust = 0, vjust = 0.5, margin = margin(l=-2.5, r = -2.5), debug = T))+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(min(melt_m$value),max(melt_m$value)), space = "Lab", 
+                       name="Estimate", na.value = "transparent")
+pp
+
+m2 <- m; m2[1:length(m2)] <- 0
+# m2 <- get_lower_tri(m2) # uncomment for just lower triangle
+melt_m2 <- reshape::melt(m2)
+melt_m2$X1 <- factor(melt_m2$X1, levels = c("Australasia", "Neotropics", "IndoMalay", "Afrotropics", "Nearctic", "Palearctic"))
+melt_m2$X2 <- factor(melt_m2$X2, levels = c("Australasia", "Neotropics", "IndoMalay", "Afrotropics", "Nearctic", "Palearctic"))
+
+ppp <- ggplot(melt_m2, aes(x = X1, y = X2, fill = value)) + 
+  geom_tile(show.legend = F)+
+  geom_text(aes(X1, X2, label = value), color = "gray", size = 2, angle = 0) +
+  theme_tufte(base_family="Helvetica")+
+  scale_y_discrete(position = "right")+
+  theme(axis.ticks = element_blank(),
+        plot.title = element_text(face = "bold"),
+        panel.background = element_rect(colour = NA, fill = "transparent"),
+        plot.background = element_rect(fill = "transparent",colour = NA),
+        axis.title = element_blank(),
+        axis.text = element_text(size = 6, colour = "white"),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, margin = margin(t=-2.5, b = -2.5)),
+        axis.text.y.left = element_text(angle = 0, hjust = 0, vjust = 0.5, margin = margin(l=-2.5, r = -2.5), debug = T))+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "gray", 
+                       midpoint = 0, limit = c(min(melt_m$value),max(melt_m$value)), space = "Lab", 
+                       name="Estimate", na.value = "transparent")
+ppp
+
+
+tempbiome <- sort(tapply(scale(pdata$m_aB_mcosts_ag, center = F), pdata$REALM, mean), decreasing = F)# cost by biome
+hold <- names(tempbiome)
+tempbiome <- data.frame(tempbiome); colnames(tempbiome) <- c("cost")
+tempbiome$name <- hold; rm(hold)
+
+hold <- tapply(scale(myworld$m_a_eles_ag, center = F), myworld$REALM, mean)
+for (i in 1: nrow(tempbiome)) {
+  tempbiome$ele[i] <- hold[which(names(hold) == tempbiome$name[i])]
+}
+
+p <- ggplot(pdata, aes(x=REALM, y=scale(m_aB_mcosts_ag, center = F))) + 
+  geom_jitter(width = 0.05, alpha = 0.05, color = rgb(0,0,1,0.5))+
+  geom_violin(scale = "width", fill = rgb(0,0,0,0.1))+
+  stat_summary(fun.data=data_summary, color = "darkred")+
+  geom_hline(yintercept = 12 )+
+  coord_flip()+
+  theme_minimal() + theme(axis.text.x = element_blank()) + ylab( "Barrier Magnitude Sufficient for Speciation") +
+  annotate(geom="text", x=c(seq(1:6)), y=c(-1), label=round(tempbiome$cost, 3), color="darkred")
+p
+
+
+pppp <- p + annotation_custom(ggplotGrob(ppp), xmin = 1, xmax = 3, ymin = 7, ymax = 12)
+pppp <- pppp + annotation_custom(ggplotGrob(pp), xmin = 1, xmax = 3, ymin =7, ymax = 12)
+pppp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
