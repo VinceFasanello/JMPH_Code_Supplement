@@ -22,7 +22,6 @@ require(gdistance)
 wdtopo <- "~/JMPH/PREP/Topo/Data"
 wdclimate <- "~/JMPH/PREP/Climate/Data"
 wdPAM <- "~/JMPH/PREP/PAM/Data"
-wdSpeciesNames <- "~/JMPH/PREP/SpeciesNames/Data"
 wdMainDataFrame <- "~/JMPH/PREP/MainDataFrame/Data"
 wdSource <- "~/JMPH/BatchRun/Scripts"
 wdELEVATIONPathOutputs <- "~/JMPH/BatchRun/Data/ELEVATION_Paths"
