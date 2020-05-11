@@ -3,4 +3,10 @@
 .RData
 .Ruserdata
 .nc
+.gdbtable
 *.nc
+*.Rproj.user
+*.Rhistory
+*.RData
+*.Ruserdata
+*.gdbtable
