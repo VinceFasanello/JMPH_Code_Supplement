@@ -1,9 +1,11 @@
 rm(list=ls())
 require(ncdf4)
 require(raster)
+wdPAM <- "~/JMPH/PREP/PAM/Data"
+wdclimate <- "~/JMPH/PREP/Climate_Data/Data"
 
 # MEAN TEMPERATURE -------------------------------------------------------------
-setwd("~/JMPH_1.1/PREP/Climate_Data/Data") # read ncdf file with raw data
+setwd(wdclimate) # read ncdf file with raw data
 temp.nc = nc_open("tas_Amon_CCSM4_historical_r1i1p1_185001-200512.nc"); # print(temp.nc)
 
 # extract coordinate system and temp data for each 0.5x0.5 cell -----
@@ -55,8 +57,9 @@ for ( i in 1:length(lon_t) ) {
 }
 
 # Create rasters -------------------------------------------
+setwd(wdclimate) 
 pdf(file = "tas_maps_MeanT.pdf", width = 17, height = 11)
-setwd("~/JMPH_1.1/PREP/PAM/Data"); load(file = "LonLat_BirdPAM_raster.rdata"); setwd("~/JMPH_1.1/PREP/Climate/Data") 
+setwd(wdPAM); load(file = "LonLat_BirdPAM_raster.rdata"); setwd(wdclimate) 
 for (i in c("Month01", "Month02", "Month03", "Month04", "Month05", "Month06", 
             "Month07", "Month08", "Month09", "Month10", "Month11", "Month12")) {
   temp <- raster(ncol=288, nrow=192, xmn=-180, xmx=180, ymn=-90, ymx=90)
@@ -89,7 +92,7 @@ rm(Month01_MeanT, Month02_MeanT, Month03_MeanT, Month04_MeanT, Month05_MeanT, Mo
 
 
 # read ncdf file with raw data
-setwd("~/JMPH_1.1/PREP/Climate_Data/Data") # read ncdf file with raw data
+setwd(wdclimate) # read ncdf file with raw data
 tempmax.nc = nc_open("tasmax_Amon_CCSM4_historical_r1i1p1_185001-200512.nc")
 
 # extract coordinate system and temp data for each 0.5x0.5 cell -----
@@ -141,8 +144,9 @@ for ( i in 1:length(lon_t) ) {
 }
 
 # Create rasters -------------------------------------------
+setwd(wdclimate) 
 pdf(file = "tas_maps_MaxT.pdf", width = 17, height = 11)
-setwd("~/JMPH_1.1/PREP/PAM/Data"); load(file = "LonLat_BirdPAM_raster.rdata"); setwd("~/JMPH_1.1/PREP/Climate/Data") 
+setwd(wdPAM); load(file = "LonLat_BirdPAM_raster.rdata"); setwd(wdclimate) 
 for (i in c("Month01", "Month02", "Month03", "Month04", "Month05", "Month06", 
             "Month07", "Month08", "Month09", "Month10", "Month11", "Month12")) {
   temp <- raster(ncol=288, nrow=192, xmn=-180, xmx=180, ymn=-90, ymx=90)
@@ -170,7 +174,7 @@ rm(Month01_MaxT, Month02_MaxT, Month03_MaxT, Month04_MaxT, Month05_MaxT, Month06
 
 
 # read ncdf file with raw data
-setwd("~/JMPH_1.1/PREP/Climate_Data/Data") # read ncdf file with raw data
+setwd(wdclimate) # read ncdf file with raw data
 tempmin.nc = nc_open("tasmin_Amon_CCSM4_historical_r1i1p1_185001-200512.nc")
 
 
@@ -223,8 +227,9 @@ for ( i in 1:length(lon_t) ) {
 }
 
 # Create rasters -------------------------------------------
+setwd(wdclimate) 
 pdf(file = "tas_maps_MinT.pdf", width = 17, height = 11)
-setwd("~/JMPH_1.1/PREP/PAM/Data"); load(file = "LonLat_BirdPAM_raster.rdata"); setwd("~/JMPH_1.1/PREP/Climate/Data") 
+setwd(wdPAM); load(file = "LonLat_BirdPAM_raster.rdata"); setwd(wdclimate) 
 for (i in c("Month01", "Month02", "Month03", "Month04", "Month05", "Month06", 
             "Month07", "Month08", "Month09", "Month10", "Month11", "Month12")) {
   temp <- raster(ncol=288, nrow=192, xmn=-180, xmx=180, ymn=-90, ymx=90)
@@ -307,7 +312,7 @@ names(tasrng) <- paste0("tasrng_", names(tasmax))
 names(tasmax) <- paste0("tasmax_", names(tasmax))
 
 
-
+setwd(wdclimate) 
 save(tas,
      file = "tas_rasters_VJF.rdata")
 save(tasmin,

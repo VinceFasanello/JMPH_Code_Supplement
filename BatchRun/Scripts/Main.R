@@ -19,16 +19,16 @@ require(gdistance)
 # gc(); memory.size();memory.limit()
 
 # directory paths --------------------------------------------------------------
-wdtopo <- "~/JMPH_1.1/PREP/Topo/Data"
-wdclimate <- "~/JMPH_1.1/PREP/Climate/Data"
-wdPAM <- "~/JMPH_1.1/PREP/PAM/Data"
-wdSpeciesNames <- "~/JMPH_1.1/PREP/SpeciesNames/Data"
-wdMainDataFrame <- "~/JMPH_1.1/PREP/MainDataFrame/Data"
-wdSource <- "~/JMPH_1.1/BatchRun/Scripts"
-wdELEVATIONPathOutputs <- "~/JMPH_1.1/BatchRun/Data/ELEVATION_Paths"
-wdTHERMALPathOutputs <- "~/JMPH_1.1/BatchRun//Data/THERMAL_Paths"
-wdPRECIPITATIONPathOutputs  <- "~/JMPH_1.1/BatchRun/Data/PRECIPITATION_Paths"
-wdBatchResults <- "~/JMPH_1.1/BatchRun/Data/Main_Batch_Results"
+wdtopo <- "~/JMPH/PREP/Topo/Data"
+wdclimate <- "~/JMPH/PREP/Climate/Data"
+wdPAM <- "~/JMPH/PREP/PAM/Data"
+wdSpeciesNames <- "~/JMPH/PREP/SpeciesNames/Data"
+wdMainDataFrame <- "~/JMPH/PREP/MainDataFrame/Data"
+wdSource <- "~/JMPH/BatchRun/Scripts"
+wdELEVATIONPathOutputs <- "~/JMPH/BatchRun/Data/ELEVATION_Paths"
+wdTHERMALPathOutputs <- "~/JMPH/BatchRun//Data/THERMAL_Paths"
+wdPRECIPITATIONPathOutputs  <- "~/JMPH/BatchRun/Data/PRECIPITATION_Paths"
+wdBatchResults <- "~/JMPH/BatchRun/Data/Main_Batch_Results"
 # source -----------------------------------------------------------------------
 setwd(wdSource); source("CalculateLCP_SOURCE.R")
 

@@ -1,7 +1,7 @@
 # setup ------------------------------------------------------------------------
 rm(list = ls())
-wdSpeciesNames <- "~/JMPH_1.1/PREP/SpeciesNames/Data"
-wdPAM <- "~/JMPH_1.1/PREP/PAM/Data"
+wdSpeciesNames <- "~/JMPH/PREP/SpeciesNames/Data"
+wdPAM <- "~/JMPH/PREP/PAM/Data"
 
 # obtain species names from PAM chunks -----------------------------------------
 setwd(wdPAM)

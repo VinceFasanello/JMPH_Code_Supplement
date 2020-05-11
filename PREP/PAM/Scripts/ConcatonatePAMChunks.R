@@ -1,7 +1,7 @@
 # setup ------------------------------------------------------------------------
 rm(list = ls())
-wdPAM <- "~/JMPH_1.1/PREP/PAM/Data"
-wdSpeciesNames <- "~/JMPH_1.1/PREP/SpeciesNames/Data"
+wdPAM <- "~/JMPH/PREP/PAM/Data"
+wdSpeciesNames <- "~/JMPH/PREP/SpeciesNames/Data"
 
 setwd(wdSpeciesNames)
 load("cooney.rdata")

@@ -1,9 +1,11 @@
 rm(list = ls())
+wdPAM <- "~/JMPH/PREP/PAM/Data"
+wdTopo <- "~/JMPH/PREP/Topo/Data"
 
-setwd("~/JMPH_1.1/PREP/PAM/Data")
+setwd(wdPAM)
 load(file = "LonLat_BirdPAM_raster.rdata")
 
-setwd("~/JMPH_1.1/PREP/Topo/Data")
+setwd(wdTopo)
 load(file = "TopoRasters.Rdata")
 
 Elev_raster <- projectRaster(from = Elev_raster, to = LonLat_BirdPAM_raster)

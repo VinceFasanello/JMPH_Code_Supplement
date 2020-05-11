@@ -1,9 +1,11 @@
 rm(list=ls())
 require(ncdf4)
 require(raster)
+wdPAM <- "~/JMPH/PREP/PAM/Data"
+wdclimate <- "~/JMPH/PREP/Climate_Data/Data"
 
 # MEAN TEMPERATURE -------------------------------------------------------------
-setwd("~/JMPH_1.1/PREP/Climate/Data") # read ncdf file with raw data
+setwd(wdclimate) # read ncdf file with raw data
 precip.nc = nc_open("pr_Amon_CCSM4_historical_r1i1p1_185001-200512.nc"); # print(precip.nc)
 
 # extract coordinate system and temp data for each 0.5x0.5 cell -----
@@ -106,8 +108,9 @@ for ( i in 1:length(lon_t) ) {
 
 
 # Create rasters -------------------------------------------
+setwd(wdclimate)
 pdf(file = "precip_maps_MAX.pdf", width = 17, height = 11)
-setwd("~/JMPH_1.1/PREP/PAM/Data"); load(file = "LonLat_BirdPAM_raster.rdata"); setwd("~/JMPH_1.1/PREP/Climate/Data") 
+setwd(wdPAM); load(file = "LonLat_BirdPAM_raster.rdata"); setwd(wdclimate) 
 for (i in c("P01", "P02", "P03", "P04", "P05", "P06", 
             "P07", "P08", "P09", "P10", "P11", "P12")) {
   temp <- raster(ncol=288, nrow=192, xmn=-180, xmx=180, ymn=-90, ymx=90)
@@ -122,9 +125,9 @@ for (i in c("P01", "P02", "P03", "P04", "P05", "P06",
 dev.off()
 
 
-
+setwd(wdclimate)
 pdf(file = "precip_maps_MIN.pdf", width = 17, height = 11)
-setwd("~/JMPH_1.1/PREP/PAM/Data"); load(file = "LonLat_BirdPAM_raster.rdata"); setwd("~/JMPH_1.1/PREP/Climate/Data") 
+setwd(wdPAM); load(file = "LonLat_BirdPAM_raster.rdata"); setwd(wdclimate) 
 for (i in c("P01", "P02", "P03", "P04", "P05", "P06", 
             "P07", "P08", "P09", "P10", "P11", "P12")) {
   temp <- raster(ncol=288, nrow=192, xmn=-180, xmx=180, ymn=-90, ymx=90)
@@ -139,9 +142,9 @@ for (i in c("P01", "P02", "P03", "P04", "P05", "P06",
 dev.off()
 
 
-
+setwd(wdclimate)
 pdf(file = "precip_maps_MEAN.pdf", width = 17, height = 11)
-setwd("~/JMPH_1.1/PREP/PAM/Data"); load(file = "LonLat_BirdPAM_raster.rdata"); setwd("~/JMPH_1.1/PREP/Climate/Data") 
+setwd(wdPAM); load(file = "LonLat_BirdPAM_raster.rdata"); setwd(wdclimate) 
 for (i in c("P01", "P02", "P03", "P04", "P05", "P06", 
             "P07", "P08", "P09", "P10", "P11", "P12")) {
   temp <- raster(ncol=288, nrow=192, xmn=-180, xmx=180, ymn=-90, ymx=90)
@@ -179,6 +182,7 @@ P09_prrng_raster <- P09_prmax_raster - P09_prmin_raster
 P10_prrng_raster <- P10_prmax_raster - P10_prmin_raster
 P11_prrng_raster <- P11_prmax_raster - P11_prmin_raster
 P12_prrng_raster <- P12_prmax_raster - P12_prmin_raster
+setwd(wdclimate)
 pdf(file = "precip_maps_RNG.pdf", width = 17, height = 11)
 for (i in c("P01", "P02", "P03", "P04", "P05", "P06", 
             "P07", "P08", "P09", "P10", "P11", "P12")) {
@@ -235,7 +239,7 @@ names(pcprng) <- paste0("pcprng_", names(pcpmax))
 names(pcpmax) <- paste0("pcpmax_", names(pcpmax))
 
 
-
+setwd(wdclimate)
 save(pcp,
      file = "pcp_rasters_VJF.rdata")
 save(pcpmin,

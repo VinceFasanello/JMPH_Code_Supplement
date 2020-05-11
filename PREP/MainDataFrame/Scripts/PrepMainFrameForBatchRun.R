@@ -8,11 +8,11 @@ require(raster)
 require(gdistance)
 
 # directory paths --------------------------------------------------------------
-wdtopo <- "~/JMPH_1.1/PREP/Topo/Data"
-wdclimate <- "~/JMPH_1.1/PREP/Climate/Data"
-wdPAM <- "~/JMPH_1.1/PREP/PAM/Data"
-wdSpeciesNames <- "~/JMPH_1.1/PREP/SpeciesNames/Data"
-wdMainDataFrame <- "~/JMPH_1.1/PREP/MainDataFrame/Data"
+wdtopo <- "~/JMPH/PREP/Topo/Data"
+wdclimate <- "~/JMPH/PREP/Climate/Data"
+wdPAM <- "~/JMPH/PREP/PAM/Data"
+wdSpeciesNames <- "~/JMPH/PREP/SpeciesNames/Data"
+wdMainDataFrame <- "~/JMPH/PREP/MainDataFrame/Data"
 
 # helper -----------------------------------------------------------------------
 FindNearestEven <- function(x, ud){ # this function finds the nearest even integer, rounding up or down as specified
