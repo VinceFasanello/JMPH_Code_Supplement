@@ -79,7 +79,7 @@ for (i in sp_start:nrow(cooneyp)){
       mypaths <- CalculateLCP(dtm = cost_map,
                               origin = coordinates(data.frame(lon = m_a_lons_block[i,j],lat = m_a_lats_block[i,j])),
                               destin = destinations)
-      plot(log(cost_map+1), col = terrain.colors(255)); points(coordinates(data.frame(lon = m_a_lons_block[i,j],lat = m_a_lats_block[i,j]))); lines(mypaths$sPath)
+      # plot(log(cost_map+1), col = terrain.colors(255)); points(coordinates(data.frame(lon = m_a_lons_block[i,j],lat = m_a_lats_block[i,j]))); lines(mypaths$sPath)
       # [1a] ... if the ORIGIN has temperature data ... begin attempt to record results ...
       if(!is.na(mypaths$plen[1])){
         mypath_mc_mcosts <- c()

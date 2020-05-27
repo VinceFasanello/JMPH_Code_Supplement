@@ -8,11 +8,11 @@ require(raster)
 require(gdistance)
 
 # directory paths --------------------------------------------------------------
-wdtopo <- "~/JMPH/PREP/Topo/Data"
-wdclimate <- "~/JMPH/PREP/Climate/Data"
-wdPAM <- "~/JMPH/PREP/PAM/Data"
-wdSpeciesNames <- "~/JMPH/PREP/SpeciesNames/Data"
-wdMainDataFrame <- "~/JMPH/PREP/MainDataFrame/Data"
+wdtopo <- "~/Box Sync/JMPH/PREP/Topo/Data"
+wdclimate <- "~/Box Sync/JMPH/PREP/Climate/Data"
+wdPAM <- "~/Box Sync/JMPH/PREP/PAM/Data"
+wdSpeciesNames <- "~/Box Sync/JMPH/PREP/SpeciesNames/Data"
+wdMainDataFrame <- "~/Box Sync/JMPH/PREP/MainDataFrame/Data"
 
 # helper -----------------------------------------------------------------------
 FindNearestEven <- function(x, ud){ # this function finds the nearest even integer, rounding up or down as specified
@@ -36,23 +36,23 @@ setwd(wdPAM); load("LonLat_BirdPAM_raster.rdata")
 
 # Topo data --------------------------------------------------------------------
 setwd(wdtopo)
-load("Elev_raster.rdata"); if(crs(Elev_raster)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject Elev_raster to match the PAM")}
-load("Slope_raster.rdata"); if(crs(Slope_raster)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject Slope_raster to match the PAM")}
-load("Aspect_raster.rdata"); if(crs(Aspect_raster)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject Aspect_raster to match the PAM")}
+load("Elev_raster.rdata")
+load("Slope_raster.rdata")
+load("Aspect_raster.rdata")
 
 
 # Climate data -----------------------------------------------------------------
 setwd(wdclimate)
 # temperature --------------------------
-load(file = "tas_rasters_VJF.rdata"); if(crs(tas)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject tas raster to match the PAM")}
-load(file = "tasmin_rasters_VJF.rdata"); if(crs(tasmin)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject tasmin to match the PAM")}
-load(file = "tasmax_rasters_VJF.rdata"); if(crs(tasmax)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject tasmax to match the PAM")}
-load(file = "tasrng_rasters_VJF.rdata"); if(crs(tasrng)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject tasrng to match the PAM")}
+load(file = "tas_rasters_VJF.rdata")
+load(file = "tasmin_rasters_VJF.rdata")
+load(file = "tasmax_rasters_VJF.rdata")
+load(file = "tasrng_rasters_VJF.rdata")
 # Precipitation ------------------------
-load(file = "pcp_rasters_VJF.rdata"); if(crs(pcp)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! Please reproject pcp to match the PAM")}
-load(file = "pcpmin_rasters_VJF.rdata"); if(crs(pcpmin)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject pcpmin to match the PAM")}
-load(file = "pcpmax_rasters_VJF.rdata"); if(crs(pcpmax)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject pcpmax to match the PAM")}
-load(file = "pcprng_rasters_VJF.rdata"); if(crs(pcprng)@projargs[1] != crs(LonLat_BirdPAM_raster)@projargs[1]){print("Warning! reproject pcprng to match the PAM")}
+load(file = "pcp_rasters_VJF.rdata")
+load(file = "pcpmin_rasters_VJF.rdata")
+load(file = "pcpmax_rasters_VJF.rdata")
+load(file = "pcprng_rasters_VJF.rdata")
 
 
 # Load Pair Data (COONEY) ------------------------------------------------------
@@ -416,7 +416,8 @@ save(m_a_ids , m_a_lons , m_a_lats , m_a_eles , m_a_slop , m_a_aspe ,
 
 
 # Chunks for batch run (PAM and contorl file) ----------------------------------
-nchunks <- 10
+# nchunks <- 10
+nchunks <- 200
 nTotalOrigins <- sum(!is.na(m_a_ids))
 originBreaks <- seq(0, nTotalOrigins, length.out = nchunks + 1)
 
