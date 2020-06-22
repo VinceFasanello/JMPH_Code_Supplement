@@ -1,0 +1,46 @@
+--------------------------------------------------------------
+Begin PBS Prologue Mon Jun  1 16:40:41 CDT 2020 1591047641
+Job ID:			9058993[19].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Nodes:			node07
+End PBS Prologue Mon Jun  1 16:40:41 CDT 2020 1591047641
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+          used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells 2622077 140.1    4164291 222.4  4164291 222.4
+Vcells 8701226  66.4   15121860 115.4  8701484  66.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2627659 140.4    4164291 222.4  4164291 222.4
+Vcells 18039422 137.7   24455225 186.6 18039780 137.7
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+--------------------------------------------------------------
+Begin PBS Epilogue Thu Jun  4 10:54:57 CDT 2020 1591286097
+Job ID:			9058993[19].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Job Name:		Precipitation${PBS_ARRAYID}-19
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=5gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=66:11:26,vmem=3100752kb,walltime=66:14:11,mem=2464652kb,energy_used=0
+Nodes:	        	node07
+End PBS Epilogue Thu Jun  4 10:54:57 CDT 2020 1591286097
+--------------------------------------------------------------

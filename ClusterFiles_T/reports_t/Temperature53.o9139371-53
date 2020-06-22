@@ -1,0 +1,36 @@
+--------------------------------------------------------------
+Begin PBS Prologue Wed Jun  3 17:52:50 CDT 2020 1591224770
+Job ID:			9139371[53].mgt2.cluster
+Username:		joangp
+Group:			cbotero
+Nodes:			node19
+End PBS Prologue Wed Jun  3 17:52:50 CDT 2020 1591224770
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+          used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells 2622124 140.1    4165115 222.5  4165115 222.5
+Vcells 6428239  49.1   10146329  77.5  7769251  59.3
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2627621 140.4    4165115 222.5  4165115 222.5
+Vcells 15764121 120.3   23795298 181.6 15764458 120.3
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+--------------------------------------------------------------
+Begin PBS Epilogue Sat Jun  6 17:23:28 CDT 2020 1591482208
+Job ID:			9139371[53].mgt2.cluster
+Username:		joangp
+Group:			cbotero
+Job Name:		Temperature${PBS_ARRAYID}-53
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=5gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=71:21:07,vmem=2995820kb,walltime=71:30:33,mem=2347488kb,energy_used=0
+Nodes:	        	node19
+End PBS Epilogue Sat Jun  6 17:23:28 CDT 2020 1591482208
+--------------------------------------------------------------

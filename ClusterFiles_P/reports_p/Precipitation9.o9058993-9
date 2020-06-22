@@ -1,0 +1,62 @@
+--------------------------------------------------------------
+Begin PBS Prologue Sun May 31 20:00:02 CDT 2020 1590973202
+Job ID:			9058993[9].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Nodes:			dl02
+End PBS Prologue Sun May 31 20:00:02 CDT 2020 1590973202
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622093 140.1    4164291 222.4  4164291 222.4
+Vcells 12338132  94.2   20358898 155.4 12338389  94.2
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2627714 140.4    4164291 222.4  4164291 222.4
+Vcells 21679789 165.5   31932351 243.7 21680128 165.5
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+[1] "finished species 19"
+[1] "finished species 20"
+[1] "finished species 21"
+[1] "finished species 22"
+[1] "finished species 23"
+[1] "finished species 24"
+[1] "finished species 25"
+[1] "finished species 26"
+[1] "finished species 27"
+[1] "finished species 28"
+[1] "finished species 29"
+[1] "finished species 30"
+[1] "finished species 31"
+[1] "finished species 32"
+[1] "finished species 33"
+[1] "finished species 34"
+--------------------------------------------------------------
+Begin PBS Epilogue Tue Jun  2 02:57:22 CDT 2020 1591084642
+Job ID:			9058993[9].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Job Name:		Precipitation${PBS_ARRAYID}-9
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=5gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=30:57:22,vmem=3601892kb,walltime=30:57:15,mem=2969084kb,energy_used=0
+Nodes:	        	dl02
+End PBS Epilogue Tue Jun  2 02:57:23 CDT 2020 1591084643
+--------------------------------------------------------------

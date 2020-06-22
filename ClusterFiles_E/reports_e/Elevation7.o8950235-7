@@ -1,0 +1,70 @@
+--------------------------------------------------------------
+Begin PBS Prologue Wed May 20 16:32:20 CDT 2020 1590010340
+Job ID:			8950235[7].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Nodes:			node11
+End PBS Prologue Wed May 20 16:32:20 CDT 2020 1590010340
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622101 140.1    4164291 222.4  4164291 222.4
+Vcells 14156584 108.1   22977411 175.4 14156841 108.1
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622791 140.1    4164291 222.4  4164291 222.4
+Vcells 14425834 110.1   27652893 211.0 14426271 110.1
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+[1] "finished species 19"
+[1] "finished species 20"
+[1] "finished species 21"
+[1] "finished species 22"
+[1] "finished species 23"
+[1] "finished species 24"
+[1] "finished species 25"
+[1] "finished species 26"
+[1] "finished species 27"
+[1] "finished species 28"
+[1] "finished species 29"
+[1] "finished species 30"
+[1] "finished species 31"
+[1] "finished species 32"
+[1] "finished species 33"
+[1] "finished species 34"
+[1] "finished species 35"
+[1] "finished species 36"
+[1] "finished species 37"
+[1] "finished species 38"
+[1] "finished species 39"
+[1] "finished species 40"
+[1] "finished species 41"
+[1] "finished species 42"
+--------------------------------------------------------------
+Begin PBS Epilogue Thu May 21 19:36:42 CDT 2020 1590107802
+Job ID:			8950235[7].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Job Name:		Elevation${PBS_ARRAYID}-7
+Limits:           	nodes=1:ppn=1,walltime=72:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=26:58:50,vmem=2754316kb,walltime=27:04:17,mem=2121668kb,energy_used=0
+Nodes:	        	node11
+End PBS Epilogue Thu May 21 19:36:42 CDT 2020 1590107802
+--------------------------------------------------------------

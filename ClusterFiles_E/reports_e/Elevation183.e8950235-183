@@ -1,0 +1,34 @@
+Loading required package: gdistance
+Loading required package: raster
+Loading required package: sp
+Loading required package: igraph
+
+Attaching package: ‘igraph’
+
+The following object is masked from ‘package:raster’:
+
+    union
+
+The following objects are masked from ‘package:stats’:
+
+    decompose, spectrum
+
+The following object is masked from ‘package:base’:
+
+    union
+
+Loading required package: Matrix
+
+Attaching package: ‘gdistance’
+
+The following object is masked from ‘package:igraph’:
+
+    normalize
+
+Loading required package: rgeos
+rgeos version: 0.5-1, (SVN revision 614)
+ GEOS runtime version: 3.7.2-CAPI-1.11.2 
+ Linking to sp version: 1.3-1 
+ Polygon checking: TRUE 
+
+=>> PBS: job killed: walltime 259215 exceeded limit 259200

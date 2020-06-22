@@ -1,0 +1,66 @@
+--------------------------------------------------------------
+Begin PBS Prologue Sun May 31 19:59:16 CDT 2020 1590973156
+Job ID:			9058993[8].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Nodes:			gpu16
+End PBS Prologue Sun May 31 19:59:16 CDT 2020 1590973156
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622097 140.1    4164291 222.4  4164291 222.4
+Vcells 13247356 101.1   21668158 165.4 13247613 101.1
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2627728 140.4    4164291 222.4  4164291 222.4
+Vcells 22589867 172.4   33988294 259.4 22590200 172.4
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+[1] "finished species 19"
+[1] "finished species 20"
+[1] "finished species 21"
+[1] "finished species 22"
+[1] "finished species 23"
+[1] "finished species 24"
+[1] "finished species 25"
+[1] "finished species 26"
+[1] "finished species 27"
+[1] "finished species 28"
+[1] "finished species 29"
+[1] "finished species 30"
+[1] "finished species 31"
+[1] "finished species 32"
+[1] "finished species 33"
+[1] "finished species 34"
+[1] "finished species 35"
+[1] "finished species 36"
+[1] "finished species 37"
+[1] "finished species 38"
+--------------------------------------------------------------
+Begin PBS Epilogue Tue Jun  2 23:13:09 CDT 2020 1591157589
+Job ID:			9058993[8].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Job Name:		Precipitation${PBS_ARRAYID}-8
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=5gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=51:07:20,vmem=3626656kb,walltime=51:13:49,mem=2990560kb,energy_used=0
+Nodes:	        	gpu16
+End PBS Epilogue Tue Jun  2 23:13:09 CDT 2020 1591157589
+--------------------------------------------------------------

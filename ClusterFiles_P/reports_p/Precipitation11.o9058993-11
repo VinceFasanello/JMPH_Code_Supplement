@@ -1,0 +1,58 @@
+--------------------------------------------------------------
+Begin PBS Prologue Sun May 31 22:19:53 CDT 2020 1590981593
+Job ID:			9058993[11].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Nodes:			highmem01
+End PBS Prologue Sun May 31 22:19:53 CDT 2020 1590981593
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622089 140.1    4164291 222.4  4164291 222.4
+Vcells 11428898  87.2   19049638 145.4 11429155  87.2
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2627701 140.4    4164291 222.4  4164291 222.4
+Vcells 20769654 158.5   30249724 230.8 20769996 158.5
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+[1] "finished species 19"
+[1] "finished species 20"
+[1] "finished species 21"
+[1] "finished species 22"
+[1] "finished species 23"
+[1] "finished species 24"
+[1] "finished species 25"
+[1] "finished species 26"
+[1] "finished species 27"
+[1] "finished species 28"
+[1] "finished species 29"
+[1] "finished species 30"
+--------------------------------------------------------------
+Begin PBS Epilogue Tue Jun  2 19:19:14 CDT 2020 1591143554
+Job ID:			9058993[11].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Job Name:		Precipitation${PBS_ARRAYID}-11
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=5gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=44:49:59,vmem=3442500kb,walltime=44:59:16,mem=2806404kb,energy_used=0
+Nodes:	        	highmem01
+End PBS Epilogue Tue Jun  2 19:19:15 CDT 2020 1591143555
+--------------------------------------------------------------
