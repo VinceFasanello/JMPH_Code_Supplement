@@ -4,7 +4,7 @@
 #PBS -N Elevation${PBS_ARRAYID}
 
 # Specify the resources needed
-#PBS -l nodes=1:ppn=1,walltime=72:00:00
+#PBS -l nodes=1:ppn=1,walltime=167:00:00
 
 #PBS -l pmem=8gb 
 

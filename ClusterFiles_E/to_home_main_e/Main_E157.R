@@ -52,8 +52,7 @@ for (i in sp_start:nrow(cooneyp)){
       # print(paste0("starting species ", i, " origin ", j))
       # Elev Barrier -------------------------------------------------------------------------------------------------------------------------
       # create cost map ----------
-      cost_map_original <- Elev_raster; cost_map_original <- abs(cost_map_original) # original costmap is difference from elevation 0
-      cost_map <- cost_map_original
+      cost_map <- Elev_raster
       values(cost_map) <- abs(values(cost_map) - m_a_eles_block[i,j])
       # generate all paths a_j -> B ----------
       mypaths <- CalculateLCP(dtm = cost_map,
@@ -98,7 +97,7 @@ for (i in sp_start:nrow(cooneyp)){
         } else {savelist_full_paths_ele <- c(savelist_full_paths_ele, NA)}
       # [1b] ... if the ORIGIN does not have thermal data ... leave the mcost, plength, and dest info as NA; add an NA to the pathlist for species i    
       } else {savelist_full_paths_ele <- c(savelist_full_paths_ele, NA)}
-      rm(cost_map_original, cost_map, mypaths, mypath_mc_mcosts, mypath_mc_plens,
+      rm(cost_map, mypaths, mypath_mc_mcosts, mypath_mc_plens,
          mypath_mc_mcost, mypath_mc_plen, min_cost_for_cheapest_ids, min_length_for_cheapest_ids, mypath_id, destination)
       # ------------------------------------------------------------------------------------------------------------------------------------
     }
