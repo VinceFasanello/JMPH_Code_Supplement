@@ -87,10 +87,6 @@ rm(Month01_MeanT, Month02_MeanT, Month03_MeanT, Month04_MeanT, Month05_MeanT, Mo
 
 
 
-
-
-
-
 # read ncdf file with raw data
 setwd(wdclimate) # read ncdf file with raw data
 tempmax.nc = nc_open("tasmax_Amon_CCSM4_historical_r1i1p1_185001-200512.nc")
@@ -323,5 +319,25 @@ save(tasrng,
      file = "tasrng_rasters_VJF.rdata")
 
 
+
+
+
+
+# create MAT raster ----------------------------------------
+setwd("/Users/boterolab1/Box Sync/JMPH/PREP/Climate/Data") 
+load(file = "tas_rasters_VJF.rdata")
+MAT <- mean(tas, na.rm = T)
+plot(MAT)
+dim(tas[[1]]) == dim(MAT) # looks good. 
+save(MAT, file = "MAT_raster_VJF.rdata")
+# ---------------------------------------------------------
+
+# create VarT raster ----------------------------------------
+temp <- brick(tas)
+VarT <- calc(temp,var)
+plot(VarT)
+dim(tas[[1]]) == dim(VarT) # looks good. 
+save(VarT, file = "VarT_raster_VJF.rdata")
+# ---------------------------------------------------------
 
 

@@ -1,0 +1,142 @@
+--------------------------------------------------------------
+Begin PBS Prologue Fri Jul  3 15:29:07 CDT 2020 1593808147
+Job ID:			9260406[2].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Nodes:			node10
+End PBS Prologue Fri Jul  3 15:29:07 CDT 2020 1593808147
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622173 140.1    4164291 222.4  4164291 222.4
+Vcells 30522670 232.9   46544082 355.2 30522927 232.9
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2623043 140.1    4164291 222.4  4164291 222.4
+Vcells 30807602 235.1   46544082 355.2 30808039 235.1
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+[1] "finished species 19"
+[1] "finished species 20"
+[1] "finished species 21"
+[1] "finished species 22"
+[1] "finished species 23"
+[1] "finished species 24"
+[1] "finished species 25"
+[1] "finished species 26"
+[1] "finished species 27"
+[1] "finished species 28"
+[1] "finished species 29"
+[1] "finished species 30"
+[1] "finished species 31"
+[1] "finished species 32"
+[1] "finished species 33"
+[1] "finished species 34"
+[1] "finished species 35"
+[1] "finished species 36"
+[1] "finished species 37"
+[1] "finished species 38"
+[1] "finished species 39"
+[1] "finished species 40"
+[1] "finished species 41"
+[1] "finished species 42"
+[1] "finished species 43"
+[1] "finished species 44"
+[1] "finished species 45"
+[1] "finished species 46"
+[1] "finished species 47"
+[1] "finished species 48"
+[1] "finished species 49"
+[1] "finished species 50"
+[1] "finished species 51"
+[1] "finished species 52"
+[1] "finished species 53"
+[1] "finished species 54"
+[1] "finished species 55"
+[1] "finished species 56"
+[1] "finished species 57"
+[1] "finished species 58"
+[1] "finished species 59"
+[1] "finished species 60"
+[1] "finished species 61"
+[1] "finished species 62"
+[1] "finished species 63"
+[1] "finished species 64"
+[1] "finished species 65"
+[1] "finished species 66"
+[1] "finished species 67"
+[1] "finished species 68"
+[1] "finished species 69"
+[1] "finished species 70"
+[1] "finished species 71"
+[1] "finished species 72"
+[1] "finished species 73"
+[1] "finished species 74"
+[1] "finished species 75"
+[1] "finished species 76"
+[1] "finished species 77"
+[1] "finished species 78"
+[1] "finished species 79"
+[1] "finished species 80"
+[1] "finished species 81"
+[1] "finished species 82"
+[1] "finished species 83"
+[1] "finished species 84"
+[1] "finished species 85"
+[1] "finished species 86"
+[1] "finished species 87"
+[1] "finished species 88"
+[1] "finished species 89"
+[1] "finished species 90"
+[1] "finished species 91"
+[1] "finished species 92"
+[1] "finished species 93"
+[1] "finished species 94"
+[1] "finished species 95"
+[1] "finished species 96"
+[1] "finished species 97"
+[1] "finished species 98"
+[1] "finished species 99"
+[1] "finished species 100"
+[1] "finished species 101"
+[1] "finished species 102"
+[1] "finished species 103"
+[1] "finished species 104"
+[1] "finished species 105"
+[1] "finished species 106"
+[1] "finished species 107"
+[1] "finished species 108"
+[1] "finished species 109"
+[1] "finished species 110"
+[1] "finished species 111"
+[1] "finished species 112"
+[1] "finished species 113"
+[1] "finished species 114"
+--------------------------------------------------------------
+Begin PBS Epilogue Sun Jul  5 10:36:51 CDT 2020 1593963411
+Job ID:			9260406[2].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Job Name:		Elevation${PBS_ARRAYID}-2
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=42:58:54,vmem=3695900kb,walltime=43:07:39,mem=3060040kb,energy_used=0
+Nodes:	        	node10
+End PBS Epilogue Sun Jul  5 10:36:51 CDT 2020 1593963411
+--------------------------------------------------------------
