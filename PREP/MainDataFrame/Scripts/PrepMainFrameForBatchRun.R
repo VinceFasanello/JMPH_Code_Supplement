@@ -48,6 +48,8 @@ load(file = "tas_rasters_VJF.rdata")
 load(file = "tasmin_rasters_VJF.rdata")
 load(file = "tasmax_rasters_VJF.rdata")
 load(file = "tasrng_rasters_VJF.rdata")
+load(file = "MAT_raster_VJF.rdata")
+load(file = "VarT_raster_VJF.rdata")
 # Precipitation ------------------------
 load(file = "pcp_rasters_VJF.rdata")
 load(file = "pcpmin_rasters_VJF.rdata")
@@ -73,6 +75,16 @@ cooney$lat_maxofmins <- NA; cooney$lat_minofmaxs <- NA; cooney$lat_ov_range <- N
 cooney$min_ele_sp1 <- NA; cooney$max_ele_sp1 <- NA; cooney$ele_range_sp1 <- NA
 cooney$min_ele_sp2 <- NA; cooney$max_ele_sp2 <- NA; cooney$ele_range_sp2 <- NA
 cooney$ele_maxofmins <- NA; cooney$ele_minofmaxs <- NA; cooney$ele_ov_range <- NA; cooney$ele_ov_perc_smrnge <- NA
+
+# MAT fields
+cooney$min_MAT_sp1 <- NA; cooney$max_MAT_sp1 <- NA; cooney$MAT_range_sp1 <- NA
+cooney$min_MAT_sp2 <- NA; cooney$max_MAT_sp2 <- NA; cooney$MAT_range_sp2 <- NA
+cooney$MAT_maxofmins <- NA; cooney$MAT_minofmaxs <- NA; cooney$MAT_ov_range <- NA; cooney$MAT_ov_perc_smrnge <- NA
+
+# VarT fields
+cooney$min_VarT_sp1 <- NA; cooney$max_VarT_sp1 <- NA; cooney$VarT_range_sp1 <- NA
+cooney$min_VarT_sp2 <- NA; cooney$max_VarT_sp2 <- NA; cooney$VarT_range_sp2 <- NA
+cooney$VarT_maxofmins <- NA; cooney$VarT_minofmaxs <- NA; cooney$VarT_ov_range <- NA; cooney$VarT_ov_perc_smrnge <- NA
 
 # temperature fields
 cooney[, c("tasmax_sp1_1", "tasmax_sp1_2", "tasmax_sp1_3", "tasmax_sp1_4", "tasmax_sp1_5", "tasmax_sp1_6", "tasmax_sp1_7", "tasmax_sp1_8", "tasmax_sp1_9", "tasmax_sp1_10", "tasmax_sp1_11", "tasmax_sp1_12")] <- NA
@@ -129,6 +141,30 @@ for (i in 1:nrow(cooney)) {
   cooney$ele_ov_range[i] <- cooney$ele_minofmaxs[i] - cooney$ele_maxofmins[i]
   cooney$ele_ov_perc_smrnge[i] <- cooney$ele_ov_range[i] / min(cooney$ele_range_sp1[i], cooney$ele_range_sp2[i], na.rm = T)
   
+  # MAT ----------------------------------------------------
+  MAT_1<-as.data.frame(extract(x=MAT, y=coords1)); MAT_1$sp <- "sp1"; colnames(MAT_1) <- c("MAT", "sp") # get dfs -----
+  MAT_2<-as.data.frame(extract(x=MAT, y=coords2)); MAT_2$sp <- "sp2"; colnames(MAT_2) <- c("MAT", "sp")
+  cooney$min_MAT_sp1[i] <- min(MAT_1$MAT, na.rm = T); cooney$max_MAT_sp1[i] <- max(MAT_1$MAT, na.rm = T) # max and min -----
+  cooney$min_MAT_sp2[i] <- min(MAT_2$MAT, na.rm = T); cooney$max_MAT_sp2[i] <- max(MAT_2$MAT, na.rm = T)
+  cooney$MAT_range_sp1[i] <- abs(cooney$min_MAT_sp1[i] - cooney$max_MAT_sp1[i]) # range -----
+  cooney$MAT_range_sp2[i] <- abs(cooney$min_MAT_sp2[i] - cooney$max_MAT_sp2[i])
+  cooney$MAT_maxofmins[i] <- max(cooney$min_MAT_sp1[i], cooney$min_MAT_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
+  cooney$MAT_minofmaxs[i] <- min(cooney$max_MAT_sp1[i], cooney$max_MAT_sp2[i], na.rm = T)
+  cooney$MAT_ov_range[i] <- cooney$MAT_minofmaxs[i] - cooney$MAT_maxofmins[i]
+  cooney$MAT_ov_perc_smrnge[i] <- cooney$MAT_ov_range[i] / min(cooney$MAT_range_sp1[i], cooney$MAT_range_sp2[i], na.rm = T)
+  
+  # VarT ----------------------------------------------------
+  VarT_1<-as.data.frame(extract(x=VarT, y=coords1)); VarT_1$sp <- "sp1"; colnames(VarT_1) <- c("VarT", "sp") # get dfs -----
+  VarT_2<-as.data.frame(extract(x=VarT, y=coords2)); VarT_2$sp <- "sp2"; colnames(VarT_2) <- c("VarT", "sp")
+  cooney$min_VarT_sp1[i] <- min(VarT_1$VarT, na.rm = T); cooney$max_VarT_sp1[i] <- max(VarT_1$VarT, na.rm = T) # max and min -----
+  cooney$min_VarT_sp2[i] <- min(VarT_2$VarT, na.rm = T); cooney$max_VarT_sp2[i] <- max(VarT_2$VarT, na.rm = T)
+  cooney$VarT_range_sp1[i] <- abs(cooney$min_VarT_sp1[i] - cooney$max_VarT_sp1[i]) # range -----
+  cooney$VarT_range_sp2[i] <- abs(cooney$min_VarT_sp2[i] - cooney$max_VarT_sp2[i])
+  cooney$VarT_maxofmins[i] <- max(cooney$min_VarT_sp1[i], cooney$min_VarT_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
+  cooney$VarT_minofmaxs[i] <- min(cooney$max_VarT_sp1[i], cooney$max_VarT_sp2[i], na.rm = T)
+  cooney$VarT_ov_range[i] <- cooney$VarT_minofmaxs[i] - cooney$VarT_maxofmins[i]
+  cooney$VarT_ov_perc_smrnge[i] <- cooney$VarT_ov_range[i] / min(cooney$VarT_range_sp1[i], cooney$VarT_range_sp2[i], na.rm = T)
+  
   # basic info --------------------------------------------
   cooney$n_pam_cells_sp1[i] <- length(!is.na(lat_1$latitude)); cooney$n_pam_cells_sp2[i] <- length(!is.na(lat_2$latitude)) # range size
   
@@ -176,7 +212,7 @@ for (i in 1:nrow(cooney)) {
   cooney[i, c("pcp_v_1", "pcp_v_2", "pcp_v_3", "pcp_v_4", "pcp_v_5", "pcp_v_6", "pcp_v_7", "pcp_v_8", "pcp_v_9", "pcp_v_10", "pcp_v_11", "pcp_v_12")] <- pcp_v
   cooney$pcp_v_sum[i] <- sum(pcp_v, na.rm = T)
   
-  rm(elev_1, elev_2, lat_1, lat_2, range1, range2, coords1, coords2,
+  rm(elev_1, elev_2, lat_1, lat_2, range1, range2, coords1, coords2, MAT_1, MAT_2, VarT_1, VarT_2,
      tasmax_1, tasmax_2, tasmin_1, tasmin_2, tasrng_1, tasrng_2, tmp_maxofmins, tmp_minofmaxs, tmp_o, tmp_v, 
      pcpmax_1, pcpmax_2, pcpmin_1, pcpmin_2, pcprng_1, pcprng_2, pcp_maxofmins, pcp_minofmaxs, pcp_o, pcp_v)
   
@@ -205,7 +241,8 @@ m_a_eles <- m_a_ids # topography
 m_a_slop <- m_a_ids
 m_a_aspe <- m_a_ids
 
-m_a_tas_M1 <- m_a_ids; m_a_tasmax_M1 <- m_a_ids; m_a_tasmin_M1 <- m_a_ids; m_a_tasrng_M1 <- m_a_ids # Temperature
+m_a_MAT <- m_a_ids; m_a_VarT <- m_a_ids # Temperature
+m_a_tas_M1 <- m_a_ids; m_a_tasmax_M1 <- m_a_ids; m_a_tasmin_M1 <- m_a_ids; m_a_tasrng_M1 <- m_a_ids
 m_a_tas_M2 <- m_a_ids; m_a_tasmax_M2 <- m_a_ids; m_a_tasmin_M2 <- m_a_ids; m_a_tasrng_M2 <- m_a_ids
 m_a_tas_M3 <- m_a_ids; m_a_tasmax_M3 <- m_a_ids; m_a_tasmin_M3 <- m_a_ids; m_a_tasrng_M3 <- m_a_ids
 m_a_tas_M4 <- m_a_ids; m_a_tasmax_M4 <- m_a_ids; m_a_tasmin_M4 <- m_a_ids; m_a_tasrng_M4 <- m_a_ids
@@ -242,6 +279,16 @@ m_a_bblats_tmp <- m_a_ids
 m_aB_tmp_mcosts <- m_a_ids
 m_aB_tmp_plengths <- m_a_ids
 
+m_a_bblons_MAT <- m_a_ids  # MAT
+m_a_bblats_MAT <- m_a_ids
+m_aB_MAT_mcosts <- m_a_ids
+m_aB_MAT_plengths <- m_a_ids
+
+m_a_bblons_VarT <- m_a_ids  # VarT
+m_a_bblats_VarT <- m_a_ids
+m_aB_VarT_mcosts <- m_a_ids
+m_aB_VarT_plengths <- m_a_ids
+
 m_a_bblons_pcp <- m_a_ids  # precipitation
 m_a_bblats_pcp <- m_a_ids
 m_aB_pcp_mcosts <- m_a_ids
@@ -276,6 +323,9 @@ for (i in 1:nrow(cooneyp)) {
   m_a_aspe[i,c(1:length(origin_ids))] <- extract(x = Aspect_raster, y = coordsO)
   
   # Thermal
+  m_a_MAT[i,c(1:length(origin_ids))] <- extract(x = MAT, y = coordsO) # MAT
+  m_a_VarT[i,c(1:length(origin_ids))] <- extract(x = VarT, y = coordsO) # VarT
+  
   m_a_tas_M1[i,c(1:length(origin_ids))] <- extract(x = tas, y = coordsO)[,1] # tas
   m_a_tas_M2[i,c(1:length(origin_ids))] <- extract(x = tas, y = coordsO)[,2] 
   m_a_tas_M3[i,c(1:length(origin_ids))] <- extract(x = tas, y = coordsO)[,3] 
@@ -384,6 +434,7 @@ for (i in 1:nrow(cooneyp)) {
 }
 setwd(wdMainDataFrame)
 save(m_a_ids , m_a_lons , m_a_lats , m_a_eles , m_a_slop , m_a_aspe ,
+     m_a_MAT , m_a_VarT ,
      m_a_tas_M1 , m_a_tasmax_M1 , m_a_tasmin_M1 , m_a_tasrng_M1 ,
      m_a_tas_M2 , m_a_tasmax_M2 , m_a_tasmin_M2 , m_a_tasrng_M2 ,
      m_a_tas_M3 , m_a_tasmax_M3 , m_a_tasmin_M3 , m_a_tasrng_M3 ,
@@ -411,6 +462,8 @@ save(m_a_ids , m_a_lons , m_a_lats , m_a_eles , m_a_slop , m_a_aspe ,
      m_a_bblons_ele , m_a_bblats_ele , m_aB_ele_mcosts , m_aB_ele_plengths ,
      m_a_bblons_tmp , m_a_bblats_tmp , m_aB_tmp_mcosts , m_aB_tmp_plengths ,
      m_a_bblons_pcp , m_a_bblats_pcp , m_aB_pcp_mcosts , m_aB_pcp_plengths ,
+     m_a_bblons_MAT , m_a_bblats_MAT , m_aB_MAT_mcosts , m_aB_MAT_plengths ,
+     m_a_bblons_VarT , m_a_bblats_VarT , m_aB_VarT_mcosts , m_aB_VarT_plengths ,
      file = "a_mats_UNMANIPULATED.Rdata")
 
 
@@ -449,12 +502,13 @@ setwd(wdMainDataFrame)
 save(mybreaks, file = "mybreaks.rdata")
 
 
-rm(Aspect_raster, Slope_raster, Elev_raster, coordsA, coordsO, LonLat_BirdPAM_raster, pcp, pcpmax,
+rm(Aspect_raster, Slope_raster, Elev_raster, coordsA, coordsO, LonLat_BirdPAM_raster, pcp, pcpmax, MAT, VarT,
    pcpmin, pcprng, tas, tasmax, tasmin, tasrng, cbPAM); gc(); memory.size()
 
 
 # break up the matrices into chunkes to speed batch runs -----------------------
 matlist <- c("m_a_ids" , "m_a_lons" , "m_a_lats" , "m_a_eles" , "m_a_slop" , "m_a_aspe" ,
+             "m_a_MAT" , "m_a_VarT" ,
              "m_a_tas_M1" , "m_a_tasmax_M1" , "m_a_tasmin_M1" , "m_a_tasrng_M1" ,
              "m_a_tas_M2" , "m_a_tasmax_M2" , "m_a_tasmin_M2" , "m_a_tasrng_M2" ,
              "m_a_tas_M3" , "m_a_tasmax_M3" , "m_a_tasmin_M3" , "m_a_tasrng_M3" ,
@@ -481,7 +535,9 @@ matlist <- c("m_a_ids" , "m_a_lons" , "m_a_lats" , "m_a_eles" , "m_a_slop" , "m_
              "m_a_pcp_P12" , "m_a_pcpmax_P12" , "m_a_pcpmin_P12" , "m_a_pcprng_P12" ,
              "m_a_bblons_ele" , "m_a_bblats_ele" , "m_aB_ele_mcosts" , "m_aB_ele_plengths" ,
              "m_a_bblons_tmp" , "m_a_bblats_tmp" , "m_aB_tmp_mcosts" , "m_aB_tmp_plengths" ,
-             "m_a_bblons_pcp" , "m_a_bblats_pcp" , "m_aB_pcp_mcosts" , "m_aB_pcp_plengths")
+             "m_a_bblons_pcp" , "m_a_bblats_pcp" , "m_aB_pcp_mcosts" , "m_aB_pcp_plengths",
+             "m_a_bblons_MAT" , "m_a_bblats_MAT" , "m_aB_MAT_mcosts" , "m_aB_MAT_plengths" ,
+             "m_a_bblons_VarT" , "m_a_bblats_VarT" , "m_aB_VarT_mcosts" , "m_aB_VarT_plengths")
 
 
 colStart <- 1
@@ -499,6 +555,7 @@ for (i in 1:(length(mybreaks) - 1 )) {
   }
   setwd(wdMainDataFrame)
   save(m_a_ids_block , m_a_lons_block , m_a_lats_block , m_a_eles_block , m_a_slop_block , m_a_aspe_block ,
+       m_a_MAT_block , m_a_VarT_block ,
        m_a_tas_M1_block , m_a_tasmax_M1_block , m_a_tasmin_M1_block , m_a_tasrng_M1_block ,
        m_a_tas_M2_block , m_a_tasmax_M2_block , m_a_tasmin_M2_block , m_a_tasrng_M2_block ,
        m_a_tas_M3_block , m_a_tasmax_M3_block , m_a_tasmin_M3_block , m_a_tasrng_M3_block ,
@@ -526,9 +583,12 @@ for (i in 1:(length(mybreaks) - 1 )) {
        m_a_bblons_ele_block , m_a_bblats_ele_block , m_aB_ele_mcosts_block , m_aB_ele_plengths_block ,
        m_a_bblons_tmp_block , m_a_bblats_tmp_block , m_aB_tmp_mcosts_block , m_aB_tmp_plengths_block ,
        m_a_bblons_pcp_block , m_a_bblats_pcp_block , m_aB_pcp_mcosts_block , m_aB_pcp_plengths_block ,
+       m_a_bblons_MAT_block , m_a_bblats_MAT_block , m_aB_MAT_mcosts_block , m_aB_MAT_plengths_block ,
+       m_a_bblons_VarT_block , m_a_bblats_VarT_block , m_aB_VarT_mcosts_block , m_aB_VarT_plengths_block ,
        file = paste0("a_mats_block", i, '.rdata'))
   
   rm(m_a_ids_block , m_a_lons_block , m_a_lats_block , m_a_eles_block , m_a_slop_block , m_a_aspe_block ,
+     m_a_MAT_block , m_a_VarT_block ,
        m_a_tas_M1_block , m_a_tasmax_M1_block , m_a_tasmin_M1_block , m_a_tasrng_M1_block ,
        m_a_tas_M2_block , m_a_tasmax_M2_block , m_a_tasmin_M2_block , m_a_tasrng_M2_block ,
        m_a_tas_M3_block , m_a_tasmax_M3_block , m_a_tasmin_M3_block , m_a_tasrng_M3_block ,
@@ -555,9 +615,12 @@ for (i in 1:(length(mybreaks) - 1 )) {
        m_a_pcp_P12_block , m_a_pcpmax_P12_block , m_a_pcpmin_P12_block , m_a_pcprng_P12_block ,
        m_a_bblons_ele_block , m_a_bblats_ele_block , m_aB_ele_mcosts_block , m_aB_ele_plengths_block ,
        m_a_bblons_tmp_block , m_a_bblats_tmp_block , m_aB_tmp_mcosts_block , m_aB_tmp_plengths_block ,
-       m_a_bblons_pcp_block , m_a_bblats_pcp_block , m_aB_pcp_mcosts_block , m_aB_pcp_plengths_block); gc() 
+       m_a_bblons_pcp_block , m_a_bblats_pcp_block , m_aB_pcp_mcosts_block , m_aB_pcp_plengths_block,
+     m_a_bblons_MAT_block , m_a_bblats_MAT_block , m_aB_MAT_mcosts_block , m_aB_MAT_plengths_block ,
+     m_a_bblons_VarT_block , m_a_bblats_VarT_block , m_aB_VarT_mcosts_block , m_aB_VarT_plengths_block); gc() 
 }
 rm(m_a_ids , m_a_lons , m_a_lats , m_a_eles , m_a_slop , m_a_aspe ,
+   m_a_MAT , m_a_VarT ,
    m_a_tas_M1 , m_a_tasmax_M1 , m_a_tasmin_M1 , m_a_tasrng_M1 ,
    m_a_tas_M2 , m_a_tasmax_M2 , m_a_tasmin_M2 , m_a_tasrng_M2 ,
    m_a_tas_M3 , m_a_tasmax_M3 , m_a_tasmin_M3 , m_a_tasrng_M3 ,
@@ -584,7 +647,9 @@ rm(m_a_ids , m_a_lons , m_a_lats , m_a_eles , m_a_slop , m_a_aspe ,
    m_a_pcp_P12 , m_a_pcpmax_P12 , m_a_pcpmin_P12 , m_a_pcprng_P12 ,
    m_a_bblons_ele , m_a_bblats_ele , m_aB_ele_mcosts , m_aB_ele_plengths ,
    m_a_bblons_tmp , m_a_bblats_tmp , m_aB_tmp_mcosts , m_aB_tmp_plengths ,
-   m_a_bblons_pcp , m_a_bblats_pcp , m_aB_pcp_mcosts , m_aB_pcp_plengths); gc()
+   m_a_bblons_pcp , m_a_bblats_pcp , m_aB_pcp_mcosts , m_aB_pcp_plengths ,
+   m_a_bblons_MAT , m_a_bblats_MAT , m_aB_MAT_mcosts , m_aB_MAT_plengths ,
+   m_a_bblons_VarT , m_a_bblats_VarT , m_aB_VarT_mcosts , m_aB_VarT_plengths); gc()
 
 
 
