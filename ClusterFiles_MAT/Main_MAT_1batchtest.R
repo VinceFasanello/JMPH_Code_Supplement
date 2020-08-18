@@ -1,7 +1,7 @@
 rm(list=ls()); gc() # clear workspace 
 
 # control block ----------------------------------------------------------------
-batchNumber <- 1
+batchNumber <- 2
 originStart <- 1
 originEnd <- 5000
 
@@ -11,13 +11,16 @@ require(rgeos)
 
 # directory paths --------------------------------------------------------------
 wdin <- "/scratch/vincefasanello/inputs"
+wdin <- "~/Box Sync/JMPH/PREP/MainDataFrame/Data"
 wdout <- "/scratch/vincefasanello/outputs_mat"
+wdout <- "~/Desktop"
 
 # inputs -----------------------------------------------------------------------
 setwd(wdin)
 source("CalculateLCP_SOURCE.R")
 load(file = "mybreaks.rdata")
-load(file = paste0("cbPAM", batchNumber, ".rdata")); cbPAM <- get(paste0("cbPAM", batchNumber)); rm(list = paste0("cbPAM", batchNumber)); gc()
+load(file = paste0("cbPAM", batchNumber, ".rdata"));
+cbPAM <- get(paste0("cbPAM", batchNumber)); rm(list = paste0("cbPAM", batchNumber)); gc()
 # load(file = "Elev_raster.rdata")
 # load(file = "tasmax_rasters_VJF.rdata"); load(file = "tasmin_rasters_VJF.rdata"); load(file = "tasrng_rasters_VJF.rdata")
 # load(file = "pcpmax_rasters_VJF.rdata"); load(file = "pcpmin_rasters_VJF.rdata"); load(file = "pcprng_rasters_VJF.rdata")
@@ -38,7 +41,7 @@ breakEnd_index <- mybreaks[breakEnd_index]
 
 # Main Loop --------------------------------------------------------------------
 for (i in sp_start:nrow(cooneyp)){
-  # print(paste0("starting species ", i))
+  print(paste0("starting species ", i))
   # destination cells (range B) --------
   destinations <- cbPAM[,c("Longitude(x)", "Latitude(y)", paste0(cooneyp[i, "Species.2bl"]))]
   destinations <- subset(destinations, destinations[, 3] == 1);
@@ -46,11 +49,11 @@ for (i in sp_start:nrow(cooneyp)){
   coordinates(destinations) <- c("lon", "lat");
   crs(destinations) <- crs(MAT)
   # full path savelists ----------------
-  savelist_full_paths_ele <- c()
+  savelist_full_paths_MAT <- c()
   for (j in originStart:originEnd){
     # [0a] ... if there exists an ORIGIN j for species i ... (i.e., if we haven't run out of origins) ... attempt to find LCP for origin ai_j ....
     if (!is.na(m_a_ids_block[i,j])){
-      # print(paste0("starting species ", i, " origin ", j))
+      print(paste0("starting species ", i, " origin ", j))
       # MAT Barrier -------------------------------------------------------------------------------------------------------------------------
       # create cost map ----------
       cost_map <- MAT
@@ -59,7 +62,7 @@ for (i in sp_start:nrow(cooneyp)){
       mypaths <- CalculateLCP(dtm = cost_map,
                               origin = coordinates(data.frame(lon = m_a_lons_block[i,j],lat = m_a_lats_block[i,j])),
                               destin = destinations)
-      # plot(log(cost_map+1), col = terrain.colors(255)); points(coordinates(data.frame(lon = m_a_lons_block[i,j],lat = m_a_lats_block[i,j]))); lines(mypaths$sPath)
+      plot(log(cost_map+1), col = terrain.colors(255)); points(coordinates(data.frame(lon = m_a_lons_block[i,j],lat = m_a_lats_block[i,j]))); lines(mypaths$sPath)
       # Populate plen matrix, populate mcost matrix, store paths ----------
       # [1a] ... if the ORIGIN has MAT data ... begin attempt to record results ...
       if(!is.na(mypaths$plen[1])){
@@ -67,7 +70,7 @@ for (i in sp_start:nrow(cooneyp)){
         mypath_mc_plens <- c()
         # for every destination for origin cell aj.....
         for (k in 1:length(mypaths$sPath)) {
-          # print(paste0("starting species ", i, " origin ", j, " destination ", k, " MAT"))
+          print(paste0("starting species ", i, " origin ", j, " destination ", k, " MAT"))
           mypath_mc_mcost <- mypaths$mcost[k]
           mypath_mc_plen <- mypaths$plen[k]
           # [2a] ... if the DESTINATION is distinct from the ORIGIN ... record results for that destination 
