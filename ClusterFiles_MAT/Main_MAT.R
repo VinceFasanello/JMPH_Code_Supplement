@@ -10,14 +10,17 @@ require(gdistance) # will load dependencies: raster, sp, igraph, Matrix
 require(rgeos)
 
 # directory paths --------------------------------------------------------------
-wdin <- "/scratch/vincefasanello/inputs"
+wdin <- "/scratch/vincefasanello/inputs_mat"
+# wdin <- "~/Box Sync/JMPH/PREP/MainDataFrame/Data"
 wdout <- "/scratch/vincefasanello/outputs_mat"
+# wdout <- "~/Desktop"
 
 # inputs -----------------------------------------------------------------------
 setwd(wdin)
 source("CalculateLCP_SOURCE.R")
 load(file = "mybreaks.rdata")
-load(file = paste0("cbPAM", batchNumber, ".rdata")); cbPAM <- get(paste0("cbPAM", batchNumber)); rm(list = paste0("cbPAM", batchNumber)); gc()
+load(file = paste0("cbPAM", batchNumber, ".rdata"));
+cbPAM <- get(paste0("cbPAM", batchNumber)); rm(list = paste0("cbPAM", batchNumber)); gc()
 # load(file = "Elev_raster.rdata")
 # load(file = "tasmax_rasters_VJF.rdata"); load(file = "tasmin_rasters_VJF.rdata"); load(file = "tasrng_rasters_VJF.rdata")
 # load(file = "pcpmax_rasters_VJF.rdata"); load(file = "pcpmin_rasters_VJF.rdata"); load(file = "pcprng_rasters_VJF.rdata")
@@ -46,7 +49,7 @@ for (i in sp_start:nrow(cooneyp)){
   coordinates(destinations) <- c("lon", "lat");
   crs(destinations) <- crs(MAT)
   # full path savelists ----------------
-  savelist_full_paths_ele <- c()
+  savelist_full_paths_MAT <- c()
   for (j in originStart:originEnd){
     # [0a] ... if there exists an ORIGIN j for species i ... (i.e., if we haven't run out of origins) ... attempt to find LCP for origin ai_j ....
     if (!is.na(m_a_ids_block[i,j])){
