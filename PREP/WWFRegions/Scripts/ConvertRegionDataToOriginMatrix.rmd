@@ -1,0 +1,54 @@
+---
+title: "ConvertRegionDataToOriginMatrix.rmd"
+output: html_notebook
+---
+
+
+
+```{r Top Matter}
+rm(list = ls()); invisible(gc())
+require(rgdal)
+require(sp)
+require(raster)
+require(reshape2)
+require(abind)
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/PAM/Data")
+load(file = "LonLat_BirdPAM_raster.rdata"); rasterpam <- LonLat_BirdPAM_raster; rm(LonLat_BirdPAM_raster)
+```
+
+
+```{r Load and Handle OGR file}
+setwd("~/Box Sync/JMPH/PREP/WWFRegions/Data")
+my_spdf <- readOGR( dsn= paste0(getwd(),"/wwf_terr_ecos"), layer="wwf_terr_ecos", verbose=FALSE) # load ogr
+my_spdf <- spTransform(my_spdf, crs(rasterpam)); crs(my_spdf) # adjust projection
+spdfdata <- my_spdf@data; str(spdfdata) # save the dataframe
+spdfdata <- spdfdata[,c("OBJECTID", "ECO_NAME", "REALM", "BIOME")] # retain interest columns
+spdfdata$ECO_NAME <- as.character(spdfdata$ECO_NAME) # adjust entry text
+spdfdata$REALM <- as.character(spdfdata$REALM)
+new_spdf <- raster::rasterize(x = my_spdf, y = rasterpam, field = "OBJECTID") # rasterize
+setwd("~/Box Sync/JMPH/PREP/WWFRegions/Data"); save(my_spdf, file = "bioregions_SPDF_for_plotting.rdata")
+
+m_a_OBJECTID <- m_a_ids; for (i in 1:length(m_a_OBJECTID)) {m_a_OBJECTID[i] <- NA} # new matrix to hold IDs for origins
+for (i in 1:length(m_a_OBJECTID)) {
+  if(!is.na(m_a_lons[i])){
+    m_a_OBJECTID[i] <- extract(x = new_spdf, y = matrix(data = c(m_a_lons[i], m_a_lats[i]), nrow = 1))
+  }
+} # populated
+x <- rowSums(!is.na(m_a_OBJECTID)); x <- x[x>0]; nrow(m_a_ids) - length(x) # 35 species without any data here.
+
+m_a_ECO_NAME <- m_a_OBJECTID # new matrices to hold other attributes of interest
+m_a_REALM <- m_a_OBJECTID
+m_a_BIOME <- m_a_OBJECTID
+for (i in 1:nrow(spdfdata)) {
+  m_a_ECO_NAME[m_a_ECO_NAME == spdfdata$OBJECTID[i]] <- spdfdata$ECO_NAME[i]
+  m_a_REALM[m_a_REALM == spdfdata$OBJECTID[i]] <- spdfdata$REALM[i]
+  m_a_BIOME[m_a_BIOME == spdfdata$OBJECTID[i]] <- spdfdata$BIOME[i]
+  print(i)
+} # populated
+
+setwd("~/Box Sync/JMPH/PREP/WWFRegions/Data")
+save(m_a_OBJECTID, m_a_ECO_NAME, m_a_REALM, m_a_BIOME, file = "Location_Identities.rdata") # save. 
+```
+

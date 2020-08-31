@@ -1,0 +1,39 @@
+---
+title: "Break_a_mats_UNMANIPULATED"
+output: html_notebook
+---
+
+```{r Load CLUSTER INPUTS and break into managable sets to save on memory}
+rm(list = ls()); invisible(gc())
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNMANIPULATED.rdata")
+# overlapping info rm
+rm(m_a_bblats_ele, m_a_bblats_pcp, m_a_bblats_tmp, m_a_bblons_ele, m_a_bblons_pcp, m_a_bblons_tmp,
+   m_aB_ele_mcosts, m_aB_ele_plengths, m_aB_pcp_mcosts, m_aB_pcp_plengths, m_aB_tmp_mcosts, m_aB_tmp_plengths)
+
+
+# basic info
+save(m_a_ids, m_a_lats, m_a_lons, m_a_eles, m_a_aspe, m_a_slop, file = "a_mats_UNM_basic.rdata")
+rm(m_a_ids, m_a_lats, m_a_lons, m_a_eles, m_a_aspe, m_a_slop)
+# temperature data
+save(m_a_tas_M1, m_a_tas_M2, m_a_tas_M3, m_a_tas_M4, m_a_tas_M5, m_a_tas_M6, m_a_tas_M7, m_a_tas_M8, m_a_tas_M9, m_a_tas_M10, m_a_tas_M11, m_a_tas_M12,
+     m_a_tasmin_M1, m_a_tasmin_M2, m_a_tasmin_M3, m_a_tasmin_M4, m_a_tasmin_M5, m_a_tasmin_M6, m_a_tasmin_M7, m_a_tasmin_M8, m_a_tasmin_M9, m_a_tasmin_M10, m_a_tasmin_M11, m_a_tasmin_M12,
+     m_a_tasmax_M1, m_a_tasmax_M2, m_a_tasmax_M3, m_a_tasmax_M4, m_a_tasmax_M5, m_a_tasmax_M6, m_a_tasmax_M7, m_a_tasmax_M8, m_a_tasmax_M9, m_a_tasmax_M10, m_a_tasmax_M11, m_a_tasmax_M12,
+     m_a_tasrng_M1, m_a_tasrng_M2, m_a_tasrng_M3, m_a_tasrng_M4, m_a_tasrng_M5, m_a_tasrng_M6, m_a_tasrng_M7, m_a_tasrng_M8, m_a_tasrng_M9, m_a_tasrng_M10, m_a_tasrng_M11, m_a_tasrng_M12,
+     file = "a_mats_UNM_tas.rdata")
+rm(m_a_tas_M1, m_a_tas_M2, m_a_tas_M3, m_a_tas_M4, m_a_tas_M5, m_a_tas_M6, m_a_tas_M7, m_a_tas_M8, m_a_tas_M9, m_a_tas_M10, m_a_tas_M11, m_a_tas_M12,
+   m_a_tasmin_M1, m_a_tasmin_M2, m_a_tasmin_M3, m_a_tasmin_M4, m_a_tasmin_M5, m_a_tasmin_M6, m_a_tasmin_M7, m_a_tasmin_M8, m_a_tasmin_M9, m_a_tasmin_M10, m_a_tasmin_M11, m_a_tasmin_M12,
+   m_a_tasmax_M1, m_a_tasmax_M2, m_a_tasmax_M3, m_a_tasmax_M4, m_a_tasmax_M5, m_a_tasmax_M6, m_a_tasmax_M7, m_a_tasmax_M8, m_a_tasmax_M9, m_a_tasmax_M10, m_a_tasmax_M11, m_a_tasmax_M12,
+   m_a_tasrng_M1, m_a_tasrng_M2, m_a_tasrng_M3, m_a_tasrng_M4, m_a_tasrng_M5, m_a_tasrng_M6, m_a_tasrng_M7, m_a_tasrng_M8, m_a_tasrng_M9, m_a_tasrng_M10, m_a_tasrng_M11, m_a_tasrng_M12)
+
+# precipitation data
+save(m_a_pcp_P1, m_a_pcp_P2, m_a_pcp_P3, m_a_pcp_P4, m_a_pcp_P5, m_a_pcp_P6, m_a_pcp_P7, m_a_pcp_P8, m_a_pcp_P9, m_a_pcp_P10, m_a_pcp_P11, m_a_pcp_P12,
+     m_a_pcpmin_P1, m_a_pcpmin_P2, m_a_pcpmin_P3, m_a_pcpmin_P4, m_a_pcpmin_P5, m_a_pcpmin_P6, m_a_pcpmin_P7, m_a_pcpmin_P8, m_a_pcpmin_P9, m_a_pcpmin_P10, m_a_pcpmin_P11, m_a_pcpmin_P12,
+     m_a_pcpmax_P1, m_a_pcpmax_P2, m_a_pcpmax_P3, m_a_pcpmax_P4, m_a_pcpmax_P5, m_a_pcpmax_P6, m_a_pcpmax_P7, m_a_pcpmax_P8, m_a_pcpmax_P9, m_a_pcpmax_P10, m_a_pcpmax_P11, m_a_pcpmax_P12,
+     m_a_pcprng_P1, m_a_pcprng_P2, m_a_pcprng_P3, m_a_pcprng_P4, m_a_pcprng_P5, m_a_pcprng_P6, m_a_pcprng_P7, m_a_pcprng_P8, m_a_pcprng_P9, m_a_pcprng_P10, m_a_pcprng_P11, m_a_pcprng_P12,
+     file = "a_mats_UNM_pcp.rdata")
+rm(m_a_pcp_P1, m_a_pcp_P2, m_a_pcp_P3, m_a_pcp_P4, m_a_pcp_P5, m_a_pcp_P6, m_a_pcp_P7, m_a_pcp_P8, m_a_pcp_P9, m_a_pcp_P10, m_a_pcp_P11, m_a_pcp_P12,
+   m_a_pcpmin_P1, m_a_pcpmin_P2, m_a_pcpmin_P3, m_a_pcpmin_P4, m_a_pcpmin_P5, m_a_pcpmin_P6, m_a_pcpmin_P7, m_a_pcpmin_P8, m_a_pcpmin_P9, m_a_pcpmin_P10, m_a_pcpmin_P11, m_a_pcpmin_P12,
+   m_a_pcpmax_P1, m_a_pcpmax_P2, m_a_pcpmax_P3, m_a_pcpmax_P4, m_a_pcpmax_P5, m_a_pcpmax_P6, m_a_pcpmax_P7, m_a_pcpmax_P8, m_a_pcpmax_P9, m_a_pcpmax_P10, m_a_pcpmax_P11, m_a_pcpmax_P12,
+   m_a_pcprng_P1, m_a_pcprng_P2, m_a_pcprng_P3, m_a_pcprng_P4, m_a_pcprng_P5, m_a_pcprng_P6, m_a_pcprng_P7, m_a_pcprng_P8, m_a_pcprng_P9, m_a_pcprng_P10, m_a_pcprng_P11, m_a_pcprng_P12)
+```

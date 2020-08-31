@@ -1,0 +1,379 @@
+---
+title: "JMPH_Working_Code_20200727"
+output:
+  html_document: default
+---
+
+Prepare the workspace.
+```{r Top Matter, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, error = FALSE) # rmd options
+
+rm(list = ls()); invisible(gc()) # cleaning
+
+options(scipen = 999) # turn off scientific notation
+
+require(ggplot2) # load packages
+require(GGally)
+require(gridExtra)
+require(grid)
+require(lattice)
+require(ggplotify)
+require(quantreg)
+require(viridis)
+require(caper)
+require(splines)
+library(dplyr)
+library(stringr)
+library(maps)
+library(brms)
+library(caper)
+library(ape)
+library(EnvStats)
+library(forecast)
+```
+<br><br><br><br><br>
+
+
+
+```{r Helper Functions, include=FALSE}
+# find x not in y --------------------------------
+'%notin%' <- Negate('%in%')
+
+# data transformations ---------------------------
+vlt0 <- function(x){x <- log(x -min(as.numeric(x), na.rm = T) + 1); return (x)}
+vlt1 <- function(x){x <- log(x + abs(min(x, na.rm = T)) + 1); return(x)} # ln(shifted x)
+vlt2 <- function(x){x <- x^(1/3); return(x)} # x^(1/3)
+
+require(EnvStats)
+myBCtransform <- function(myvector) {
+  mylambda <- boxcox(as.numeric(myvector)-min(as.numeric(myvector),na.rm = T)+1, optimize = T)$lambda
+  myvector <- scale(boxcoxTransform(as.numeric(myvector)-min(as.numeric(myvector))+1, mylambda))
+  return (scale(myvector))
+}
+
+```
+<br><br><br><br><br>
+
+
+
+
+
+```{r Load Data}
+# main dataframe ---------------------------------
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Species_Barrier_Data_MEDIMAL.rdata")
+# handle REALM outliers
+plot(sort(mydata$latmean[mydata$REALM == "Nearctic"])); mydata$REALM[mydata$REALM == "Nearctic" & mydata$latmean < 23.439] <- NA # NA realm for tropical points in the temperate regions (only 2)
+plot(sort(mydata$latmean[mydata$REALM == "Palearctic"])); mydata$REALM[mydata$REALM == "Palearctic" & mydata$latmean < 23.439] <- NA # NA realm for tropical points in the temperate regions (only2)
+plot(sort(mydata$latmean[mydata$REALM == "Neotropics"])); # these other REALMS look fine.
+plot(sort(mydata$latmean[mydata$REALM == "Afrotropics"]));
+plot(sort(mydata$latmean[mydata$REALM == "IndoMalay"]));
+plot(sort(mydata$latmean[mydata$REALM == "Australasia"]));
+
+# phylo ------------------------------------------
+setwd("~/Box Sync/JMPH/Other_Input_Data/BirdTrees")
+load(file = "BirdTrees.Rdata")
+tree <- trees[[1]]; rm(trees) # pick tree (VF GET TREES FROM COONEY!!! and use MCC tree.)
+setwd("~/Box Sync/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+save(tree, file = "treeCB.rdata")
+# handle name matching & create vcv matrix for brms models
+ttree <- drop.tip(tree, tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)])
+mydata <- mydata[which(mydata$Species.1 %in% ttree$tip.label),]
+rownames(mydata) <- mydata$Species.1
+if(length(ttree$tip.label) == length(mydata$Species.1)){A <- ape::vcv.phylo(ttree)}
+```
+<br><br><br><br><br>
+
+
+
+```{r Control Block}
+eeedata <- mydata
+eeedata$full <- (eeedata$ecmean)
+eeedata$btmhlf <- (eeedata$e50ecmean)
+eeedata$btmqtr <- (eeedata$e25ecmean)
+eeedata$best <- (eeedata$e0ecmean)
+eeedata$NS3 <- NA
+eeedata$NS3[eeedata$latmean < -23.439] <- "S.Te" 
+eeedata$NS3[eeedata$latmean > 23.439] <- "N.Te" 
+eeedata$NS3[eeedata$latmean >= -23.439 & eeedata$latmean <= 23.439] <- "Tr"
+eeedata$REALM_NS3 <- paste0(eeedata$REALM, eeedata$NS3)
+eeedata$circulationcell <- NA
+eeedata$circulationcell[eeedata$latmean <= -60] <- "S.Po" 
+eeedata$circulationcell[eeedata$latmean >= 60] <- "N.Po" 
+eeedata$circulationcell[eeedata$latmean >= 30 & eeedata$latmean < 60] <- "N.Te"
+eeedata$circulationcell[eeedata$latmean <= -30 & eeedata$latmean > -60] <- "S.Te"
+eeedata$circulationcell[eeedata$latmean > 0 & eeedata$latmean < 30] <- "N.Tr"
+eeedata$circulationcell[eeedata$latmean <= 0 & eeedata$latmean > -30] <- "S.Tr"
+eeedata$hemisphere <- NA
+eeedata$hemisphere[eeedata$REALM %in% c("Afrotropics", "IndoMalay", "Palearctic", "Australasia")] <- "E.Hemi"
+eeedata$hemisphere[eeedata$REALM %in% c("Neotropics", "Nearctic")] <- "W.Hemi"
+eeedata$pole <- NA
+eeedata$pole[eeedata$circulationcell %in% c("N.Po", "N.Te", "N.Tr")] <- "N.Hemi"
+eeedata$pole[eeedata$circulationcell %in% c("S.Po", "S.Te", "S.Tr")] <- "S.Hemi"
+eeedata$CC_HEMI <- paste0(eeedata$circulationcell, eeedata$hemisphere)
+eeedata$CC_REALM <- paste0(eeedata$circulationcell, eeedata$REALM)
+eeedata$hemipole <- paste0(eeedata$hemisphere, eeedata$pole)
+eeedata <- eeedata[!is.na(eeedata$full),]
+eeeback <- rgb(0,153/255,0)
+
+
+tttdata <- mydata
+tttdata$full <- (tttdata$tcmean)
+tttdata$btmhlf <- (tttdata$t50tcmean)
+tttdata$btmqtr <- (tttdata$t25tcmean)
+tttdata$best <- (tttdata$t0tcmean)
+tttdata$NS3 <- NA
+tttdata$NS3[tttdata$latmean < -23.439] <- "S.Te" 
+tttdata$NS3[tttdata$latmean > 23.439] <- "N.Te" 
+tttdata$NS3[tttdata$latmean >= -23.439 & tttdata$latmean <= 23.439] <- "Tr"
+tttdata$REALM_NS3 <- paste0(tttdata$REALM, tttdata$NS3)
+tttdata$circulationcell <- NA
+tttdata$circulationcell[tttdata$latmean <= -60] <- "S.Po" 
+tttdata$circulationcell[tttdata$latmean >= 60] <- "N.Po" 
+tttdata$circulationcell[tttdata$latmean >= 30 & tttdata$latmean < 60] <- "N.Te"
+tttdata$circulationcell[tttdata$latmean <= -30 & tttdata$latmean > -60] <- "S.Te"
+tttdata$circulationcell[tttdata$latmean > 0 & tttdata$latmean < 30] <- "N.Tr"
+tttdata$circulationcell[tttdata$latmean <= 0 & tttdata$latmean > -30] <- "S.Tr"
+tttdata$hemisphere <- NA
+tttdata$hemisphere[tttdata$REALM %in% c("Afrotropics", "IndoMalay", "Palearctic", "Australasia")] <- "E.Hemi"
+tttdata$hemisphere[tttdata$REALM %in% c("Neotropics", "Nearctic")] <- "W.Hemi"
+tttdata$pole <- NA
+tttdata$pole[tttdata$circulationcell %in% c("N.Po", "N.Te", "N.Tr")] <- "N.Hemi"
+tttdata$pole[tttdata$circulationcell %in% c("S.Po", "S.Te", "S.Tr")] <- "S.Hemi"
+tttdata$CC_HEMI <- paste0(tttdata$circulationcell, tttdata$hemisphere)
+tttdata$CC_REALM <- paste0(tttdata$circulationcell, tttdata$REALM)
+tttdata$hemipole <- paste0(tttdata$hemisphere, tttdata$pole)
+tttdata <- tttdata[!is.na(tttdata$full),]
+tttback <- rgb(153/255,0,0)
+
+pppdata <- mydata
+pppdata$full <- (pppdata$pcmean)
+pppdata$btmhlf <- (pppdata$p50pcmean)
+pppdata$btmqtr <- (pppdata$p25pcmean)
+pppdata$best <- (pppdata$p0pcmean)
+pppdata$NS3 <- NA
+pppdata$NS3[pppdata$latmean < -23.439] <- "S.Te" 
+pppdata$NS3[pppdata$latmean > 23.439] <- "N.Te" 
+pppdata$NS3[pppdata$latmean >= -23.439 & pppdata$latmean <= 23.439] <- "Tr"
+pppdata$REALM_NS3 <- paste0(pppdata$REALM, pppdata$NS3)
+pppdata$circulationcell <- NA
+pppdata$circulationcell[pppdata$latmean <= -60] <- "S.Po" 
+pppdata$circulationcell[pppdata$latmean >= 60] <- "N.Po" 
+pppdata$circulationcell[pppdata$latmean >= 30 & pppdata$latmean < 60] <- "N.Te"
+pppdata$circulationcell[pppdata$latmean <= -30 & pppdata$latmean > -60] <- "S.Te"
+pppdata$circulationcell[pppdata$latmean > 0 & pppdata$latmean < 30] <- "N.Tr"
+pppdata$circulationcell[pppdata$latmean <= 0 & pppdata$latmean > -30] <- "S.Tr"
+pppdata$hemisphere <- NA
+pppdata$hemisphere[pppdata$REALM %in% c("Afrotropics", "IndoMalay", "Palearctic", "Australasia")] <- "E.Hemi"
+pppdata$hemisphere[pppdata$REALM %in% c("Neotropics", "Nearctic")] <- "W.Hemi"
+pppdata$pole <- NA
+pppdata$pole[pppdata$circulationcell %in% c("N.Po", "N.Te", "N.Tr")] <- "N.Hemi"
+pppdata$pole[pppdata$circulationcell %in% c("S.Po", "S.Te", "S.Tr")] <- "S.Hemi"
+pppdata$CC_HEMI <- paste0(pppdata$circulationcell, pppdata$hemisphere)
+pppdata$hemipole <- paste0(pppdata$hemisphere, pppdata$pole)
+pppdata$CC_REALM <- paste0(pppdata$circulationcell, pppdata$REALM)
+pppdata <- pppdata[!is.na(pppdata$full),]
+pppback <- rgb(0,0,153/255)
+
+mylambda <- 32
+myquantiles_linear <- seq(0.25,0.95,by=0.05)
+myquantiles_curved <- seq(0.25,0.95,by=0.05)
+bgptcolor <-  rgb(0.5,0.5,0.5,0.1)
+bgpanel <- "gray99"
+bggrid <- "gray95"
+
+setwd("~/Box Sync/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+save(tttdata, file = "forCB.rdata")
+```
+<br><br><br><br><br>
+
+```{r}
+require (ape)
+require (nlme)
+tttdata <- tttdata[,c("Species.1", "Species.2", "uniquePairId", "latmean", "lonmean", "full", "tlmean",
+                      "elmean", "Migration")]
+tttdata <- tttdata[tttdata$Migration==1,]# Restrict analyses to only RESIDENT species
+
+
+ToRm <- NULL
+mydata.orig <- tttdata[1,]
+tttdata.2 <- na.omit(tttdata)
+mypairs <- unique(tttdata.2$uniquePairId)
+for (i in 1:length(mypairs)) {
+  pairData <- tttdata.2[which(tttdata.2$uniquePairId == mypairs[i]), ]  # extract only data for this pair
+  if (strsplit(pairData$Species.1[1],'_')[[1]][1] != strsplit(pairData$Species.2[1],'_')[[1]][1]) {
+    ToRm <- c(ToRm, i)
+  } # keep a list of pairs with non-matching genus data for Sp1 and SP2
+  mydata.orig[i,] <- pairData[ which(pairData$elmean == min(pairData$elmean))[1], ]  # keep only the min cost species entry.
+}
+# mydata.orig <- mydata.orig[-ToRm,] # remove pairs with unmatched genus data. turns out this does not make a big difference.
+mydata.EL <- mydata.orig[mydata.orig$elmean>0,] # ... remove pairs for which we detected no cost
+
+
+# now prepare phylogenetic comparative analyses
+row.names(mydata.EL) <- mydata.EL$Species.1 # names
+pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, row.names(mydata.EL))) # drop unwanted tips
+
+
+# View
+hist(mydata.EL$elmean); hist(log(mydata.EL$elmean), 20) 
+hist(mydata.EL$latmean) 
+
+# run pgls
+my.pgls.EL.mod <- gls(I(log(elmean)) ~ latmean + I(latmean^2), correlation = corPagel(1, phy = pruned.tree), data = mydata.EL, method = "REML")
+summary(my.pgls.EL.mod); hist(residuals(my.pgls.EL.mod))
+
+x <- predict(my.pgls.EL.mod)
+cor(x,log(mydata.EL$elmean))
+
+plot(log(mydata.EL$tlmean) ~ log(mydata.EL$elmean))
+abline(a = 0, b = 1)
+cor.test(log(mydata.EL$tlmean),log(mydata.EL$elmean))
+
+
+######################
+# what about only using N hemisphere data?
+mydata.n.EL <- mydata.EL[mydata.EL$latmean>=0,]
+pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, row.names(mydata.n.EL)))
+my.pgls.EL.mod.n <- gls(I(log(tlmean)) ~ latmean, correlation = corPagel(1, phy = pruned.tree), data = mydata.n.EL,method = "REML")
+summary(my.pgls.EL.mod.n); hist(residuals(my.pgls.EL.mod.n))
+
+
+x <- predict(my.pgls.EL.mod.n)
+cor(x,log(mydata.n.EL$elmean))
+
+plot(log(mydata.n.EL$tlmean) ~ log(mydata.n.EL$elmean))
+abline(a = 0, b = 1)
+cor.test(log(mydata.n.EL$tlmean),log(mydata.n.EL$elmean))
+
+
+
+
+
+
+
+ToRm <- NULL
+mydata.orig <- tttdata[1,]
+mypairs <- unique(tttdata$uniquePairId)
+for (i in 1:length(mypairs)) {
+    pairData <- tttdata[which(tttdata$uniquePairId == mypairs[i]), ]
+  if (strsplit(pairData$Species.1[1],'_')[[1]][1] != strsplit(pairData$Species.2[1],'_')[[1]][1]) {
+    ToRm <- c(ToRm, i)
+  }
+  mydata.orig[i,] <- pairData[ which(pairData$tlmean == min(pairData$tlmean))[1], ]
+}
+# mydata.orig <- mydata.orig[-ToRm,] 
+
+mydata <- mydata.orig[mydata.orig$tlmean>0,]
+row.names(mydata) <- mydata$Species.1
+pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, row.names(mydata)));
+
+hist(mydata$tlmean);hist(log(mydata$tlmean), 20) 
+hist(mydata$latmean) 
+
+my.pgls.mod <- gls(I(log(tlmean)) ~ latmean + I(latmean^2), correlation = corPagel(1, phy = pruned.tree), data = mydata, method = "REML")
+summary(my.pgls.mod);hist(residuals(my.pgls.mod))
+
+
+x <- predict(my.pgls.mod)
+cor(x,log(mydata$tlmean))
+
+
+plot(log(mydata$tlmean) ~ log(mydata$elmean))
+abline(a = 0, b = 1)
+cor.test(log(mydata$tlmean),log(mydata$elmean))
+
+######################
+# what about only using N hemisphere data?
+mydata.n <- mydata[mydata$latmean>=0,]
+pruned.tree<-drop.tip(tree, setdiff(tree$tip.label, row.names(mydata.n)))
+my.pgls.mod.n <- gls(I(log(tlmean)) ~ latmean, correlation = corPagel(1, phy = pruned.tree),data = mydata.n, method = "REML")
+summary(my.pgls.mod.n);hist(residuals(my.pgls.mod.n))
+
+
+x <- predict(my.pgls.mod.n)
+cor(x,log(mydata.n$tlmean))
+
+plot(log(mydata.n$tlmean) ~ log(mydata.n$elmean))
+abline(a = 0, b = 1)
+cor.test(log(mydata.n$tlmean),log(mydata.n$elmean))
+
+
+
+
+#######################
+# plot findings
+setwd("~/Box Sync/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+pdf(file = "MountainPassFigure.pdf", width = 6, height = 7)
+layout(matrix(1:4,2,2, byrow = T))
+
+# plot Effects of elevation
+plot(mydata.EL$latmean, log(mydata.EL$elmean), pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Elevation cost )", main = "Global model")
+
+# plot fitted quadratic effect
+myx <- seq(min(mydata.EL$latmean), max(mydata.EL$latmean), by=0.5)
+mycoefs<-coef(my.pgls.EL.mod)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+
+plot(mydata.n.EL$latmean, log(mydata.n.EL$elmean), pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Elevation cost )", main = "N hemisphere\nonly")
+abline(my.pgls.EL.mod.n, col='red')
+
+
+# plot effects of temperature
+plot(mydata$latmean, log(mydata$tlmean), pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Temperature cost )", main = "Global model")
+
+# plot fitted quadratic effect
+myx <- seq(min(mydata$latmean), max(mydata$latmean), by=0.5)
+mycoefs<-coef(my.pgls.mod)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+
+plot(mydata.n$latmean, log(mydata.n$tlmean), pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Temperature cost )", main = "N hemisphere\nonly")
+abline(my.pgls.mod.n, col='red')
+
+dev.off()
+
+
+
+
+
+
+#############################################
+setwd("~/Box Sync/JMPH/PREP/Climate/Data")
+load("BOTEROLAB.06Jan2019.ClimateRasters.1850.2005.CCSM4.RData")
+setwd("~/Box Sync/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+pdf(file = "PairsMap.pdf", width = 6, height = 2.5)
+layout(matrix(1:2,1,2, byrow = T), widths = c(1,0.4))
+
+par(mar=c(1,0,1,0))
+image(VarT_raster, col = rgb(0.9,0.9,0.8,1), xlim=c(-180, 180), 
+      ylim=c(-60,90), bty = 'n', xaxt='none', yaxt='none')
+
+prj <- sp::CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 +units=km")
+
+mypts <- sp::SpatialPoints(mydata[,c("lonmean","latmean")], proj4string = prj )
+
+points(mypts, pch = 16, cex = 0.45, lwd = 0.1, col = rgb(1,0,0,0.6))
+
+par(mar=c(5,4,2,1))
+hist(mydata$latmean, xlab='Pair centroid', main = "",
+     cex.lab = 0.8, cex.axis = 0.8, col = 'red')
+
+dev.off()
+
+
+
+
+
+# ------------------------------------------------------------
+
+
+```
+

@@ -1,0 +1,1503 @@
+
+
+```{r Top Matter}
+rm(list = ls()); invisible(gc())
+require(rgdal)
+require(sp)
+require(raster)
+require(reshape2)
+require(abind)
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Elevation_Results_Concat.rdata")
+load(file = "Temperature_Results_Concat.rdata")
+load(file = "Precipitation_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/WWFRegions/Data")
+load("Location_Identities.rdata")
+```
+
+
+
+
+```{r Create a SIMPLE 1 row per species dataset}
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+sum(cooneyp$Species.1bl != rownames(m_aB_ele_mcosts))
+
+# remove columns that are no longer relevant. ----------------------------------
+mydata <- cooneyp[,c("Species.1" , "Species.2", "Species.1bl" , "Species.2bl", "uniquePair", "uniquePairId", "Pair.age..MY.", "Dichromatism",
+                     "Migration", "Territoriality", "Body.mass..log.", "Passerine...non.passerine","n_pam_cells_sp1")]
+
+
+# FULL DATASET -----------------------------------------------------------------------
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata$en <- apply(m_aB_ele_mcosts, 1, function(x) sum(!is.na(x))) # e number
+mydata$tn <- apply(m_aB_tmp_mcosts, 1, function(x) sum(!is.na(x))) # t number
+mydata$pn <- apply(m_aB_pcp_mcosts, 1, function(x) sum(!is.na(x))) # p number
+
+# longitude info (SPECIES) -----
+mydata$lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata$lonmin[is.nan(mydata$lonmin)] <- NA
+mydata$lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata$lonmax[is.nan(mydata$lonmax)] <- NA
+mydata$lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata$lonmean[is.nan(mydata$lonmean)] <- NA
+mydata$lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata$lonmedian[is.nan(mydata$lonmedian)] <- NA
+mydata$lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata$lonvar[is.nan(mydata$lonvar)] <- NA
+mydata$lonrng <- mydata$lonmax - mydata$lonmin
+
+# Latitude info (SPECIES) -----
+mydata$latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata$latmin[is.nan(mydata$latmin)] <- NA
+mydata$latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata$latmax[is.nan(mydata$latmax)] <- NA
+mydata$latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata$latmean[is.nan(mydata$latmean)] <- NA
+mydata$latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata$latmedian[is.nan(mydata$latmedian)] <- NA
+mydata$latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata$latvar[is.nan(mydata$latvar)] <- NA
+mydata$latrng <- mydata$latmax - mydata$latmin
+
+# abslongitude info (SPECIES) -----
+mydata$abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata$abslonmin[is.nan(mydata$abslonmin)] <- NA
+mydata$abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata$abslonmax[is.nan(mydata$abslonmax)] <- NA
+mydata$abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata$abslonmean[is.nan(mydata$abslonmean)] <- NA
+mydata$abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata$abslonmedian[is.nan(mydata$abslonmedian)] <- NA
+mydata$abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata$abslonvar[is.nan(mydata$abslonvar)] <- NA
+mydata$abslonrng <- mydata$abslonmax - mydata$abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata$abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata$abslatmin[is.nan(mydata$abslatmin)] <- NA
+mydata$abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata$abslatmax[is.nan(mydata$abslatmax)] <- NA
+mydata$abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata$abslatmean[is.nan(mydata$abslatmean)] <- NA
+mydata$abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata$abslatmedian[is.nan(mydata$abslatmedian)] <- NA
+mydata$abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata$abslatvar[is.nan(mydata$abslatvar)] <- NA
+mydata$abslatrng <- mydata$abslatmax - mydata$abslatmin
+
+# elevation info (SPECIES) -----
+mydata$elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata$elevmin[is.nan(mydata$elevmin)] <- NA
+mydata$elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata$elevmax[is.nan(mydata$elevmax)] <- NA
+mydata$elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata$elevmean[is.nan(mydata$elevmean)] <- NA
+mydata$elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata$elevmedian[is.nan(mydata$elevmedian)] <- NA
+mydata$elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata$elevvar[is.nan(mydata$elevvar)] <- NA
+mydata$elevrng <- mydata$elevmax - mydata$elevmin
+
+# slope info (SPECIES) -----
+mydata$slopemin <- apply(m_a_slop, 1, quantile, na.rm = T, probs = 0);mydata$slopemin[is.nan(mydata$slopemin)] <- NA
+mydata$slopemax <- apply(m_a_slop, 1, quantile, na.rm = T, probs = 1);mydata$slopemax[is.nan(mydata$slopemax)] <- NA
+mydata$slopemean <- apply(m_a_slop, 1, function(x) mean(x, na.rm = T));mydata$slopemean[is.nan(mydata$slopemean)] <- NA
+mydata$slopemedian <- apply(m_a_slop, 1, function(x) median(x, na.rm = T));mydata$slopemedian[is.nan(mydata$slopemedian)] <- NA
+mydata$slopevar <- apply(m_a_slop, 1, var, na.rm = T);mydata$slopevar[is.nan(mydata$slopevar)] <- NA
+mydata$sloperng <- mydata$slopemax - mydata$slopemin
+
+# aspect info (SPECIES)-----
+mydata$aspectmin <- apply(m_a_aspe, 1, quantile, na.rm = T, probs = 0);mydata$aspectmin[is.nan(mydata$aspectmin)] <- NA
+mydata$aspectmax <- apply(m_a_aspe, 1, quantile, na.rm = T, probs = 1);mydata$aspectmax[is.nan(mydata$aspectmax)] <- NA
+mydata$aspectmean <- apply(m_a_aspe, 1, function(x) mean(x, na.rm = T));mydata$aspectmean[is.nan(mydata$aspectmean)] <- NA
+mydata$aspectmedian <- apply(m_a_aspe, 1, function(x) median(x, na.rm = T));mydata$aspectmedian[is.nan(mydata$aspectmedian)] <- NA
+mydata$aspectvar <- apply(m_a_aspe, 1, var, na.rm = T);mydata$aspectvar[is.nan(mydata$aspectvar)] <- NA
+mydata$aspectrng <- mydata$aspectmax - mydata$aspectmin
+
+
+
+# Elevation barriers ----------------------------
+# cost statistics -----
+mydata$ecmin <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0);mydata$ecmin[is.nan(mydata$ecmin)] <- NA
+mydata$ecmax <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 1);mydata$ecmax[is.nan(mydata$ecmax)] <- NA
+mydata$ecmean <- apply(m_aB_ele_mcosts, 1, function(x) mean(x, na.rm = T));mydata$ecmean[is.nan(mydata$ecmean)] <- NA
+mydata$ecmedian <- apply(m_aB_ele_mcosts, 1, function(x) median(x, na.rm = T));mydata$ecmedian[is.nan(mydata$ecmedian)] <- NA
+mydata$ecvar <- apply(m_aB_ele_mcosts, 1, var, na.rm = T);mydata$ecvar[is.nan(mydata$ecvar)] <- NA
+mydata$ecrng <- mydata$ecmax - mydata$ecmin
+# length statistics -----
+mydata$elmin <- apply(m_aB_ele_plengths, 1, quantile, na.rm = T, probs = 0);mydata$elmin[is.nan(mydata$elmin)] <- NA
+mydata$elmax <- apply(m_aB_ele_plengths, 1, quantile, na.rm = T, probs = 1);mydata$elmax[is.nan(mydata$elmax)] <- NA
+mydata$elmean <- apply(m_aB_ele_plengths, 1, function(x) mean(x, na.rm = T));mydata$elmean[is.nan(mydata$elmean)] <- NA
+mydata$elmedian <- apply(m_aB_ele_plengths, 1, function(x) median(x, na.rm = T));mydata$elmedian[is.nan(mydata$elmedian)] <- NA
+mydata$elvar <- apply(m_aB_ele_plengths, 1, var, na.rm = T);mydata$elvar[is.nan(mydata$elvar)] <- NA
+mydata$elrng <- mydata$elmax - mydata$elmin
+# gradient statistics -----
+mydata$egmin <- apply(m_aB_ele_gradients, 1, quantile, na.rm = T, probs = 0);mydata$egmin[is.nan(mydata$egmin)] <- NA
+mydata$egmax <- apply(m_aB_ele_gradients, 1, quantile, na.rm = T, probs = 1);mydata$egmax[is.nan(mydata$egmax)] <- NA
+mydata$egmean <- apply(m_aB_ele_gradients, 1, function(x) mean(x, na.rm = T));mydata$egmean[is.nan(mydata$egmean)] <- NA 
+mydata$egmedian <- apply(m_aB_ele_gradients, 1, function(x) median(x, na.rm = T));mydata$egmedian[is.nan(mydata$egmedian)] <- NA
+mydata$egvar <- apply(m_aB_ele_gradients, 1, var, na.rm = T);mydata$egvar[is.nan(mydata$egvar)] <- NA
+mydata$egrng <- mydata$egmax - mydata$egmin
+# bblat statistics -----
+mydata$ebblatmin <- apply(m_a_bblats_ele, 1, quantile, na.rm = T, probs = 0);mydata$ebblatmin[is.nan(mydata$ebblatmin)] <- NA
+mydata$ebblatmax <- apply(m_a_bblats_ele, 1, quantile, na.rm = T, probs = 1);mydata$ebblatmax[is.nan(mydata$ebblatmax)] <- NA
+mydata$ebblatmean <- apply(m_a_bblats_ele, 1, function(x) mean(x, na.rm = T));mydata$ebblatmean[is.nan(mydata$ebblatmean)] <- NA 
+mydata$ebblatmedian <- apply(m_a_bblats_ele, 1, function(x) median(x, na.rm = T));mydata$ebblatmedian[is.nan(mydata$ebblatmedian)] <- NA
+mydata$ebblatvar <- apply(m_a_bblats_ele, 1, var, na.rm = T);mydata$ebblatvar[is.nan(mydata$ebblatvar)] <- NA
+mydata$ebblatrng <- mydata$ebblatmax - mydata$ebblatmin
+# bblon statistics -----
+mydata$ebblonmin <- apply(m_a_bblons_ele, 1, quantile, na.rm = T, probs = 0);mydata$ebblonmin[is.nan(mydata$ebblonmin)] <- NA
+mydata$ebblonmax <- apply(m_a_bblons_ele, 1, quantile, na.rm = T, probs = 1);mydata$ebblonmax[is.nan(mydata$ebblonmax)] <- NA
+mydata$ebblonmean <- apply(m_a_bblons_ele, 1, function(x) mean(x, na.rm = T));mydata$ebblonmean[is.nan(mydata$ebblonmean)] <- NA 
+mydata$ebblonmedian <- apply(m_a_bblons_ele, 1, function(x) median(x, na.rm = T));mydata$ebblonmedian[is.nan(mydata$ebblonmedian)] <- NA
+mydata$ebblonvar <- apply(m_a_bblons_ele, 1, var, na.rm = T);mydata$ebblonvar[is.nan(mydata$ebblonvar)] <- NA
+mydata$ebblonrng <- mydata$ebblonmax - mydata$ebblonmin
+# absbblat statistics -----
+mydata$eabsbblatmin <- apply(abs(m_a_bblats_ele), 1, quantile, na.rm = T, probs = 0);mydata$eabsbblatmin[is.nan(mydata$eabsbblatmin)] <- NA
+mydata$eabsbblatmax <- apply(abs(m_a_bblats_ele), 1, quantile, na.rm = T, probs = 1);mydata$eabsbblatmax[is.nan(mydata$eabsbblatmax)] <- NA
+mydata$eabsbblatmean <- apply(abs(m_a_bblats_ele), 1, function(x) mean(x, na.rm = T));mydata$eabsbblatmean[is.nan(mydata$eabsbblatmean)] <- NA 
+mydata$eabsbblatmedian <- apply(abs(m_a_bblats_ele), 1, function(x) median(x, na.rm = T));mydata$eabsbblatmedian[is.nan(mydata$eabsbblatmedian)] <- NA
+mydata$eabsbblatvar <- apply(abs(m_a_bblats_ele), 1, var, na.rm = T);mydata$eabsbblatvar[is.nan(mydata$eabsbblatvar)] <- NA
+mydata$eabsbblatrng <- mydata$eabsbblatmax - mydata$eabsbblatmin
+# absbblon statistics -----
+mydata$eabsbblonmin <- apply(abs(m_a_bblons_ele), 1, quantile, na.rm = T, probs = 0);mydata$eabsbblonmin[is.nan(mydata$eabsbblonmin)] <- NA
+mydata$eabsbblonmax <- apply(abs(m_a_bblons_ele), 1, quantile, na.rm = T, probs = 1);mydata$eabsbblonmax[is.nan(mydata$eabsbblonmax)] <- NA
+mydata$eabsbblonmean <- apply(abs(m_a_bblons_ele), 1, function(x) mean(x, na.rm = T));mydata$eabsbblonmean[is.nan(mydata$eabsbblonmean)] <- NA 
+mydata$eabsbblonmedian <- apply(abs(m_a_bblons_ele), 1, function(x) median(x, na.rm = T));mydata$eabsbblonmedian[is.nan(mydata$eabsbblonmedian)] <- NA
+mydata$eabsbblonvar <- apply(abs(m_a_bblons_ele), 1, var, na.rm = T);mydata$eabsbblonvar[is.nan(mydata$eabsbblonvar)] <- NA
+mydata$eabsbblonrng <- mydata$eabsbblonmax - mydata$eabsbblonmin
+# n unique destinations from A in B.
+mydata$enbbs <- apply(abind(m_a_bblats_ele, m_a_bblons_ele, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# Temperature barriers ----------------------------
+# cost statistics -----
+mydata$tcmin <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 0);mydata$tcmin[is.nan(mydata$tcmin)] <- NA
+mydata$tcmax <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 1);mydata$tcmax[is.nan(mydata$tcmax)] <- NA
+mydata$tcmean <- apply(m_aB_tmp_mcosts, 1, function(x) mean(x, na.rm = T));mydata$tcmean[is.nan(mydata$tcmean)] <- NA
+mydata$tcmedian <- apply(m_aB_tmp_mcosts, 1, function(x) median(x, na.rm = T));mydata$tcmedian[is.nan(mydata$tcmedian)] <- NA
+mydata$tcvar <- apply(m_aB_tmp_mcosts, 1, var, na.rm = T);mydata$tcvar[is.nan(mydata$tcvar)] <- NA
+mydata$tcrng <- mydata$tcmax - mydata$tcmin
+# length statistics -----
+mydata$tlmin <- apply(m_aB_tmp_plengths, 1, quantile, na.rm = T, probs = 0);mydata$tlmin[is.nan(mydata$tlmin)] <- NA
+mydata$tlmax <- apply(m_aB_tmp_plengths, 1, quantile, na.rm = T, probs = 1);mydata$tlmax[is.nan(mydata$tlmax)] <- NA
+mydata$tlmean <- apply(m_aB_tmp_plengths, 1, function(x) mean(x, na.rm = T));mydata$tlmean[is.nan(mydata$tlmean)] <- NA
+mydata$tlmedian <- apply(m_aB_tmp_plengths, 1, function(x) median(x, na.rm = T));mydata$tlmedian[is.nan(mydata$tlmedian)] <- NA
+mydata$tlvar <- apply(m_aB_tmp_plengths, 1, var, na.rm = T);mydata$tlvar[is.nan(mydata$tlvar)] <- NA
+mydata$tlrng <- mydata$tlmax - mydata$tlmin
+# gradient statistics -----
+mydata$tgmin <- apply(m_aB_tmp_gradients, 1, quantile, na.rm = T, probs = 0);mydata$tgmin[is.nan(mydata$tgmin)] <- NA
+mydata$tgmax <- apply(m_aB_tmp_gradients, 1, quantile, na.rm = T, probs = 1);mydata$tgmax[is.nan(mydata$tgmax)] <- NA
+mydata$tgmean <- apply(m_aB_tmp_gradients, 1, function(x) mean(x, na.rm = T));mydata$tgmean[is.nan(mydata$tgmean)] <- NA 
+mydata$tgmedian <- apply(m_aB_tmp_gradients, 1, function(x) median(x, na.rm = T));mydata$tgmedian[is.nan(mydata$tgmedian)] <- NA
+mydata$tgvar <- apply(m_aB_tmp_gradients, 1, var, na.rm = T);mydata$tgvar[is.nan(mydata$tgvar)] <- NA
+mydata$tgrng <- mydata$tgmax - mydata$tgmin
+# bblat statistics -----
+mydata$tbblatmin <- apply(m_a_bblats_tmp, 1, quantile, na.rm = T, probs = 0);mydata$tbblatmin[is.nan(mydata$tbblatmin)] <- NA
+mydata$tbblatmax <- apply(m_a_bblats_tmp, 1, quantile, na.rm = T, probs = 1);mydata$tbblatmax[is.nan(mydata$tbblatmax)] <- NA
+mydata$tbblatmean <- apply(m_a_bblats_tmp, 1, function(x) mean(x, na.rm = T));mydata$tbblatmean[is.nan(mydata$tbblatmean)] <- NA 
+mydata$tbblatmedian <- apply(m_a_bblats_tmp, 1, function(x) median(x, na.rm = T));mydata$tbblatmedian[is.nan(mydata$tbblatmedian)] <- NA
+mydata$tbblatvar <- apply(m_a_bblats_tmp, 1, var, na.rm = T);mydata$tbblatvar[is.nan(mydata$tbblatvar)] <- NA
+mydata$tbblatrng <- mydata$tbblatmax - mydata$tbblatmin
+# bblon statistics -----
+mydata$tbblonmin <- apply(m_a_bblons_tmp, 1, quantile, na.rm = T, probs = 0);mydata$tbblonmin[is.nan(mydata$tbblonmin)] <- NA
+mydata$tbblonmax <- apply(m_a_bblons_tmp, 1, quantile, na.rm = T, probs = 1);mydata$tbblonmax[is.nan(mydata$tbblonmax)] <- NA
+mydata$tbblonmean <- apply(m_a_bblons_tmp, 1, function(x) mean(x, na.rm = T));mydata$tbblonmean[is.nan(mydata$tbblonmean)] <- NA 
+mydata$tbblonmedian <- apply(m_a_bblons_tmp, 1, function(x) median(x, na.rm = T));mydata$tbblonmedian[is.nan(mydata$tbblonmedian)] <- NA
+mydata$tbblonvar <- apply(m_a_bblons_tmp, 1, var, na.rm = T);mydata$tbblonvar[is.nan(mydata$tbblonvar)] <- NA
+mydata$tbblonrng <- mydata$tbblonmax - mydata$tbblonmin
+# absbblat statistics -----
+mydata$tabsbblatmin <- apply(abs(m_a_bblats_tmp), 1, quantile, na.rm = T, probs = 0);mydata$tabsbblatmin[is.nan(mydata$tabsbblatmin)] <- NA
+mydata$tabsbblatmax <- apply(abs(m_a_bblats_tmp), 1, quantile, na.rm = T, probs = 1);mydata$tabsbblatmax[is.nan(mydata$tabsbblatmax)] <- NA
+mydata$tabsbblatmean <- apply(abs(m_a_bblats_tmp), 1, function(x) mean(x, na.rm = T));mydata$tabsbblatmean[is.nan(mydata$tabsbblatmean)] <- NA 
+mydata$tabsbblatmedian <- apply(abs(m_a_bblats_tmp), 1, function(x) median(x, na.rm = T));mydata$tabsbblatmedian[is.nan(mydata$tabsbblatmedian)] <- NA
+mydata$tabsbblatvar <- apply(abs(m_a_bblats_tmp), 1, var, na.rm = T);mydata$tabsbblatvar[is.nan(mydata$tabsbblatvar)] <- NA
+mydata$tabsbblatrng <- mydata$tabsbblatmax - mydata$tabsbblatmin
+# absbblon statistics -----
+mydata$tabsbblonmin <- apply(abs(m_a_bblons_tmp), 1, quantile, na.rm = T, probs = 0);mydata$tabsbblonmin[is.nan(mydata$tabsbblonmin)] <- NA
+mydata$tabsbblonmax <- apply(abs(m_a_bblons_tmp), 1, quantile, na.rm = T, probs = 1);mydata$tabsbblonmax[is.nan(mydata$tabsbblonmax)] <- NA
+mydata$tabsbblonmean <- apply(abs(m_a_bblons_tmp), 1, function(x) mean(x, na.rm = T));mydata$tabsbblonmean[is.nan(mydata$tabsbblonmean)] <- NA 
+mydata$tabsbblonmedian <- apply(abs(m_a_bblons_tmp), 1, function(x) median(x, na.rm = T));mydata$tabsbblonmedian[is.nan(mydata$tabsbblonmedian)] <- NA
+mydata$tabsbblonvar <- apply(abs(m_a_bblons_tmp), 1, var, na.rm = T);mydata$tabsbblonvar[is.nan(mydata$tabsbblonvar)] <- NA
+mydata$tabsbblonrng <- mydata$tabsbblonmax - mydata$tabsbblonmin
+# n unique destinations from A in B.
+mydata$tnbbs <- apply(abind(m_a_bblats_tmp, m_a_bblons_tmp, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# Precip barriers ----------------------------
+# cost statistics -----
+mydata$pcmin <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 0);mydata$pcmin[is.nan(mydata$pcmin)] <- NA
+mydata$pcmax <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 1);mydata$pcmax[is.nan(mydata$pcmax)] <- NA
+mydata$pcmean <- apply(m_aB_pcp_mcosts, 1, function(x) mean(x, na.rm = T));mydata$pcmean[is.nan(mydata$pcmean)] <- NA
+mydata$pcmedian <- apply(m_aB_pcp_mcosts, 1, function(x) median(x, na.rm = T));mydata$pcmedian[is.nan(mydata$pcmedian)] <- NA
+mydata$pcvar <- apply(m_aB_pcp_mcosts, 1, var, na.rm = T);mydata$pcvar[is.nan(mydata$pcvar)] <- NA
+mydata$pcrng <- mydata$pcmax - mydata$pcmin
+# length statistics -----
+mydata$plmin <- apply(m_aB_pcp_plengths, 1, quantile, na.rm = T, probs = 0);mydata$plmin[is.nan(mydata$plmin)] <- NA
+mydata$plmax <- apply(m_aB_pcp_plengths, 1, quantile, na.rm = T, probs = 1);mydata$plmax[is.nan(mydata$plmax)] <- NA
+mydata$plmean <- apply(m_aB_pcp_plengths, 1, function(x) mean(x, na.rm = T));mydata$plmean[is.nan(mydata$plmean)] <- NA
+mydata$plmedian <- apply(m_aB_pcp_plengths, 1, function(x) median(x, na.rm = T));mydata$plmedian[is.nan(mydata$plmedian)] <- NA
+mydata$plvar <- apply(m_aB_pcp_plengths, 1, var, na.rm = T);mydata$plvar[is.nan(mydata$plvar)] <- NA
+mydata$plrng <- mydata$plmax - mydata$plmin
+# gradient statistics -----
+mydata$pgmin <- apply(m_aB_pcp_gradients, 1, quantile, na.rm = T, probs = 0);mydata$pgmin[is.nan(mydata$pgmin)] <- NA
+mydata$pgmax <- apply(m_aB_pcp_gradients, 1, quantile, na.rm = T, probs = 1);mydata$pgmax[is.nan(mydata$pgmax)] <- NA
+mydata$pgmean <- apply(m_aB_pcp_gradients, 1, function(x) mean(x, na.rm = T));mydata$pgmean[is.nan(mydata$pgmean)] <- NA 
+mydata$pgmedian <- apply(m_aB_pcp_gradients, 1, function(x) median(x, na.rm = T));mydata$pgmedian[is.nan(mydata$pgmedian)] <- NA
+mydata$pgvar <- apply(m_aB_pcp_gradients, 1, var, na.rm = T);mydata$pgvar[is.nan(mydata$pgvar)] <- NA
+mydata$pgrng <- mydata$pgmax - mydata$pgmin
+# bblat statistics -----
+mydata$pbblatmin <- apply(m_a_bblats_pcp, 1, quantile, na.rm = T, probs = 0);mydata$pbblatmin[is.nan(mydata$pbblatmin)] <- NA
+mydata$pbblatmax <- apply(m_a_bblats_pcp, 1, quantile, na.rm = T, probs = 1);mydata$pbblatmax[is.nan(mydata$pbblatmax)] <- NA
+mydata$pbblatmean <- apply(m_a_bblats_pcp, 1, function(x) mean(x, na.rm = T));mydata$pbblatmean[is.nan(mydata$pbblatmean)] <- NA 
+mydata$pbblatmedian <- apply(m_a_bblats_pcp, 1, function(x) median(x, na.rm = T));mydata$pbblatmedian[is.nan(mydata$pbblatmedian)] <- NA
+mydata$pbblatvar <- apply(m_a_bblats_pcp, 1, var, na.rm = T);mydata$pbblatvar[is.nan(mydata$pbblatvar)] <- NA
+mydata$pbblatrng <- mydata$pbblatmax - mydata$pbblatmin
+# bblon statistics -----
+mydata$pbblonmin <- apply(m_a_bblons_pcp, 1, quantile, na.rm = T, probs = 0);mydata$pbblonmin[is.nan(mydata$pbblonmin)] <- NA
+mydata$pbblonmax <- apply(m_a_bblons_pcp, 1, quantile, na.rm = T, probs = 1);mydata$pbblonmax[is.nan(mydata$pbblonmax)] <- NA
+mydata$pbblonmean <- apply(m_a_bblons_pcp, 1, function(x) mean(x, na.rm = T));mydata$pbblonmean[is.nan(mydata$pbblonmean)] <- NA 
+mydata$pbblonmedian <- apply(m_a_bblons_pcp, 1, function(x) median(x, na.rm = T));mydata$pbblonmedian[is.nan(mydata$pbblonmedian)] <- NA
+mydata$pbblonvar <- apply(m_a_bblons_pcp, 1, var, na.rm = T);mydata$pbblonvar[is.nan(mydata$pbblonvar)] <- NA
+mydata$pbblonrng <- mydata$pbblonmax - mydata$pbblonmin
+# absbblat statistics -----
+mydata$pabsbblatmin <- apply(abs(m_a_bblats_pcp), 1, quantile, na.rm = T, probs = 0);mydata$pabsbblatmin[is.nan(mydata$pabsbblatmin)] <- NA
+mydata$pabsbblatmax <- apply(abs(m_a_bblats_pcp), 1, quantile, na.rm = T, probs = 1);mydata$pabsbblatmax[is.nan(mydata$pabsbblatmax)] <- NA
+mydata$pabsbblatmean <- apply(abs(m_a_bblats_pcp), 1, function(x) mean(x, na.rm = T));mydata$pabsbblatmean[is.nan(mydata$pabsbblatmean)] <- NA 
+mydata$pabsbblatmedian <- apply(abs(m_a_bblats_pcp), 1, function(x) median(x, na.rm = T));mydata$pabsbblatmedian[is.nan(mydata$pabsbblatmedian)] <- NA
+mydata$pabsbblatvar <- apply(abs(m_a_bblats_pcp), 1, var, na.rm = T);mydata$pabsbblatvar[is.nan(mydata$pabsbblatvar)] <- NA
+mydata$pabsbblatrng <- mydata$pabsbblatmax - mydata$pabsbblatmin
+# absbblon statistics -----
+mydata$pabsbblonmin <- apply(abs(m_a_bblons_pcp), 1, quantile, na.rm = T, probs = 0);mydata$pabsbblonmin[is.nan(mydata$pabsbblonmin)] <- NA
+mydata$pabsbblonmax <- apply(abs(m_a_bblons_pcp), 1, quantile, na.rm = T, probs = 1);mydata$pabsbblonmax[is.nan(mydata$pabsbblonmax)] <- NA
+mydata$pabsbblonmean <- apply(abs(m_a_bblons_pcp), 1, function(x) mean(x, na.rm = T));mydata$pabsbblonmean[is.nan(mydata$pabsbblonmean)] <- NA 
+mydata$pabsbblonmedian <- apply(abs(m_a_bblons_pcp), 1, function(x) median(x, na.rm = T));mydata$pabsbblonmedian[is.nan(mydata$pabsbblonmedian)] <- NA
+mydata$pabsbblonvar <- apply(abs(m_a_bblons_pcp), 1, var, na.rm = T);mydata$pabsbblonvar[is.nan(mydata$pabsbblonvar)] <- NA
+mydata$pabsbblonrng <- mydata$pabsbblonmax - mydata$pabsbblonmin
+# n unique destinations from A in B.
+mydata$pnbbs <- apply(abind(m_a_bblats_pcp, m_a_bblons_pcp, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# advanced info -----
+mydata$esympatriccells <- apply(m_aB_ele_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+mydata$tsympatriccells <- apply(m_aB_tmp_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+mydata$psympatriccells <- apply(m_aB_pcp_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+
+# Add realm info -----
+mydata$OBJECTID <- NA
+mydata$OBJECTID_PROP <- NA
+mydata$ECO <- NA
+mydata$ECO_PROP <- NA
+mydata$BIOME <- NA
+mydata$BIOME_PROP <- NA
+mydata$REALM <- NA
+mydata$REALM_PROP <- NA
+
+for(i in 1:nrow(mydata)){
+  if(!is.null(names(sort(table(m_a_ECO_NAME[i,]), decreasing = T))[1])){
+      mydata$OBJECTID[i] <- names(sort(table(m_a_OBJECTID[i,]), decreasing = T))[1]
+      mydata$OBJECTID_PROP[i] <- (sort(table(m_a_OBJECTID[i,]), decreasing = T))[1] / sum(!is.na(m_a_OBJECTID[i,]))
+      
+      mydata$ECO[i] <- names(sort(table(m_a_ECO_NAME[i,]), decreasing = T))[1]
+      mydata$ECO_PROP[i] <- (sort(table(m_a_ECO_NAME[i,]), decreasing = T))[1] / sum(!is.na(m_a_ECO_NAME[i,]))      
+      
+      mydata$BIOME[i] <- names(sort(table(m_a_BIOME[i,]), decreasing = T))[1]
+      mydata$BIOME_PROP[i] <- (sort(table(m_a_BIOME[i,]), decreasing = T))[1] / sum(!is.na(m_a_BIOME[i,]))      
+      
+      mydata$REALM[i] <- names(sort(table(m_a_REALM[i,]), decreasing = T))[1]
+      mydata$REALM_PROP[i] <- (sort(table(m_a_REALM[i,]), decreasing = T))[1] / sum(!is.na(m_a_REALM[i,]))
+
+  }
+}
+
+# add more informative names to...
+mydata$REALM[which(mydata$REALM == "AA")] <- "Australasia" # realms
+mydata$REALM[which(mydata$REALM == "AN")] <- "Antarctic"
+mydata$REALM[which(mydata$REALM == "AT")] <- "Afrotropics"
+mydata$REALM[which(mydata$REALM == "IM")] <- "IndoMalay"
+mydata$REALM[which(mydata$REALM == "NA")] <- "Nearctic"
+mydata$REALM[which(mydata$REALM == "NT")] <- "Neotropics"
+mydata$REALM[which(mydata$REALM == "OC")] <- "Oceania"
+mydata$REALM[which(mydata$REALM == "PA")] <- "Palearctic"
+
+mydata$BIOME[which(mydata$BIOME == 1)] <- "Tropical-Subtropical-Moist-Broadleaf-Forests" # biomes
+mydata$BIOME[which(mydata$BIOME == 2)] <- "Tropical-Subtropical-Dry-Broadleaf-Forests"
+mydata$BIOME[which(mydata$BIOME == 3)] <- "Tropical-Subtropical-Coniferous-Forests"
+mydata$BIOME[which(mydata$BIOME == 4)] <- "Temperate-Broadleaf-Mixed-Forests"
+mydata$BIOME[which(mydata$BIOME == 5)] <- "Temperate-Conifer-Forests"
+mydata$BIOME[which(mydata$BIOME == 6)] <- "Boreal-Forests-Taiga"
+mydata$BIOME[which(mydata$BIOME == 7)] <- "Tropical-Subtropical-Grasslands-Savannas-Shrublands"
+mydata$BIOME[which(mydata$BIOME == 8)] <- "Temperate-Grasslands-Savannas-Shrublands"
+mydata$BIOME[which(mydata$BIOME == 9)] <- "Flooded-Grasslands-Savannas"
+mydata$BIOME[which(mydata$BIOME == 10)] <- "Montane-Grasslands-Shrublands"
+mydata$BIOME[which(mydata$BIOME == 11)] <- "Tundra"
+mydata$BIOME[which(mydata$BIOME == 12)] <- "Mediterranean-Forests-Woodlands-Scrub"
+mydata$BIOME[which(mydata$BIOME == 13)] <- "Deserts-Xeric-Shrublands"
+mydata$BIOME[which(mydata$BIOME == 14)] <- "Mangroves"
+mydata$BIOME[which(mydata$BIOME == 98)] <- NA # strange unassinged values (don't correspond to a lot of data though, so probably safe to omit...)
+mydata$BIOME[which(mydata$BIOME == 99)] <- NA
+
+# clean to allow rasterpam to be loaded into memory on low RAM machines -----
+rm(m_a_ids, m_a_lats, m_a_lons, m_a_eles, m_a_aspe, m_a_slop, 
+   m_aB_ele_mcosts, m_aB_ele_plengths, m_aB_ele_gradients, m_a_bblats_ele, m_a_bblons_ele,
+   m_aB_tmp_mcosts, m_aB_tmp_plengths, m_aB_tmp_gradients, m_a_bblats_tmp, m_a_bblons_tmp,
+   m_aB_pcp_mcosts, m_aB_pcp_plengths, m_aB_pcp_gradients, m_a_bblats_pcp, m_a_bblons_pcp,
+   m_a_BIOME, m_a_ECO_NAME, m_a_OBJECTID, m_a_REALM, cooneyp); gc(); memory.size()/memory.limit()
+```
+
+
+
+```{r Create a dataframe using only those origins that are in the bottom half of the ELEVATION cost data.}
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Elevation_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+mydata_e50 <- cooneyp[,cbind("Species.1", "Species.2")]
+mydata_e50$e50rowmincutc <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0)
+mydata_e50$e50rowmaxcutc <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0.50)
+for (i in 1:nrow(mydata)){
+  m_aB_ele_mcosts[i,which(m_aB_ele_mcosts[i,] < mydata_e50$e50rowmincutc[i])] <- NA
+  m_aB_ele_mcosts[i,which(m_aB_ele_mcosts[i,] > mydata_e50$e50rowmaxcutc[i])] <- NA
+}
+
+for (i in c("m_a_ids", "m_a_lats", "m_a_lons", "m_a_eles", "m_a_aspe", "m_a_slop", 
+            "m_aB_ele_mcosts", "m_aB_ele_plengths", "m_aB_ele_gradients")) {
+  x <- get(i)
+  x[is.na(m_aB_ele_mcosts)] <- NA
+  assign(i, value = x)
+  rm(x); gc()
+}
+
+# btm quartile for ele DATASET -----------------------------------------------------------------------
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata_e50$e50en <- apply(m_aB_ele_mcosts, 1, function(x) sum(!is.na(x))) # e number
+
+# longitude info (SPECIES) -----
+mydata_e50$e50lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata_e50$e50lonmin[is.nan(mydata_e50$e50lonmin)] <- NA
+mydata_e50$e50lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata_e50$e50lonmax[is.nan(mydata_e50$e50lonmax)] <- NA
+mydata_e50$e50lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata_e50$e50lonmean[is.nan(mydata_e50$e50lonmean)] <- NA
+mydata_e50$e50lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata_e50$e50lonmedian[is.nan(mydata_e50$e50lonmedian)] <- NA
+mydata_e50$e50lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata_e50$e50lonvar[is.nan(mydata_e50$e50lonvar)] <- NA
+mydata_e50$e50lonrng <- mydata_e50$e50lonmax - mydata_e50$e50lonmin
+
+# Latitude info (SPECIES) -----
+mydata_e50$e50latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata_e50$e50latmin[is.nan(mydata_e50$e50latmin)] <- NA
+mydata_e50$e50latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata_e50$e50latmax[is.nan(mydata_e50$e50latmax)] <- NA
+mydata_e50$e50latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata_e50$e50latmean[is.nan(mydata_e50$e50latmean)] <- NA
+mydata_e50$e50latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata_e50$e50latmedian[is.nan(mydata_e50$e50latmedian)] <- NA
+mydata_e50$e50latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata_e50$e50latvar[is.nan(mydata_e50$e50latvar)] <- NA
+mydata_e50$e50latrng <- mydata_e50$e50latmax - mydata_e50$e50latmin
+
+# abslongitude info (SPECIES) -----
+mydata_e50$e50abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata_e50$e50abslonmin[is.nan(mydata_e50$e50abslonmin)] <- NA
+mydata_e50$e50abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata_e50$e50abslonmax[is.nan(mydata_e50$e50abslonmax)] <- NA
+mydata_e50$e50abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata_e50$e50abslonmean[is.nan(mydata_e50$e50abslonmean)] <- NA
+mydata_e50$e50abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata_e50$e50abslonmedian[is.nan(mydata_e50$e50abslonmedian)] <- NA
+mydata_e50$e50abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata_e50$e50abslonvar[is.nan(mydata_e50$e50abslonvar)] <- NA
+mydata_e50$e50abslonrng <- mydata_e50$e50abslonmax - mydata_e50$e50abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata_e50$e50abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata_e50$e50abslatmin[is.nan(mydata_e50$e50abslatmin)] <- NA
+mydata_e50$e50abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata_e50$e50abslatmax[is.nan(mydata_e50$e50abslatmax)] <- NA
+mydata_e50$e50abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata_e50$e50abslatmean[is.nan(mydata_e50$e50abslatmean)] <- NA
+mydata_e50$e50abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata_e50$e50abslatmedian[is.nan(mydata_e50$e50abslatmedian)] <- NA
+mydata_e50$e50abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata_e50$e50abslatvar[is.nan(mydata_e50$e50abslatvar)] <- NA
+mydata_e50$e50abslatrng <- mydata_e50$e50abslatmax - mydata_e50$e50abslatmin
+
+# elevation info (SPECIES) -----
+mydata_e50$e50elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata_e50$e50elevmin[is.nan(mydata_e50$e50elevmin)] <- NA
+mydata_e50$e50elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata_e50$e50elevmax[is.nan(mydata_e50$e50elevmax)] <- NA
+mydata_e50$e50elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata_e50$e50elevmean[is.nan(mydata_e50$e50elevmean)] <- NA
+mydata_e50$e50elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata_e50$e50elevmedian[is.nan(mydata_e50$e50elevmedian)] <- NA
+mydata_e50$e50elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata_e50$e50elevvar[is.nan(mydata_e50$e50elevvar)] <- NA
+mydata_e50$e50elevrng <- mydata_e50$e50elevmax - mydata_e50$e50elevmin
+
+
+
+
+# Elevation barriers ----------------------------
+# cost statistics -----
+mydata_e50$e50ecmin <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0);mydata_e50$e50ecmin[is.nan(mydata_e50$e50ecmin)] <- NA
+mydata_e50$e50ecmax <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 1);mydata_e50$e50ecmax[is.nan(mydata_e50$e50ecmax)] <- NA
+mydata_e50$e50ecmean <- apply(m_aB_ele_mcosts, 1, function(x) mean(x, na.rm = T));mydata_e50$e50ecmean[is.nan(mydata_e50$e50ecmean)] <- NA
+mydata_e50$e50ecmedian <- apply(m_aB_ele_mcosts, 1, function(x) median(x, na.rm = T));mydata_e50$e50ecmedian[is.nan(mydata_e50$e50ecmedian)] <- NA
+mydata_e50$e50ecvar <- apply(m_aB_ele_mcosts, 1, var, na.rm = T);mydata_e50$e50ecvar[is.nan(mydata_e50$e50ecvar)] <- NA
+mydata_e50$e50ecrng <- mydata_e50$e50ecmax - mydata_e50$e50ecmin
+# length statistics -----
+mydata_e50$e50elmin <- apply(m_aB_ele_plengths, 1, quantile, na.rm = T, probs = 0);mydata_e50$e50elmin[is.nan(mydata_e50$e50elmin)] <- NA
+mydata_e50$e50elmax <- apply(m_aB_ele_plengths, 1, quantile, na.rm = T, probs = 1);mydata_e50$e50elmax[is.nan(mydata_e50$e50elmax)] <- NA
+mydata_e50$e50elmean <- apply(m_aB_ele_plengths, 1, function(x) mean(x, na.rm = T));mydata_e50$e50elmean[is.nan(mydata_e50$e50elmean)] <- NA
+mydata_e50$e50elmedian <- apply(m_aB_ele_plengths, 1, function(x) median(x, na.rm = T));mydata_e50$e50elmedian[is.nan(mydata_e50$e50elmedian)] <- NA
+mydata_e50$e50elvar <- apply(m_aB_ele_plengths, 1, var, na.rm = T);mydata_e50$e50elvar[is.nan(mydata_e50$e50elvar)] <- NA
+mydata_e50$e50elrng <- mydata_e50$e50elmax - mydata_e50$e50elmin
+# gradient statistics -----
+mydata_e50$e50egmin <- apply(m_aB_ele_gradients, 1, quantile, na.rm = T, probs = 0);mydata_e50$e50egmin[is.nan(mydata_e50$e50egmin)] <- NA
+mydata_e50$e50egmax <- apply(m_aB_ele_gradients, 1, quantile, na.rm = T, probs = 1);mydata_e50$e50egmax[is.nan(mydata_e50$e50egmax)] <- NA
+mydata_e50$e50egmean <- apply(m_aB_ele_gradients, 1, function(x) mean(x, na.rm = T));mydata_e50$e50egmean[is.nan(mydata_e50$e50egmean)] <- NA 
+mydata_e50$e50egmedian <- apply(m_aB_ele_gradients, 1, function(x) median(x, na.rm = T));mydata_e50$e50egmedian[is.nan(mydata_e50$e50egmedian)] <- NA
+mydata_e50$e50egvar <- apply(m_aB_ele_gradients, 1, var, na.rm = T);mydata_e50$e50egvar[is.nan(mydata_e50$e50egvar)] <- NA
+mydata_e50$e50egrng <- mydata_e50$e50egmax - mydata_e50$e50egmin
+# bblat statistics -----
+mydata_e50$e50ebblatmin <- apply(m_a_bblats_ele, 1, quantile, na.rm = T, probs = 0);mydata_e50$e50ebblatmin[is.nan(mydata_e50$e50ebblatmin)] <- NA
+mydata_e50$e50ebblatmax <- apply(m_a_bblats_ele, 1, quantile, na.rm = T, probs = 1);mydata_e50$e50ebblatmax[is.nan(mydata_e50$e50ebblatmax)] <- NA
+mydata_e50$e50ebblatmean <- apply(m_a_bblats_ele, 1, function(x) mean(x, na.rm = T));mydata_e50$e50ebblatmean[is.nan(mydata_e50$e50ebblatmean)] <- NA 
+mydata_e50$e50ebblatmedian <- apply(m_a_bblats_ele, 1, function(x) median(x, na.rm = T));mydata_e50$e50ebblatmedian[is.nan(mydata_e50$e50ebblatmedian)] <- NA
+mydata_e50$e50ebblatvar <- apply(m_a_bblats_ele, 1, var, na.rm = T);mydata_e50$e50ebblatvar[is.nan(mydata_e50$e50ebblatvar)] <- NA
+mydata_e50$e50ebblatrng <- mydata_e50$e50ebblatmax - mydata_e50$e50ebblatmin
+# bblon statistics -----
+mydata_e50$e50ebblonmin <- apply(m_a_bblons_ele, 1, quantile, na.rm = T, probs = 0);mydata_e50$e50ebblonmin[is.nan(mydata_e50$e50ebblonmin)] <- NA
+mydata_e50$e50ebblonmax <- apply(m_a_bblons_ele, 1, quantile, na.rm = T, probs = 1);mydata_e50$e50ebblonmax[is.nan(mydata_e50$e50ebblonmax)] <- NA
+mydata_e50$e50ebblonmean <- apply(m_a_bblons_ele, 1, function(x) mean(x, na.rm = T));mydata_e50$e50ebblonmean[is.nan(mydata_e50$e50ebblonmean)] <- NA 
+mydata_e50$e50ebblonmedian <- apply(m_a_bblons_ele, 1, function(x) median(x, na.rm = T));mydata_e50$e50ebblonmedian[is.nan(mydata_e50$e50ebblonmedian)] <- NA
+mydata_e50$e50ebblonvar <- apply(m_a_bblons_ele, 1, var, na.rm = T);mydata_e50$e50ebblonvar[is.nan(mydata_e50$e50ebblonvar)] <- NA
+mydata_e50$e50ebblonrng <- mydata_e50$e50ebblonmax - mydata_e50$e50ebblonmin
+# absbblat statistics -----
+mydata_e50$e50eabsbblatmin <- apply(abs(m_a_bblats_ele), 1, quantile, na.rm = T, probs = 0);mydata_e50$e50eabsbblatmin[is.nan(mydata_e50$e50eabsbblatmin)] <- NA
+mydata_e50$e50eabsbblatmax <- apply(abs(m_a_bblats_ele), 1, quantile, na.rm = T, probs = 1);mydata_e50$e50eabsbblatmax[is.nan(mydata_e50$e50eabsbblatmax)] <- NA
+mydata_e50$e50eabsbblatmean <- apply(abs(m_a_bblats_ele), 1, function(x) mean(x, na.rm = T));mydata_e50$e50eabsbblatmean[is.nan(mydata_e50$e50eabsbblatmean)] <- NA 
+mydata_e50$e50eabsbblatmedian <- apply(abs(m_a_bblats_ele), 1, function(x) median(x, na.rm = T));mydata_e50$e50eabsbblatmedian[is.nan(mydata_e50$e50eabsbblatmedian)] <- NA
+mydata_e50$e50eabsbblatvar <- apply(abs(m_a_bblats_ele), 1, var, na.rm = T);mydata_e50$e50eabsbblatvar[is.nan(mydata_e50$e50eabsbblatvar)] <- NA
+mydata_e50$e50eabsbblatrng <- mydata_e50$e50eabsbblatmax - mydata_e50$e50eabsbblatmin
+# absbblon statistics -----
+mydata_e50$e50eabsbblonmin <- apply(abs(m_a_bblons_ele), 1, quantile, na.rm = T, probs = 0);mydata_e50$e50eabsbblonmin[is.nan(mydata_e50$e50eabsbblonmin)] <- NA
+mydata_e50$e50eabsbblonmax <- apply(abs(m_a_bblons_ele), 1, quantile, na.rm = T, probs = 1);mydata_e50$e50eabsbblonmax[is.nan(mydata_e50$e50eabsbblonmax)] <- NA
+mydata_e50$e50eabsbblonmean <- apply(abs(m_a_bblons_ele), 1, function(x) mean(x, na.rm = T));mydata_e50$e50eabsbblonmean[is.nan(mydata_e50$e50eabsbblonmean)] <- NA 
+mydata_e50$e50eabsbblonmedian <- apply(abs(m_a_bblons_ele), 1, function(x) median(x, na.rm = T));mydata_e50$e50eabsbblonmedian[is.nan(mydata_e50$e50eabsbblonmedian)] <- NA
+mydata_e50$e50eabsbblonvar <- apply(abs(m_a_bblons_ele), 1, var, na.rm = T);mydata_e50$e50eabsbblonvar[is.nan(mydata_e50$e50eabsbblonvar)] <- NA
+mydata_e50$e50eabsbblonrng <- mydata_e50$e50eabsbblonmax - mydata_e50$e50eabsbblonmin
+# n unique destinations from A in B.
+mydata_e50$e50enbbs <- apply(abind(m_a_bblats_ele, m_a_bblons_ele, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# advanced info -----
+mydata_e50$e50sympatriccells <- apply(m_aB_ele_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+mydata <- cbind(mydata, mydata_e50[,c(3:ncol(mydata_e50))])
+```
+
+```{r Create a dataframe using only those origins that are in the bottom half of the TEMPERATURE cost data.}
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Temperature_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+mydata_t50 <- cooneyp[,cbind("Species.1", "Species.2")]
+mydata_t50$t50rowmincutc <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 0)
+mydata_t50$t50rowmaxcutc <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 0.50)
+for (i in 1:nrow(mydata)){
+  m_aB_tmp_mcosts[i,which(m_aB_tmp_mcosts[i,] < mydata_t50$t50rowmincutc[i])] <- NA
+  m_aB_tmp_mcosts[i,which(m_aB_tmp_mcosts[i,] > mydata_t50$t50rowmaxcutc[i])] <- NA
+}
+
+for (i in c("m_a_ids", "m_a_lats", "m_a_lons", "m_a_eles", "m_a_aspe", "m_a_slop",
+            "m_aB_tmp_mcosts", "m_aB_tmp_plengths", "m_aB_tmp_gradients")) {
+  x <- get(i)
+  x[is.na(m_aB_tmp_mcosts)] <- NA
+  assign(i, value = x)
+  rm(x); gc()
+}
+
+# btm quartile for ele DATASET -----------------------------------------------------------------------
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata_t50$t50tn <- apply(m_aB_tmp_mcosts, 1, function(x) sum(!is.na(x))) # t number
+
+# longitude info (SPECIES) -----
+mydata_t50$t50lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata_t50$t50lonmin[is.nan(mydata_t50$t50lonmin)] <- NA
+mydata_t50$t50lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata_t50$t50lonmax[is.nan(mydata_t50$t50lonmax)] <- NA
+mydata_t50$t50lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata_t50$t50lonmean[is.nan(mydata_t50$t50lonmean)] <- NA
+mydata_t50$t50lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata_t50$t50lonmedian[is.nan(mydata_t50$t50lonmedian)] <- NA
+mydata_t50$t50lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata_t50$t50lonvar[is.nan(mydata_t50$t50lonvar)] <- NA
+mydata_t50$t50lonrng <- mydata_t50$t50lonmax - mydata_t50$t50lonmin
+
+# Latitude info (SPECIES) -----
+mydata_t50$t50latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata_t50$t50latmin[is.nan(mydata_t50$t50latmin)] <- NA
+mydata_t50$t50latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata_t50$t50latmax[is.nan(mydata_t50$t50latmax)] <- NA
+mydata_t50$t50latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata_t50$t50latmean[is.nan(mydata_t50$t50latmean)] <- NA
+mydata_t50$t50latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata_t50$t50latmedian[is.nan(mydata_t50$t50latmedian)] <- NA
+mydata_t50$t50latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata_t50$t50latvar[is.nan(mydata_t50$t50latvar)] <- NA
+mydata_t50$t50latrng <- mydata_t50$t50latmax - mydata_t50$t50latmin
+
+# abslongitude info (SPECIES) -----
+mydata_t50$t50abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata_t50$t50abslonmin[is.nan(mydata_t50$t50abslonmin)] <- NA
+mydata_t50$t50abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata_t50$t50abslonmax[is.nan(mydata_t50$t50abslonmax)] <- NA
+mydata_t50$t50abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata_t50$t50abslonmean[is.nan(mydata_t50$t50abslonmean)] <- NA
+mydata_t50$t50abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata_t50$t50abslonmedian[is.nan(mydata_t50$t50abslonmedian)] <- NA
+mydata_t50$t50abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata_t50$t50abslonvar[is.nan(mydata_t50$t50abslonvar)] <- NA
+mydata_t50$t50abslonrng <- mydata_t50$t50abslonmax - mydata_t50$t50abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata_t50$t50abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata_t50$t50abslatmin[is.nan(mydata_t50$t50abslatmin)] <- NA
+mydata_t50$t50abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata_t50$t50abslatmax[is.nan(mydata_t50$t50abslatmax)] <- NA
+mydata_t50$t50abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata_t50$t50abslatmean[is.nan(mydata_t50$t50abslatmean)] <- NA
+mydata_t50$t50abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata_t50$t50abslatmedian[is.nan(mydata_t50$t50abslatmedian)] <- NA
+mydata_t50$t50abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata_t50$t50abslatvar[is.nan(mydata_t50$t50abslatvar)] <- NA
+mydata_t50$t50abslatrng <- mydata_t50$t50abslatmax - mydata_t50$t50abslatmin
+
+# elevation info (SPECIES) -----
+mydata_t50$t50elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata_t50$t50elevmin[is.nan(mydata_t50$t50elevmin)] <- NA
+mydata_t50$t50elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata_t50$t50elevmax[is.nan(mydata_t50$t50elevmax)] <- NA
+mydata_t50$t50elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata_t50$t50elevmean[is.nan(mydata_t50$t50elevmean)] <- NA
+mydata_t50$t50elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata_t50$t50elevmedian[is.nan(mydata_t50$t50elevmedian)] <- NA
+mydata_t50$t50elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata_t50$t50elevvar[is.nan(mydata_t50$t50elevvar)] <- NA
+mydata_t50$t50elevrng <- mydata_t50$t50elevmax - mydata_t50$t50elevmin
+
+
+
+# Temperature barriers ----------------------------
+# cost statistics -----
+mydata_t50$t50tcmin <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 0);mydata_t50$t50tcmin[is.nan(mydata_t50$t50tcmin)] <- NA
+mydata_t50$t50tcmax <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 1);mydata_t50$t50tcmax[is.nan(mydata_t50$t50tcmax)] <- NA
+mydata_t50$t50tcmean <- apply(m_aB_tmp_mcosts, 1, function(x) mean(x, na.rm = T));mydata_t50$t50tcmean[is.nan(mydata_t50$t50tcmean)] <- NA
+mydata_t50$t50tcmedian <- apply(m_aB_tmp_mcosts, 1, function(x) median(x, na.rm = T));mydata_t50$t50tcmedian[is.nan(mydata_t50$t50tcmedian)] <- NA
+mydata_t50$t50tcvar <- apply(m_aB_tmp_mcosts, 1, var, na.rm = T);mydata_t50$t50tcvar[is.nan(mydata_t50$t50tcvar)] <- NA
+mydata_t50$t50tcrng <- mydata_t50$t50tcmax - mydata_t50$t50tcmin
+# length statistics -----
+mydata_t50$t50tlmin <- apply(m_aB_tmp_plengths, 1, quantile, na.rm = T, probs = 0);mydata_t50$t50tlmin[is.nan(mydata_t50$t50tlmin)] <- NA
+mydata_t50$t50tlmax <- apply(m_aB_tmp_plengths, 1, quantile, na.rm = T, probs = 1);mydata_t50$t50tlmax[is.nan(mydata_t50$t50tlmax)] <- NA
+mydata_t50$t50tlmean <- apply(m_aB_tmp_plengths, 1, function(x) mean(x, na.rm = T));mydata_t50$t50tlmean[is.nan(mydata_t50$t50tlmean)] <- NA
+mydata_t50$t50tlmedian <- apply(m_aB_tmp_plengths, 1, function(x) median(x, na.rm = T));mydata_t50$t50tlmedian[is.nan(mydata_t50$t50tlmedian)] <- NA
+mydata_t50$t50tlvar <- apply(m_aB_tmp_plengths, 1, var, na.rm = T);mydata_t50$t50tlvar[is.nan(mydata_t50$t50tlvar)] <- NA
+mydata_t50$t50tlrng <- mydata_t50$t50tlmax - mydata_t50$t50tlmin
+# gradient statistics -----
+mydata_t50$t50tgmin <- apply(m_aB_tmp_gradients, 1, quantile, na.rm = T, probs = 0);mydata_t50$t50tgmin[is.nan(mydata_t50$t50tgmin)] <- NA
+mydata_t50$t50tgmax <- apply(m_aB_tmp_gradients, 1, quantile, na.rm = T, probs = 1);mydata_t50$t50tgmax[is.nan(mydata_t50$t50tgmax)] <- NA
+mydata_t50$t50tgmean <- apply(m_aB_tmp_gradients, 1, function(x) mean(x, na.rm = T));mydata_t50$t50tgmean[is.nan(mydata_t50$t50tgmean)] <- NA 
+mydata_t50$t50tgmedian <- apply(m_aB_tmp_gradients, 1, function(x) median(x, na.rm = T));mydata_t50$t50tgmedian[is.nan(mydata_t50$t50tgmedian)] <- NA
+mydata_t50$t50tgvar <- apply(m_aB_tmp_gradients, 1, var, na.rm = T);mydata_t50$t50tgvar[is.nan(mydata_t50$t50tgvar)] <- NA
+mydata_t50$t50tgrng <- mydata_t50$t50tgmax - mydata_t50$t50tgmin
+# bblat statistics -----
+mydata_t50$t50tbblatmin <- apply(m_a_bblats_tmp, 1, quantile, na.rm = T, probs = 0);mydata_t50$t50tbblatmin[is.nan(mydata_t50$t50tbblatmin)] <- NA
+mydata_t50$t50tbblatmax <- apply(m_a_bblats_tmp, 1, quantile, na.rm = T, probs = 1);mydata_t50$t50tbblatmax[is.nan(mydata_t50$t50tbblatmax)] <- NA
+mydata_t50$t50tbblatmean <- apply(m_a_bblats_tmp, 1, function(x) mean(x, na.rm = T));mydata_t50$t50tbblatmean[is.nan(mydata_t50$t50tbblatmean)] <- NA 
+mydata_t50$t50tbblatmedian <- apply(m_a_bblats_tmp, 1, function(x) median(x, na.rm = T));mydata_t50$t50tbblatmedian[is.nan(mydata_t50$t50tbblatmedian)] <- NA
+mydata_t50$t50tbblatvar <- apply(m_a_bblats_tmp, 1, var, na.rm = T);mydata_t50$t50tbblatvar[is.nan(mydata_t50$t50tbblatvar)] <- NA
+mydata_t50$t50tbblatrng <- mydata_t50$t50tbblatmax - mydata_t50$t50tbblatmin
+# bblon statistics -----
+mydata_t50$t50tbblonmin <- apply(m_a_bblons_tmp, 1, quantile, na.rm = T, probs = 0);mydata_t50$t50tbblonmin[is.nan(mydata_t50$t50tbblonmin)] <- NA
+mydata_t50$t50tbblonmax <- apply(m_a_bblons_tmp, 1, quantile, na.rm = T, probs = 1);mydata_t50$t50tbblonmax[is.nan(mydata_t50$t50tbblonmax)] <- NA
+mydata_t50$t50tbblonmean <- apply(m_a_bblons_tmp, 1, function(x) mean(x, na.rm = T));mydata_t50$t50tbblonmean[is.nan(mydata_t50$t50tbblonmean)] <- NA 
+mydata_t50$t50tbblonmedian <- apply(m_a_bblons_tmp, 1, function(x) median(x, na.rm = T));mydata_t50$t50tbblonmedian[is.nan(mydata_t50$t50tbblonmedian)] <- NA
+mydata_t50$t50tbblonvar <- apply(m_a_bblons_tmp, 1, var, na.rm = T);mydata_t50$t50tbblonvar[is.nan(mydata_t50$t50tbblonvar)] <- NA
+mydata_t50$t50tbblonrng <- mydata_t50$t50tbblonmax - mydata_t50$t50tbblonmin
+# absbblat statistics -----
+mydata_t50$t50tabsbblatmin <- apply(abs(m_a_bblats_tmp), 1, quantile, na.rm = T, probs = 0);mydata_t50$t50tabsbblatmin[is.nan(mydata_t50$t50tabsbblatmin)] <- NA
+mydata_t50$t50tabsbblatmax <- apply(abs(m_a_bblats_tmp), 1, quantile, na.rm = T, probs = 1);mydata_t50$t50tabsbblatmax[is.nan(mydata_t50$t50tabsbblatmax)] <- NA
+mydata_t50$t50tabsbblatmean <- apply(abs(m_a_bblats_tmp), 1, function(x) mean(x, na.rm = T));mydata_t50$t50tabsbblatmean[is.nan(mydata_t50$t50tabsbblatmean)] <- NA 
+mydata_t50$t50tabsbblatmedian <- apply(abs(m_a_bblats_tmp), 1, function(x) median(x, na.rm = T));mydata_t50$t50tabsbblatmedian[is.nan(mydata_t50$t50tabsbblatmedian)] <- NA
+mydata_t50$t50tabsbblatvar <- apply(abs(m_a_bblats_tmp), 1, var, na.rm = T);mydata_t50$t50tabsbblatvar[is.nan(mydata_t50$t50tabsbblatvar)] <- NA
+mydata_t50$t50tabsbblatrng <- mydata_t50$t50tabsbblatmax - mydata_t50$t50tabsbblatmin
+# absbblon statistics -----
+mydata_t50$t50tabsbblonmin <- apply(abs(m_a_bblons_tmp), 1, quantile, na.rm = T, probs = 0);mydata_t50$t50tabsbblonmin[is.nan(mydata_t50$t50tabsbblonmin)] <- NA
+mydata_t50$t50tabsbblonmax <- apply(abs(m_a_bblons_tmp), 1, quantile, na.rm = T, probs = 1);mydata_t50$t50tabsbblonmax[is.nan(mydata_t50$t50tabsbblonmax)] <- NA
+mydata_t50$t50tabsbblonmean <- apply(abs(m_a_bblons_tmp), 1, function(x) mean(x, na.rm = T));mydata_t50$t50tabsbblonmean[is.nan(mydata_t50$t50tabsbblonmean)] <- NA 
+mydata_t50$t50tabsbblonmedian <- apply(abs(m_a_bblons_tmp), 1, function(x) median(x, na.rm = T));mydata_t50$t50tabsbblonmedian[is.nan(mydata_t50$t50tabsbblonmedian)] <- NA
+mydata_t50$t50tabsbblonvar <- apply(abs(m_a_bblons_tmp), 1, var, na.rm = T);mydata_t50$t50tabsbblonvar[is.nan(mydata_t50$t50tabsbblonvar)] <- NA
+mydata_t50$t50tabsbblonrng <- mydata_t50$t50tabsbblonmax - mydata_t50$t50tabsbblonmin
+# n unique destinations from A in B.
+mydata_t50$t50tnbbs <- apply(abind(m_a_bblats_tmp, m_a_bblons_tmp, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# advanced info -----
+mydata_t50$t50sympatriccells <- apply(m_aB_tmp_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+mydata <- cbind(mydata, mydata_t50[,c(3:ncol(mydata_t50))])
+```
+
+
+```{r Create a dataframe using only those origins that are in the bottom half of the PRECIPITATION cost data.}
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Precipitation_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+mydata_p50 <- cooneyp[,cbind("Species.1", "Species.2")]
+mydata_p50$p50rowmincutc <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 0)
+mydata_p50$p50rowmaxcutc <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 0.50)
+for (i in 1:nrow(mydata)){
+  m_aB_pcp_mcosts[i,which(m_aB_pcp_mcosts[i,] < mydata_p50$p50rowmincutc[i])] <- NA
+  m_aB_pcp_mcosts[i,which(m_aB_pcp_mcosts[i,] > mydata_p50$p50rowmaxcutc[i])] <- NA
+}
+
+for (i in c("m_a_ids", "m_a_lats", "m_a_lons", "m_a_eles", "m_a_aspe", "m_a_slop",
+            "m_aB_pcp_mcosts", "m_aB_pcp_plengths", "m_aB_pcp_gradients")) {
+  x <- get(i)
+  x[is.na(m_aB_pcp_mcosts)] <- NA
+  assign(i, value = x)
+  rm(x); gc()
+}
+
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata_p50$p50pn <- apply(m_aB_pcp_mcosts, 1, function(x) sum(!is.na(x))) # p number
+
+# longitude info (SPECIES) -----
+mydata_p50$p50lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata_p50$p50lonmin[is.nan(mydata_p50$p50lonmin)] <- NA
+mydata_p50$p50lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata_p50$p50lonmax[is.nan(mydata_p50$p50lonmax)] <- NA
+mydata_p50$p50lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata_p50$p50lonmean[is.nan(mydata_p50$p50lonmean)] <- NA
+mydata_p50$p50lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata_p50$p50lonmedian[is.nan(mydata_p50$p50lonmedian)] <- NA
+mydata_p50$p50lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata_p50$p50lonvar[is.nan(mydata_p50$p50lonvar)] <- NA
+mydata_p50$p50lonrng <- mydata_p50$p50lonmax - mydata_p50$p50lonmin
+
+# Latitude info (SPECIES) -----
+mydata_p50$p50latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata_p50$p50latmin[is.nan(mydata_p50$p50latmin)] <- NA
+mydata_p50$p50latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata_p50$p50latmax[is.nan(mydata_p50$p50latmax)] <- NA
+mydata_p50$p50latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata_p50$p50latmean[is.nan(mydata_p50$p50latmean)] <- NA
+mydata_p50$p50latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata_p50$p50latmedian[is.nan(mydata_p50$p50latmedian)] <- NA
+mydata_p50$p50latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata_p50$p50latvar[is.nan(mydata_p50$p50latvar)] <- NA
+mydata_p50$p50latrng <- mydata_p50$p50latmax - mydata_p50$p50latmin
+
+# abslongitude info (SPECIES) -----
+mydata_p50$p50abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata_p50$p50abslonmin[is.nan(mydata_p50$p50abslonmin)] <- NA
+mydata_p50$p50abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata_p50$p50abslonmax[is.nan(mydata_p50$p50abslonmax)] <- NA
+mydata_p50$p50abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata_p50$p50abslonmean[is.nan(mydata_p50$p50abslonmean)] <- NA
+mydata_p50$p50abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata_p50$p50abslonmedian[is.nan(mydata_p50$p50abslonmedian)] <- NA
+mydata_p50$p50abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata_p50$p50abslonvar[is.nan(mydata_p50$p50abslonvar)] <- NA
+mydata_p50$p50abslonrng <- mydata_p50$p50abslonmax - mydata_p50$p50abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata_p50$p50abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata_p50$p50abslatmin[is.nan(mydata_p50$p50abslatmin)] <- NA
+mydata_p50$p50abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata_p50$p50abslatmax[is.nan(mydata_p50$p50abslatmax)] <- NA
+mydata_p50$p50abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata_p50$p50abslatmean[is.nan(mydata_p50$p50abslatmean)] <- NA
+mydata_p50$p50abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata_p50$p50abslatmedian[is.nan(mydata_p50$p50abslatmedian)] <- NA
+mydata_p50$p50abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata_p50$p50abslatvar[is.nan(mydata_p50$p50abslatvar)] <- NA
+mydata_p50$p50abslatrng <- mydata_p50$p50abslatmax - mydata_p50$p50abslatmin
+
+# elevation info (SPECIES) -----
+mydata_p50$p50elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata_p50$p50elevmin[is.nan(mydata_p50$p50elevmin)] <- NA
+mydata_p50$p50elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata_p50$p50elevmax[is.nan(mydata_p50$p50elevmax)] <- NA
+mydata_p50$p50elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata_p50$p50elevmean[is.nan(mydata_p50$p50elevmean)] <- NA
+mydata_p50$p50elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata_p50$p50elevmedian[is.nan(mydata_p50$p50elevmedian)] <- NA
+mydata_p50$p50elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata_p50$p50elevvar[is.nan(mydata_p50$p50elevvar)] <- NA
+mydata_p50$p50elevrng <- mydata_p50$p50elevmax - mydata_p50$p50elevmin
+
+
+
+# Precip barriers ----------------------------
+# cost statistics -----
+mydata_p50$p50pcmin <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 0);mydata_p50$p50pcmin[is.nan(mydata_p50$p50pcmin)] <- NA
+mydata_p50$p50pcmax <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 1);mydata_p50$p50pcmax[is.nan(mydata_p50$p50pcmax)] <- NA
+mydata_p50$p50pcmean <- apply(m_aB_pcp_mcosts, 1, function(x) mean(x, na.rm = T));mydata_p50$p50pcmean[is.nan(mydata_p50$p50pcmean)] <- NA
+mydata_p50$p50pcmedian <- apply(m_aB_pcp_mcosts, 1, function(x) median(x, na.rm = T));mydata_p50$p50pcmedian[is.nan(mydata_p50$p50pcmedian)] <- NA
+mydata_p50$p50pcvar <- apply(m_aB_pcp_mcosts, 1, var, na.rm = T);mydata_p50$p50pcvar[is.nan(mydata_p50$p50pcvar)] <- NA
+mydata_p50$p50pcrng <- mydata_p50$p50pcmax - mydata_p50$p50pcmin
+# length statistics -----
+mydata_p50$p50plmin <- apply(m_aB_pcp_plengths, 1, quantile, na.rm = T, probs = 0);mydata_p50$p50plmin[is.nan(mydata_p50$p50plmin)] <- NA
+mydata_p50$p50plmax <- apply(m_aB_pcp_plengths, 1, quantile, na.rm = T, probs = 1);mydata_p50$p50plmax[is.nan(mydata_p50$p50plmax)] <- NA
+mydata_p50$p50plmean <- apply(m_aB_pcp_plengths, 1, function(x) mean(x, na.rm = T));mydata_p50$p50plmean[is.nan(mydata_p50$p50plmean)] <- NA
+mydata_p50$p50plmedian <- apply(m_aB_pcp_plengths, 1, function(x) median(x, na.rm = T));mydata_p50$p50plmedian[is.nan(mydata_p50$p50plmedian)] <- NA
+mydata_p50$p50plvar <- apply(m_aB_pcp_plengths, 1, var, na.rm = T);mydata_p50$p50plvar[is.nan(mydata_p50$p50plvar)] <- NA
+mydata_p50$p50plrng <- mydata_p50$p50plmax - mydata_p50$p50plmin
+# gradient statistics -----
+mydata_p50$p50pgmin <- apply(m_aB_pcp_gradients, 1, quantile, na.rm = T, probs = 0);mydata_p50$p50pgmin[is.nan(mydata_p50$p50pgmin)] <- NA
+mydata_p50$p50pgmax <- apply(m_aB_pcp_gradients, 1, quantile, na.rm = T, probs = 1);mydata_p50$p50pgmax[is.nan(mydata_p50$p50pgmax)] <- NA
+mydata_p50$p50pgmean <- apply(m_aB_pcp_gradients, 1, function(x) mean(x, na.rm = T));mydata_p50$p50pgmean[is.nan(mydata_p50$p50pgmean)] <- NA 
+mydata_p50$p50pgmedian <- apply(m_aB_pcp_gradients, 1, function(x) median(x, na.rm = T));mydata_p50$p50pgmedian[is.nan(mydata_p50$p50pgmedian)] <- NA
+mydata_p50$p50pgvar <- apply(m_aB_pcp_gradients, 1, var, na.rm = T);mydata_p50$p50pgvar[is.nan(mydata_p50$p50pgvar)] <- NA
+mydata_p50$p50pgrng <- mydata_p50$p50pgmax - mydata_p50$p50pgmin
+# bblat statistics -----
+mydata_p50$p50pbblatmin <- apply(m_a_bblats_pcp, 1, quantile, na.rm = T, probs = 0);mydata_p50$p50pbblatmin[is.nan(mydata_p50$p50pbblatmin)] <- NA
+mydata_p50$p50pbblatmax <- apply(m_a_bblats_pcp, 1, quantile, na.rm = T, probs = 1);mydata_p50$p50pbblatmax[is.nan(mydata_p50$p50pbblatmax)] <- NA
+mydata_p50$p50pbblatmean <- apply(m_a_bblats_pcp, 1, function(x) mean(x, na.rm = T));mydata_p50$p50pbblatmean[is.nan(mydata_p50$p50pbblatmean)] <- NA 
+mydata_p50$p50pbblatmedian <- apply(m_a_bblats_pcp, 1, function(x) median(x, na.rm = T));mydata_p50$p50pbblatmedian[is.nan(mydata_p50$p50pbblatmedian)] <- NA
+mydata_p50$p50pbblatvar <- apply(m_a_bblats_pcp, 1, var, na.rm = T);mydata_p50$p50pbblatvar[is.nan(mydata_p50$p50pbblatvar)] <- NA
+mydata_p50$p50pbblatrng <- mydata_p50$p50pbblatmax - mydata_p50$p50pbblatmin
+# bblon statistics -----
+mydata_p50$p50pbblonmin <- apply(m_a_bblons_pcp, 1, quantile, na.rm = T, probs = 0);mydata_p50$p50pbblonmin[is.nan(mydata_p50$p50pbblonmin)] <- NA
+mydata_p50$p50pbblonmax <- apply(m_a_bblons_pcp, 1, quantile, na.rm = T, probs = 1);mydata_p50$p50pbblonmax[is.nan(mydata_p50$p50pbblonmax)] <- NA
+mydata_p50$p50pbblonmean <- apply(m_a_bblons_pcp, 1, function(x) mean(x, na.rm = T));mydata_p50$p50pbblonmean[is.nan(mydata_p50$p50pbblonmean)] <- NA 
+mydata_p50$p50pbblonmedian <- apply(m_a_bblons_pcp, 1, function(x) median(x, na.rm = T));mydata_p50$p50pbblonmedian[is.nan(mydata_p50$p50pbblonmedian)] <- NA
+mydata_p50$p50pbblonvar <- apply(m_a_bblons_pcp, 1, var, na.rm = T);mydata_p50$p50pbblonvar[is.nan(mydata_p50$p50pbblonvar)] <- NA
+mydata_p50$p50pbblonrng <- mydata_p50$p50pbblonmax - mydata_p50$p50pbblonmin
+# absbblat statistics -----
+mydata_p50$p50pabsbblatmin <- apply(abs(m_a_bblats_pcp), 1, quantile, na.rm = T, probs = 0);mydata_p50$p50pabsbblatmin[is.nan(mydata_p50$p50pabsbblatmin)] <- NA
+mydata_p50$p50pabsbblatmax <- apply(abs(m_a_bblats_pcp), 1, quantile, na.rm = T, probs = 1);mydata_p50$p50pabsbblatmax[is.nan(mydata_p50$p50pabsbblatmax)] <- NA
+mydata_p50$p50pabsbblatmean <- apply(abs(m_a_bblats_pcp), 1, function(x) mean(x, na.rm = T));mydata_p50$p50pabsbblatmean[is.nan(mydata_p50$p50pabsbblatmean)] <- NA 
+mydata_p50$p50pabsbblatmedian <- apply(abs(m_a_bblats_pcp), 1, function(x) median(x, na.rm = T));mydata_p50$p50pabsbblatmedian[is.nan(mydata_p50$p50pabsbblatmedian)] <- NA
+mydata_p50$p50pabsbblatvar <- apply(abs(m_a_bblats_pcp), 1, var, na.rm = T);mydata_p50$p50pabsbblatvar[is.nan(mydata_p50$p50pabsbblatvar)] <- NA
+mydata_p50$p50pabsbblatrng <- mydata_p50$p50pabsbblatmax - mydata_p50$p50pabsbblatmin
+# absbblon statistics -----
+mydata_p50$p50pabsbblonmin <- apply(abs(m_a_bblons_pcp), 1, quantile, na.rm = T, probs = 0);mydata_p50$p50pabsbblonmin[is.nan(mydata_p50$p50pabsbblonmin)] <- NA
+mydata_p50$p50pabsbblonmax <- apply(abs(m_a_bblons_pcp), 1, quantile, na.rm = T, probs = 1);mydata_p50$p50pabsbblonmax[is.nan(mydata_p50$p50pabsbblonmax)] <- NA
+mydata_p50$p50pabsbblonmean <- apply(abs(m_a_bblons_pcp), 1, function(x) mean(x, na.rm = T));mydata_p50$p50pabsbblonmean[is.nan(mydata_p50$p50pabsbblonmean)] <- NA 
+mydata_p50$p50pabsbblonmedian <- apply(abs(m_a_bblons_pcp), 1, function(x) median(x, na.rm = T));mydata_p50$p50pabsbblonmedian[is.nan(mydata_p50$p50pabsbblonmedian)] <- NA
+mydata_p50$p50pabsbblonvar <- apply(abs(m_a_bblons_pcp), 1, var, na.rm = T);mydata_p50$p50pabsbblonvar[is.nan(mydata_p50$p50pabsbblonvar)] <- NA
+mydata_p50$p50pabsbblonrng <- mydata_p50$p50pabsbblonmax - mydata_p50$p50pabsbblonmin
+# n unique destinations from A in B.
+mydata_p50$p50pnbbs <- apply(abind(m_a_bblats_pcp, m_a_bblons_pcp, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# advanced info -----
+mydata_p50$p50sympatriccells <- apply(m_aB_pcp_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+mydata <- cbind(mydata, mydata_p50[,c(3:ncol(mydata_p50))])
+```
+
+
+
+```{r Create a dataframe using only those origins that are in the bottom quartile of the ELEVATION cost data.}
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Elevation_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+mydata_e25 <- cooneyp[,cbind("Species.1", "Species.2")]
+mydata_e25$e25rowmincutc <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0)
+mydata_e25$e25rowmaxcutc <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0.25)
+for (i in 1:nrow(mydata)){
+  m_aB_ele_mcosts[i,which(m_aB_ele_mcosts[i,] < mydata_e25$e25rowmincutc[i])] <- NA
+  m_aB_ele_mcosts[i,which(m_aB_ele_mcosts[i,] > mydata_e25$e25rowmaxcutc[i])] <- NA
+}
+
+for (i in c("m_a_ids", "m_a_lats", "m_a_lons", "m_a_eles", "m_a_aspe", "m_a_slop", 
+            "m_aB_ele_mcosts", "m_aB_ele_plengths", "m_aB_ele_gradients")) {
+  x <- get(i)
+  x[is.na(m_aB_ele_mcosts)] <- NA
+  assign(i, value = x)
+  rm(x); gc()
+}
+
+# btm quartile for ele DATASET -----------------------------------------------------------------------
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata_e25$e25en <- apply(m_aB_ele_mcosts, 1, function(x) sum(!is.na(x))) # e number
+
+# longitude info (SPECIES) -----
+mydata_e25$e25lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata_e25$e25lonmin[is.nan(mydata_e25$e25lonmin)] <- NA
+mydata_e25$e25lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata_e25$e25lonmax[is.nan(mydata_e25$e25lonmax)] <- NA
+mydata_e25$e25lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata_e25$e25lonmean[is.nan(mydata_e25$e25lonmean)] <- NA
+mydata_e25$e25lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata_e25$e25lonmedian[is.nan(mydata_e25$e25lonmedian)] <- NA
+mydata_e25$e25lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata_e25$e25lonvar[is.nan(mydata_e25$e25lonvar)] <- NA
+mydata_e25$e25lonrng <- mydata_e25$e25lonmax - mydata_e25$e25lonmin
+
+# Latitude info (SPECIES) -----
+mydata_e25$e25latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata_e25$e25latmin[is.nan(mydata_e25$e25latmin)] <- NA
+mydata_e25$e25latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata_e25$e25latmax[is.nan(mydata_e25$e25latmax)] <- NA
+mydata_e25$e25latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata_e25$e25latmean[is.nan(mydata_e25$e25latmean)] <- NA
+mydata_e25$e25latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata_e25$e25latmedian[is.nan(mydata_e25$e25latmedian)] <- NA
+mydata_e25$e25latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata_e25$e25latvar[is.nan(mydata_e25$e25latvar)] <- NA
+mydata_e25$e25latrng <- mydata_e25$e25latmax - mydata_e25$e25latmin
+
+# abslongitude info (SPECIES) -----
+mydata_e25$e25abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata_e25$e25abslonmin[is.nan(mydata_e25$e25abslonmin)] <- NA
+mydata_e25$e25abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata_e25$e25abslonmax[is.nan(mydata_e25$e25abslonmax)] <- NA
+mydata_e25$e25abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata_e25$e25abslonmean[is.nan(mydata_e25$e25abslonmean)] <- NA
+mydata_e25$e25abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata_e25$e25abslonmedian[is.nan(mydata_e25$e25abslonmedian)] <- NA
+mydata_e25$e25abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata_e25$e25abslonvar[is.nan(mydata_e25$e25abslonvar)] <- NA
+mydata_e25$e25abslonrng <- mydata_e25$e25abslonmax - mydata_e25$e25abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata_e25$e25abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata_e25$e25abslatmin[is.nan(mydata_e25$e25abslatmin)] <- NA
+mydata_e25$e25abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata_e25$e25abslatmax[is.nan(mydata_e25$e25abslatmax)] <- NA
+mydata_e25$e25abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata_e25$e25abslatmean[is.nan(mydata_e25$e25abslatmean)] <- NA
+mydata_e25$e25abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata_e25$e25abslatmedian[is.nan(mydata_e25$e25abslatmedian)] <- NA
+mydata_e25$e25abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata_e25$e25abslatvar[is.nan(mydata_e25$e25abslatvar)] <- NA
+mydata_e25$e25abslatrng <- mydata_e25$e25abslatmax - mydata_e25$e25abslatmin
+
+# elevation info (SPECIES) -----
+mydata_e25$e25elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata_e25$e25elevmin[is.nan(mydata_e25$e25elevmin)] <- NA
+mydata_e25$e25elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata_e25$e25elevmax[is.nan(mydata_e25$e25elevmax)] <- NA
+mydata_e25$e25elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata_e25$e25elevmean[is.nan(mydata_e25$e25elevmean)] <- NA
+mydata_e25$e25elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata_e25$e25elevmedian[is.nan(mydata_e25$e25elevmedian)] <- NA
+mydata_e25$e25elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata_e25$e25elevvar[is.nan(mydata_e25$e25elevvar)] <- NA
+mydata_e25$e25elevrng <- mydata_e25$e25elevmax - mydata_e25$e25elevmin
+
+
+
+
+# Elevation barriers ----------------------------
+# cost statistics -----
+mydata_e25$e25ecmin <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0);mydata_e25$e25ecmin[is.nan(mydata_e25$e25ecmin)] <- NA
+mydata_e25$e25ecmax <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 1);mydata_e25$e25ecmax[is.nan(mydata_e25$e25ecmax)] <- NA
+mydata_e25$e25ecmean <- apply(m_aB_ele_mcosts, 1, function(x) mean(x, na.rm = T));mydata_e25$e25ecmean[is.nan(mydata_e25$e25ecmean)] <- NA
+mydata_e25$e25ecmedian <- apply(m_aB_ele_mcosts, 1, function(x) median(x, na.rm = T));mydata_e25$e25ecmedian[is.nan(mydata_e25$e25ecmedian)] <- NA
+mydata_e25$e25ecvar <- apply(m_aB_ele_mcosts, 1, var, na.rm = T);mydata_e25$e25ecvar[is.nan(mydata_e25$e25ecvar)] <- NA
+mydata_e25$e25ecrng <- mydata_e25$e25ecmax - mydata_e25$e25ecmin
+# length statistics -----
+mydata_e25$e25elmin <- apply(m_aB_ele_plengths, 1, quantile, na.rm = T, probs = 0);mydata_e25$e25elmin[is.nan(mydata_e25$e25elmin)] <- NA
+mydata_e25$e25elmax <- apply(m_aB_ele_plengths, 1, quantile, na.rm = T, probs = 1);mydata_e25$e25elmax[is.nan(mydata_e25$e25elmax)] <- NA
+mydata_e25$e25elmean <- apply(m_aB_ele_plengths, 1, function(x) mean(x, na.rm = T));mydata_e25$e25elmean[is.nan(mydata_e25$e25elmean)] <- NA
+mydata_e25$e25elmedian <- apply(m_aB_ele_plengths, 1, function(x) median(x, na.rm = T));mydata_e25$e25elmedian[is.nan(mydata_e25$e25elmedian)] <- NA
+mydata_e25$e25elvar <- apply(m_aB_ele_plengths, 1, var, na.rm = T);mydata_e25$e25elvar[is.nan(mydata_e25$e25elvar)] <- NA
+mydata_e25$e25elrng <- mydata_e25$e25elmax - mydata_e25$e25elmin
+# gradient statistics -----
+mydata_e25$e25egmin <- apply(m_aB_ele_gradients, 1, quantile, na.rm = T, probs = 0);mydata_e25$e25egmin[is.nan(mydata_e25$e25egmin)] <- NA
+mydata_e25$e25egmax <- apply(m_aB_ele_gradients, 1, quantile, na.rm = T, probs = 1);mydata_e25$e25egmax[is.nan(mydata_e25$e25egmax)] <- NA
+mydata_e25$e25egmean <- apply(m_aB_ele_gradients, 1, function(x) mean(x, na.rm = T));mydata_e25$e25egmean[is.nan(mydata_e25$e25egmean)] <- NA 
+mydata_e25$e25egmedian <- apply(m_aB_ele_gradients, 1, function(x) median(x, na.rm = T));mydata_e25$e25egmedian[is.nan(mydata_e25$e25egmedian)] <- NA
+mydata_e25$e25egvar <- apply(m_aB_ele_gradients, 1, var, na.rm = T);mydata_e25$e25egvar[is.nan(mydata_e25$e25egvar)] <- NA
+mydata_e25$e25egrng <- mydata_e25$e25egmax - mydata_e25$e25egmin
+# bblat statistics -----
+mydata_e25$e25ebblatmin <- apply(m_a_bblats_ele, 1, quantile, na.rm = T, probs = 0);mydata_e25$e25ebblatmin[is.nan(mydata_e25$e25ebblatmin)] <- NA
+mydata_e25$e25ebblatmax <- apply(m_a_bblats_ele, 1, quantile, na.rm = T, probs = 1);mydata_e25$e25ebblatmax[is.nan(mydata_e25$e25ebblatmax)] <- NA
+mydata_e25$e25ebblatmean <- apply(m_a_bblats_ele, 1, function(x) mean(x, na.rm = T));mydata_e25$e25ebblatmean[is.nan(mydata_e25$e25ebblatmean)] <- NA 
+mydata_e25$e25ebblatmedian <- apply(m_a_bblats_ele, 1, function(x) median(x, na.rm = T));mydata_e25$e25ebblatmedian[is.nan(mydata_e25$e25ebblatmedian)] <- NA
+mydata_e25$e25ebblatvar <- apply(m_a_bblats_ele, 1, var, na.rm = T);mydata_e25$e25ebblatvar[is.nan(mydata_e25$e25ebblatvar)] <- NA
+mydata_e25$e25ebblatrng <- mydata_e25$e25ebblatmax - mydata_e25$e25ebblatmin
+# bblon statistics -----
+mydata_e25$e25ebblonmin <- apply(m_a_bblons_ele, 1, quantile, na.rm = T, probs = 0);mydata_e25$e25ebblonmin[is.nan(mydata_e25$e25ebblonmin)] <- NA
+mydata_e25$e25ebblonmax <- apply(m_a_bblons_ele, 1, quantile, na.rm = T, probs = 1);mydata_e25$e25ebblonmax[is.nan(mydata_e25$e25ebblonmax)] <- NA
+mydata_e25$e25ebblonmean <- apply(m_a_bblons_ele, 1, function(x) mean(x, na.rm = T));mydata_e25$e25ebblonmean[is.nan(mydata_e25$e25ebblonmean)] <- NA 
+mydata_e25$e25ebblonmedian <- apply(m_a_bblons_ele, 1, function(x) median(x, na.rm = T));mydata_e25$e25ebblonmedian[is.nan(mydata_e25$e25ebblonmedian)] <- NA
+mydata_e25$e25ebblonvar <- apply(m_a_bblons_ele, 1, var, na.rm = T);mydata_e25$e25ebblonvar[is.nan(mydata_e25$e25ebblonvar)] <- NA
+mydata_e25$e25ebblonrng <- mydata_e25$e25ebblonmax - mydata_e25$e25ebblonmin
+# absbblat statistics -----
+mydata_e25$e25eabsbblatmin <- apply(abs(m_a_bblats_ele), 1, quantile, na.rm = T, probs = 0);mydata_e25$e25eabsbblatmin[is.nan(mydata_e25$e25eabsbblatmin)] <- NA
+mydata_e25$e25eabsbblatmax <- apply(abs(m_a_bblats_ele), 1, quantile, na.rm = T, probs = 1);mydata_e25$e25eabsbblatmax[is.nan(mydata_e25$e25eabsbblatmax)] <- NA
+mydata_e25$e25eabsbblatmean <- apply(abs(m_a_bblats_ele), 1, function(x) mean(x, na.rm = T));mydata_e25$e25eabsbblatmean[is.nan(mydata_e25$e25eabsbblatmean)] <- NA 
+mydata_e25$e25eabsbblatmedian <- apply(abs(m_a_bblats_ele), 1, function(x) median(x, na.rm = T));mydata_e25$e25eabsbblatmedian[is.nan(mydata_e25$e25eabsbblatmedian)] <- NA
+mydata_e25$e25eabsbblatvar <- apply(abs(m_a_bblats_ele), 1, var, na.rm = T);mydata_e25$e25eabsbblatvar[is.nan(mydata_e25$e25eabsbblatvar)] <- NA
+mydata_e25$e25eabsbblatrng <- mydata_e25$e25eabsbblatmax - mydata_e25$e25eabsbblatmin
+# absbblon statistics -----
+mydata_e25$e25eabsbblonmin <- apply(abs(m_a_bblons_ele), 1, quantile, na.rm = T, probs = 0);mydata_e25$e25eabsbblonmin[is.nan(mydata_e25$e25eabsbblonmin)] <- NA
+mydata_e25$e25eabsbblonmax <- apply(abs(m_a_bblons_ele), 1, quantile, na.rm = T, probs = 1);mydata_e25$e25eabsbblonmax[is.nan(mydata_e25$e25eabsbblonmax)] <- NA
+mydata_e25$e25eabsbblonmean <- apply(abs(m_a_bblons_ele), 1, function(x) mean(x, na.rm = T));mydata_e25$e25eabsbblonmean[is.nan(mydata_e25$e25eabsbblonmean)] <- NA 
+mydata_e25$e25eabsbblonmedian <- apply(abs(m_a_bblons_ele), 1, function(x) median(x, na.rm = T));mydata_e25$e25eabsbblonmedian[is.nan(mydata_e25$e25eabsbblonmedian)] <- NA
+mydata_e25$e25eabsbblonvar <- apply(abs(m_a_bblons_ele), 1, var, na.rm = T);mydata_e25$e25eabsbblonvar[is.nan(mydata_e25$e25eabsbblonvar)] <- NA
+mydata_e25$e25eabsbblonrng <- mydata_e25$e25eabsbblonmax - mydata_e25$e25eabsbblonmin
+# n unique destinations from A in B.
+mydata_e25$e25enbbs <- apply(abind(m_a_bblats_ele, m_a_bblons_ele, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# advanced info -----
+mydata_e25$e25sympatriccells <- apply(m_aB_ele_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+mydata <- cbind(mydata, mydata_e25[,c(3:ncol(mydata_e25))])
+```
+
+```{r Create a dataframe using only those origins that are in the bottom quartile of the TEMPERATURE cost data.}
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Temperature_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+mydata_t25 <- cooneyp[,cbind("Species.1", "Species.2")]
+mydata_t25$t25rowmincutc <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 0)
+mydata_t25$t25rowmaxcutc <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 0.25)
+for (i in 1:nrow(mydata)){
+  m_aB_tmp_mcosts[i,which(m_aB_tmp_mcosts[i,] < mydata_t25$t25rowmincutc[i])] <- NA
+  m_aB_tmp_mcosts[i,which(m_aB_tmp_mcosts[i,] > mydata_t25$t25rowmaxcutc[i])] <- NA
+}
+
+for (i in c("m_a_ids", "m_a_lats", "m_a_lons", "m_a_eles", "m_a_aspe", "m_a_slop",
+            "m_aB_tmp_mcosts", "m_aB_tmp_plengths", "m_aB_tmp_gradients")) {
+  x <- get(i)
+  x[is.na(m_aB_tmp_mcosts)] <- NA
+  assign(i, value = x)
+  rm(x); gc()
+}
+
+# btm quartile for ele DATASET -----------------------------------------------------------------------
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata_t25$t25tn <- apply(m_aB_tmp_mcosts, 1, function(x) sum(!is.na(x))) # t number
+
+# longitude info (SPECIES) -----
+mydata_t25$t25lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata_t25$t25lonmin[is.nan(mydata_t25$t25lonmin)] <- NA
+mydata_t25$t25lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata_t25$t25lonmax[is.nan(mydata_t25$t25lonmax)] <- NA
+mydata_t25$t25lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata_t25$t25lonmean[is.nan(mydata_t25$t25lonmean)] <- NA
+mydata_t25$t25lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata_t25$t25lonmedian[is.nan(mydata_t25$t25lonmedian)] <- NA
+mydata_t25$t25lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata_t25$t25lonvar[is.nan(mydata_t25$t25lonvar)] <- NA
+mydata_t25$t25lonrng <- mydata_t25$t25lonmax - mydata_t25$t25lonmin
+
+# Latitude info (SPECIES) -----
+mydata_t25$t25latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata_t25$t25latmin[is.nan(mydata_t25$t25latmin)] <- NA
+mydata_t25$t25latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata_t25$t25latmax[is.nan(mydata_t25$t25latmax)] <- NA
+mydata_t25$t25latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata_t25$t25latmean[is.nan(mydata_t25$t25latmean)] <- NA
+mydata_t25$t25latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata_t25$t25latmedian[is.nan(mydata_t25$t25latmedian)] <- NA
+mydata_t25$t25latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata_t25$t25latvar[is.nan(mydata_t25$t25latvar)] <- NA
+mydata_t25$t25latrng <- mydata_t25$t25latmax - mydata_t25$t25latmin
+
+# abslongitude info (SPECIES) -----
+mydata_t25$t25abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata_t25$t25abslonmin[is.nan(mydata_t25$t25abslonmin)] <- NA
+mydata_t25$t25abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata_t25$t25abslonmax[is.nan(mydata_t25$t25abslonmax)] <- NA
+mydata_t25$t25abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata_t25$t25abslonmean[is.nan(mydata_t25$t25abslonmean)] <- NA
+mydata_t25$t25abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata_t25$t25abslonmedian[is.nan(mydata_t25$t25abslonmedian)] <- NA
+mydata_t25$t25abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata_t25$t25abslonvar[is.nan(mydata_t25$t25abslonvar)] <- NA
+mydata_t25$t25abslonrng <- mydata_t25$t25abslonmax - mydata_t25$t25abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata_t25$t25abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata_t25$t25abslatmin[is.nan(mydata_t25$t25abslatmin)] <- NA
+mydata_t25$t25abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata_t25$t25abslatmax[is.nan(mydata_t25$t25abslatmax)] <- NA
+mydata_t25$t25abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata_t25$t25abslatmean[is.nan(mydata_t25$t25abslatmean)] <- NA
+mydata_t25$t25abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata_t25$t25abslatmedian[is.nan(mydata_t25$t25abslatmedian)] <- NA
+mydata_t25$t25abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata_t25$t25abslatvar[is.nan(mydata_t25$t25abslatvar)] <- NA
+mydata_t25$t25abslatrng <- mydata_t25$t25abslatmax - mydata_t25$t25abslatmin
+
+# elevation info (SPECIES) -----
+mydata_t25$t25elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata_t25$t25elevmin[is.nan(mydata_t25$t25elevmin)] <- NA
+mydata_t25$t25elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata_t25$t25elevmax[is.nan(mydata_t25$t25elevmax)] <- NA
+mydata_t25$t25elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata_t25$t25elevmean[is.nan(mydata_t25$t25elevmean)] <- NA
+mydata_t25$t25elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata_t25$t25elevmedian[is.nan(mydata_t25$t25elevmedian)] <- NA
+mydata_t25$t25elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata_t25$t25elevvar[is.nan(mydata_t25$t25elevvar)] <- NA
+mydata_t25$t25elevrng <- mydata_t25$t25elevmax - mydata_t25$t25elevmin
+
+
+
+# Temperature barriers ----------------------------
+# cost statistics -----
+mydata_t25$t25tcmin <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 0);mydata_t25$t25tcmin[is.nan(mydata_t25$t25tcmin)] <- NA
+mydata_t25$t25tcmax <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 1);mydata_t25$t25tcmax[is.nan(mydata_t25$t25tcmax)] <- NA
+mydata_t25$t25tcmean <- apply(m_aB_tmp_mcosts, 1, function(x) mean(x, na.rm = T));mydata_t25$t25tcmean[is.nan(mydata_t25$t25tcmean)] <- NA
+mydata_t25$t25tcmedian <- apply(m_aB_tmp_mcosts, 1, function(x) median(x, na.rm = T));mydata_t25$t25tcmedian[is.nan(mydata_t25$t25tcmedian)] <- NA
+mydata_t25$t25tcvar <- apply(m_aB_tmp_mcosts, 1, var, na.rm = T);mydata_t25$t25tcvar[is.nan(mydata_t25$t25tcvar)] <- NA
+mydata_t25$t25tcrng <- mydata_t25$t25tcmax - mydata_t25$t25tcmin
+# length statistics -----
+mydata_t25$t25tlmin <- apply(m_aB_tmp_plengths, 1, quantile, na.rm = T, probs = 0);mydata_t25$t25tlmin[is.nan(mydata_t25$t25tlmin)] <- NA
+mydata_t25$t25tlmax <- apply(m_aB_tmp_plengths, 1, quantile, na.rm = T, probs = 1);mydata_t25$t25tlmax[is.nan(mydata_t25$t25tlmax)] <- NA
+mydata_t25$t25tlmean <- apply(m_aB_tmp_plengths, 1, function(x) mean(x, na.rm = T));mydata_t25$t25tlmean[is.nan(mydata_t25$t25tlmean)] <- NA
+mydata_t25$t25tlmedian <- apply(m_aB_tmp_plengths, 1, function(x) median(x, na.rm = T));mydata_t25$t25tlmedian[is.nan(mydata_t25$t25tlmedian)] <- NA
+mydata_t25$t25tlvar <- apply(m_aB_tmp_plengths, 1, var, na.rm = T);mydata_t25$t25tlvar[is.nan(mydata_t25$t25tlvar)] <- NA
+mydata_t25$t25tlrng <- mydata_t25$t25tlmax - mydata_t25$t25tlmin
+# gradient statistics -----
+mydata_t25$t25tgmin <- apply(m_aB_tmp_gradients, 1, quantile, na.rm = T, probs = 0);mydata_t25$t25tgmin[is.nan(mydata_t25$t25tgmin)] <- NA
+mydata_t25$t25tgmax <- apply(m_aB_tmp_gradients, 1, quantile, na.rm = T, probs = 1);mydata_t25$t25tgmax[is.nan(mydata_t25$t25tgmax)] <- NA
+mydata_t25$t25tgmean <- apply(m_aB_tmp_gradients, 1, function(x) mean(x, na.rm = T));mydata_t25$t25tgmean[is.nan(mydata_t25$t25tgmean)] <- NA 
+mydata_t25$t25tgmedian <- apply(m_aB_tmp_gradients, 1, function(x) median(x, na.rm = T));mydata_t25$t25tgmedian[is.nan(mydata_t25$t25tgmedian)] <- NA
+mydata_t25$t25tgvar <- apply(m_aB_tmp_gradients, 1, var, na.rm = T);mydata_t25$t25tgvar[is.nan(mydata_t25$t25tgvar)] <- NA
+mydata_t25$t25tgrng <- mydata_t25$t25tgmax - mydata_t25$t25tgmin
+# bblat statistics -----
+mydata_t25$t25tbblatmin <- apply(m_a_bblats_tmp, 1, quantile, na.rm = T, probs = 0);mydata_t25$t25tbblatmin[is.nan(mydata_t25$t25tbblatmin)] <- NA
+mydata_t25$t25tbblatmax <- apply(m_a_bblats_tmp, 1, quantile, na.rm = T, probs = 1);mydata_t25$t25tbblatmax[is.nan(mydata_t25$t25tbblatmax)] <- NA
+mydata_t25$t25tbblatmean <- apply(m_a_bblats_tmp, 1, function(x) mean(x, na.rm = T));mydata_t25$t25tbblatmean[is.nan(mydata_t25$t25tbblatmean)] <- NA 
+mydata_t25$t25tbblatmedian <- apply(m_a_bblats_tmp, 1, function(x) median(x, na.rm = T));mydata_t25$t25tbblatmedian[is.nan(mydata_t25$t25tbblatmedian)] <- NA
+mydata_t25$t25tbblatvar <- apply(m_a_bblats_tmp, 1, var, na.rm = T);mydata_t25$t25tbblatvar[is.nan(mydata_t25$t25tbblatvar)] <- NA
+mydata_t25$t25tbblatrng <- mydata_t25$t25tbblatmax - mydata_t25$t25tbblatmin
+# bblon statistics -----
+mydata_t25$t25tbblonmin <- apply(m_a_bblons_tmp, 1, quantile, na.rm = T, probs = 0);mydata_t25$t25tbblonmin[is.nan(mydata_t25$t25tbblonmin)] <- NA
+mydata_t25$t25tbblonmax <- apply(m_a_bblons_tmp, 1, quantile, na.rm = T, probs = 1);mydata_t25$t25tbblonmax[is.nan(mydata_t25$t25tbblonmax)] <- NA
+mydata_t25$t25tbblonmean <- apply(m_a_bblons_tmp, 1, function(x) mean(x, na.rm = T));mydata_t25$t25tbblonmean[is.nan(mydata_t25$t25tbblonmean)] <- NA 
+mydata_t25$t25tbblonmedian <- apply(m_a_bblons_tmp, 1, function(x) median(x, na.rm = T));mydata_t25$t25tbblonmedian[is.nan(mydata_t25$t25tbblonmedian)] <- NA
+mydata_t25$t25tbblonvar <- apply(m_a_bblons_tmp, 1, var, na.rm = T);mydata_t25$t25tbblonvar[is.nan(mydata_t25$t25tbblonvar)] <- NA
+mydata_t25$t25tbblonrng <- mydata_t25$t25tbblonmax - mydata_t25$t25tbblonmin
+# absbblat statistics -----
+mydata_t25$t25tabsbblatmin <- apply(abs(m_a_bblats_tmp), 1, quantile, na.rm = T, probs = 0);mydata_t25$t25tabsbblatmin[is.nan(mydata_t25$t25tabsbblatmin)] <- NA
+mydata_t25$t25tabsbblatmax <- apply(abs(m_a_bblats_tmp), 1, quantile, na.rm = T, probs = 1);mydata_t25$t25tabsbblatmax[is.nan(mydata_t25$t25tabsbblatmax)] <- NA
+mydata_t25$t25tabsbblatmean <- apply(abs(m_a_bblats_tmp), 1, function(x) mean(x, na.rm = T));mydata_t25$t25tabsbblatmean[is.nan(mydata_t25$t25tabsbblatmean)] <- NA 
+mydata_t25$t25tabsbblatmedian <- apply(abs(m_a_bblats_tmp), 1, function(x) median(x, na.rm = T));mydata_t25$t25tabsbblatmedian[is.nan(mydata_t25$t25tabsbblatmedian)] <- NA
+mydata_t25$t25tabsbblatvar <- apply(abs(m_a_bblats_tmp), 1, var, na.rm = T);mydata_t25$t25tabsbblatvar[is.nan(mydata_t25$t25tabsbblatvar)] <- NA
+mydata_t25$t25tabsbblatrng <- mydata_t25$t25tabsbblatmax - mydata_t25$t25tabsbblatmin
+# absbblon statistics -----
+mydata_t25$t25tabsbblonmin <- apply(abs(m_a_bblons_tmp), 1, quantile, na.rm = T, probs = 0);mydata_t25$t25tabsbblonmin[is.nan(mydata_t25$t25tabsbblonmin)] <- NA
+mydata_t25$t25tabsbblonmax <- apply(abs(m_a_bblons_tmp), 1, quantile, na.rm = T, probs = 1);mydata_t25$t25tabsbblonmax[is.nan(mydata_t25$t25tabsbblonmax)] <- NA
+mydata_t25$t25tabsbblonmean <- apply(abs(m_a_bblons_tmp), 1, function(x) mean(x, na.rm = T));mydata_t25$t25tabsbblonmean[is.nan(mydata_t25$t25tabsbblonmean)] <- NA 
+mydata_t25$t25tabsbblonmedian <- apply(abs(m_a_bblons_tmp), 1, function(x) median(x, na.rm = T));mydata_t25$t25tabsbblonmedian[is.nan(mydata_t25$t25tabsbblonmedian)] <- NA
+mydata_t25$t25tabsbblonvar <- apply(abs(m_a_bblons_tmp), 1, var, na.rm = T);mydata_t25$t25tabsbblonvar[is.nan(mydata_t25$t25tabsbblonvar)] <- NA
+mydata_t25$t25tabsbblonrng <- mydata_t25$t25tabsbblonmax - mydata_t25$t25tabsbblonmin
+# n unique destinations from A in B.
+mydata_t25$t25tnbbs <- apply(abind(m_a_bblats_tmp, m_a_bblons_tmp, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# advanced info -----
+mydata_t25$t25sympatriccells <- apply(m_aB_tmp_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+mydata <- cbind(mydata, mydata_t25[,c(3:ncol(mydata_t25))])
+```
+
+
+```{r Create a dataframe using only those origins that are in the bottom quartile of the PRECIPITATION cost data.}
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Precipitation_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+mydata_p25 <- cooneyp[,cbind("Species.1", "Species.2")]
+mydata_p25$p25rowmincutc <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 0)
+mydata_p25$p25rowmaxcutc <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 0.25)
+for (i in 1:nrow(mydata)){
+  m_aB_pcp_mcosts[i,which(m_aB_pcp_mcosts[i,] < mydata_p25$p25rowmincutc[i])] <- NA
+  m_aB_pcp_mcosts[i,which(m_aB_pcp_mcosts[i,] > mydata_p25$p25rowmaxcutc[i])] <- NA
+}
+
+for (i in c("m_a_ids", "m_a_lats", "m_a_lons", "m_a_eles", "m_a_aspe", "m_a_slop",
+            "m_aB_pcp_mcosts", "m_aB_pcp_plengths", "m_aB_pcp_gradients")) {
+  x <- get(i)
+  x[is.na(m_aB_pcp_mcosts)] <- NA
+  assign(i, value = x)
+  rm(x); gc()
+}
+
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata_p25$p25pn <- apply(m_aB_pcp_mcosts, 1, function(x) sum(!is.na(x))) # p number
+
+# longitude info (SPECIES) -----
+mydata_p25$p25lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata_p25$p25lonmin[is.nan(mydata_p25$p25lonmin)] <- NA
+mydata_p25$p25lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata_p25$p25lonmax[is.nan(mydata_p25$p25lonmax)] <- NA
+mydata_p25$p25lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata_p25$p25lonmean[is.nan(mydata_p25$p25lonmean)] <- NA
+mydata_p25$p25lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata_p25$p25lonmedian[is.nan(mydata_p25$p25lonmedian)] <- NA
+mydata_p25$p25lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata_p25$p25lonvar[is.nan(mydata_p25$p25lonvar)] <- NA
+mydata_p25$p25lonrng <- mydata_p25$p25lonmax - mydata_p25$p25lonmin
+
+# Latitude info (SPECIES) -----
+mydata_p25$p25latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata_p25$p25latmin[is.nan(mydata_p25$p25latmin)] <- NA
+mydata_p25$p25latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata_p25$p25latmax[is.nan(mydata_p25$p25latmax)] <- NA
+mydata_p25$p25latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata_p25$p25latmean[is.nan(mydata_p25$p25latmean)] <- NA
+mydata_p25$p25latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata_p25$p25latmedian[is.nan(mydata_p25$p25latmedian)] <- NA
+mydata_p25$p25latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata_p25$p25latvar[is.nan(mydata_p25$p25latvar)] <- NA
+mydata_p25$p25latrng <- mydata_p25$p25latmax - mydata_p25$p25latmin
+
+# abslongitude info (SPECIES) -----
+mydata_p25$p25abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata_p25$p25abslonmin[is.nan(mydata_p25$p25abslonmin)] <- NA
+mydata_p25$p25abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata_p25$p25abslonmax[is.nan(mydata_p25$p25abslonmax)] <- NA
+mydata_p25$p25abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata_p25$p25abslonmean[is.nan(mydata_p25$p25abslonmean)] <- NA
+mydata_p25$p25abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata_p25$p25abslonmedian[is.nan(mydata_p25$p25abslonmedian)] <- NA
+mydata_p25$p25abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata_p25$p25abslonvar[is.nan(mydata_p25$p25abslonvar)] <- NA
+mydata_p25$p25abslonrng <- mydata_p25$p25abslonmax - mydata_p25$p25abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata_p25$p25abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata_p25$p25abslatmin[is.nan(mydata_p25$p25abslatmin)] <- NA
+mydata_p25$p25abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata_p25$p25abslatmax[is.nan(mydata_p25$p25abslatmax)] <- NA
+mydata_p25$p25abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata_p25$p25abslatmean[is.nan(mydata_p25$p25abslatmean)] <- NA
+mydata_p25$p25abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata_p25$p25abslatmedian[is.nan(mydata_p25$p25abslatmedian)] <- NA
+mydata_p25$p25abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata_p25$p25abslatvar[is.nan(mydata_p25$p25abslatvar)] <- NA
+mydata_p25$p25abslatrng <- mydata_p25$p25abslatmax - mydata_p25$p25abslatmin
+
+# elevation info (SPECIES) -----
+mydata_p25$p25elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata_p25$p25elevmin[is.nan(mydata_p25$p25elevmin)] <- NA
+mydata_p25$p25elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata_p25$p25elevmax[is.nan(mydata_p25$p25elevmax)] <- NA
+mydata_p25$p25elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata_p25$p25elevmean[is.nan(mydata_p25$p25elevmean)] <- NA
+mydata_p25$p25elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata_p25$p25elevmedian[is.nan(mydata_p25$p25elevmedian)] <- NA
+mydata_p25$p25elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata_p25$p25elevvar[is.nan(mydata_p25$p25elevvar)] <- NA
+mydata_p25$p25elevrng <- mydata_p25$p25elevmax - mydata_p25$p25elevmin
+
+
+
+# Precip barriers ----------------------------
+# cost statistics -----
+mydata_p25$p25pcmin <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 0);mydata_p25$p25pcmin[is.nan(mydata_p25$p25pcmin)] <- NA
+mydata_p25$p25pcmax <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 1);mydata_p25$p25pcmax[is.nan(mydata_p25$p25pcmax)] <- NA
+mydata_p25$p25pcmean <- apply(m_aB_pcp_mcosts, 1, function(x) mean(x, na.rm = T));mydata_p25$p25pcmean[is.nan(mydata_p25$p25pcmean)] <- NA
+mydata_p25$p25pcmedian <- apply(m_aB_pcp_mcosts, 1, function(x) median(x, na.rm = T));mydata_p25$p25pcmedian[is.nan(mydata_p25$p25pcmedian)] <- NA
+mydata_p25$p25pcvar <- apply(m_aB_pcp_mcosts, 1, var, na.rm = T);mydata_p25$p25pcvar[is.nan(mydata_p25$p25pcvar)] <- NA
+mydata_p25$p25pcrng <- mydata_p25$p25pcmax - mydata_p25$p25pcmin
+# length statistics -----
+mydata_p25$p25plmin <- apply(m_aB_pcp_plengths, 1, quantile, na.rm = T, probs = 0);mydata_p25$p25plmin[is.nan(mydata_p25$p25plmin)] <- NA
+mydata_p25$p25plmax <- apply(m_aB_pcp_plengths, 1, quantile, na.rm = T, probs = 1);mydata_p25$p25plmax[is.nan(mydata_p25$p25plmax)] <- NA
+mydata_p25$p25plmean <- apply(m_aB_pcp_plengths, 1, function(x) mean(x, na.rm = T));mydata_p25$p25plmean[is.nan(mydata_p25$p25plmean)] <- NA
+mydata_p25$p25plmedian <- apply(m_aB_pcp_plengths, 1, function(x) median(x, na.rm = T));mydata_p25$p25plmedian[is.nan(mydata_p25$p25plmedian)] <- NA
+mydata_p25$p25plvar <- apply(m_aB_pcp_plengths, 1, var, na.rm = T);mydata_p25$p25plvar[is.nan(mydata_p25$p25plvar)] <- NA
+mydata_p25$p25plrng <- mydata_p25$p25plmax - mydata_p25$p25plmin
+# gradient statistics -----
+mydata_p25$p25pgmin <- apply(m_aB_pcp_gradients, 1, quantile, na.rm = T, probs = 0);mydata_p25$p25pgmin[is.nan(mydata_p25$p25pgmin)] <- NA
+mydata_p25$p25pgmax <- apply(m_aB_pcp_gradients, 1, quantile, na.rm = T, probs = 1);mydata_p25$p25pgmax[is.nan(mydata_p25$p25pgmax)] <- NA
+mydata_p25$p25pgmean <- apply(m_aB_pcp_gradients, 1, function(x) mean(x, na.rm = T));mydata_p25$p25pgmean[is.nan(mydata_p25$p25pgmean)] <- NA 
+mydata_p25$p25pgmedian <- apply(m_aB_pcp_gradients, 1, function(x) median(x, na.rm = T));mydata_p25$p25pgmedian[is.nan(mydata_p25$p25pgmedian)] <- NA
+mydata_p25$p25pgvar <- apply(m_aB_pcp_gradients, 1, var, na.rm = T);mydata_p25$p25pgvar[is.nan(mydata_p25$p25pgvar)] <- NA
+mydata_p25$p25pgrng <- mydata_p25$p25pgmax - mydata_p25$p25pgmin
+# bblat statistics -----
+mydata_p25$p25pbblatmin <- apply(m_a_bblats_pcp, 1, quantile, na.rm = T, probs = 0);mydata_p25$p25pbblatmin[is.nan(mydata_p25$p25pbblatmin)] <- NA
+mydata_p25$p25pbblatmax <- apply(m_a_bblats_pcp, 1, quantile, na.rm = T, probs = 1);mydata_p25$p25pbblatmax[is.nan(mydata_p25$p25pbblatmax)] <- NA
+mydata_p25$p25pbblatmean <- apply(m_a_bblats_pcp, 1, function(x) mean(x, na.rm = T));mydata_p25$p25pbblatmean[is.nan(mydata_p25$p25pbblatmean)] <- NA 
+mydata_p25$p25pbblatmedian <- apply(m_a_bblats_pcp, 1, function(x) median(x, na.rm = T));mydata_p25$p25pbblatmedian[is.nan(mydata_p25$p25pbblatmedian)] <- NA
+mydata_p25$p25pbblatvar <- apply(m_a_bblats_pcp, 1, var, na.rm = T);mydata_p25$p25pbblatvar[is.nan(mydata_p25$p25pbblatvar)] <- NA
+mydata_p25$p25pbblatrng <- mydata_p25$p25pbblatmax - mydata_p25$p25pbblatmin
+# bblon statistics -----
+mydata_p25$p25pbblonmin <- apply(m_a_bblons_pcp, 1, quantile, na.rm = T, probs = 0);mydata_p25$p25pbblonmin[is.nan(mydata_p25$p25pbblonmin)] <- NA
+mydata_p25$p25pbblonmax <- apply(m_a_bblons_pcp, 1, quantile, na.rm = T, probs = 1);mydata_p25$p25pbblonmax[is.nan(mydata_p25$p25pbblonmax)] <- NA
+mydata_p25$p25pbblonmean <- apply(m_a_bblons_pcp, 1, function(x) mean(x, na.rm = T));mydata_p25$p25pbblonmean[is.nan(mydata_p25$p25pbblonmean)] <- NA 
+mydata_p25$p25pbblonmedian <- apply(m_a_bblons_pcp, 1, function(x) median(x, na.rm = T));mydata_p25$p25pbblonmedian[is.nan(mydata_p25$p25pbblonmedian)] <- NA
+mydata_p25$p25pbblonvar <- apply(m_a_bblons_pcp, 1, var, na.rm = T);mydata_p25$p25pbblonvar[is.nan(mydata_p25$p25pbblonvar)] <- NA
+mydata_p25$p25pbblonrng <- mydata_p25$p25pbblonmax - mydata_p25$p25pbblonmin
+# absbblat statistics -----
+mydata_p25$p25pabsbblatmin <- apply(abs(m_a_bblats_pcp), 1, quantile, na.rm = T, probs = 0);mydata_p25$p25pabsbblatmin[is.nan(mydata_p25$p25pabsbblatmin)] <- NA
+mydata_p25$p25pabsbblatmax <- apply(abs(m_a_bblats_pcp), 1, quantile, na.rm = T, probs = 1);mydata_p25$p25pabsbblatmax[is.nan(mydata_p25$p25pabsbblatmax)] <- NA
+mydata_p25$p25pabsbblatmean <- apply(abs(m_a_bblats_pcp), 1, function(x) mean(x, na.rm = T));mydata_p25$p25pabsbblatmean[is.nan(mydata_p25$p25pabsbblatmean)] <- NA 
+mydata_p25$p25pabsbblatmedian <- apply(abs(m_a_bblats_pcp), 1, function(x) median(x, na.rm = T));mydata_p25$p25pabsbblatmedian[is.nan(mydata_p25$p25pabsbblatmedian)] <- NA
+mydata_p25$p25pabsbblatvar <- apply(abs(m_a_bblats_pcp), 1, var, na.rm = T);mydata_p25$p25pabsbblatvar[is.nan(mydata_p25$p25pabsbblatvar)] <- NA
+mydata_p25$p25pabsbblatrng <- mydata_p25$p25pabsbblatmax - mydata_p25$p25pabsbblatmin
+# absbblon statistics -----
+mydata_p25$p25pabsbblonmin <- apply(abs(m_a_bblons_pcp), 1, quantile, na.rm = T, probs = 0);mydata_p25$p25pabsbblonmin[is.nan(mydata_p25$p25pabsbblonmin)] <- NA
+mydata_p25$p25pabsbblonmax <- apply(abs(m_a_bblons_pcp), 1, quantile, na.rm = T, probs = 1);mydata_p25$p25pabsbblonmax[is.nan(mydata_p25$p25pabsbblonmax)] <- NA
+mydata_p25$p25pabsbblonmean <- apply(abs(m_a_bblons_pcp), 1, function(x) mean(x, na.rm = T));mydata_p25$p25pabsbblonmean[is.nan(mydata_p25$p25pabsbblonmean)] <- NA 
+mydata_p25$p25pabsbblonmedian <- apply(abs(m_a_bblons_pcp), 1, function(x) median(x, na.rm = T));mydata_p25$p25pabsbblonmedian[is.nan(mydata_p25$p25pabsbblonmedian)] <- NA
+mydata_p25$p25pabsbblonvar <- apply(abs(m_a_bblons_pcp), 1, var, na.rm = T);mydata_p25$p25pabsbblonvar[is.nan(mydata_p25$p25pabsbblonvar)] <- NA
+mydata_p25$p25pabsbblonrng <- mydata_p25$p25pabsbblonmax - mydata_p25$p25pabsbblonmin
+# n unique destinations from A in B.
+mydata_p25$p25pnbbs <- apply(abind(m_a_bblats_pcp, m_a_bblons_pcp, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# advanced info -----
+mydata_p25$p25sympatriccells <- apply(m_aB_pcp_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+mydata <- cbind(mydata, mydata_p25[,c(3:ncol(mydata_p25))])
+```
+
+
+
+
+
+
+```{r Create a dataframe using only those origins that are the minimum of the ELEVATION cost data for each species.}
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Elevation_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+mydata_e0 <- cooneyp[,cbind("Species.1", "Species.2")]
+mydata_e0$e0rowmincutc <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0)
+for (i in 1:nrow(mydata)){
+  m_aB_ele_mcosts[i,which(m_aB_ele_mcosts[i,] > mydata_e0$e0rowmincutc[i])] <- NA
+}
+
+for (i in c("m_a_ids", "m_a_lats", "m_a_lons", "m_a_eles", "m_a_aspe", "m_a_slop", 
+            "m_aB_ele_mcosts", "m_aB_ele_plengths", "m_aB_ele_gradients")) {
+  x <- get(i)
+  x[is.na(m_aB_ele_mcosts)] <- NA
+  assign(i, value = x)
+  rm(x); gc()
+}
+
+# btm quartile for ele DATASET -----------------------------------------------------------------------
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata_e0$e0en <- apply(m_aB_ele_mcosts, 1, function(x) sum(!is.na(x))) # e number
+
+# longitude info (SPECIES) -----
+mydata_e0$e0lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata_e0$e0lonmin[is.nan(mydata_e0$e0lonmin)] <- NA
+mydata_e0$e0lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata_e0$e0lonmax[is.nan(mydata_e0$e0lonmax)] <- NA
+mydata_e0$e0lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata_e0$e0lonmean[is.nan(mydata_e0$e0lonmean)] <- NA
+mydata_e0$e0lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata_e0$e0lonmedian[is.nan(mydata_e0$e0lonmedian)] <- NA
+mydata_e0$e0lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata_e0$e0lonvar[is.nan(mydata_e0$e0lonvar)] <- NA
+mydata_e0$e0lonrng <- mydata_e0$e0lonmax - mydata_e0$e0lonmin
+
+# Latitude info (SPECIES) -----
+mydata_e0$e0latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata_e0$e0latmin[is.nan(mydata_e0$e0latmin)] <- NA
+mydata_e0$e0latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata_e0$e0latmax[is.nan(mydata_e0$e0latmax)] <- NA
+mydata_e0$e0latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata_e0$e0latmean[is.nan(mydata_e0$e0latmean)] <- NA
+mydata_e0$e0latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata_e0$e0latmedian[is.nan(mydata_e0$e0latmedian)] <- NA
+mydata_e0$e0latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata_e0$e0latvar[is.nan(mydata_e0$e0latvar)] <- NA
+mydata_e0$e0latrng <- mydata_e0$e0latmax - mydata_e0$e0latmin
+
+# abslongitude info (SPECIES) -----
+mydata_e0$e0abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata_e0$e0abslonmin[is.nan(mydata_e0$e0abslonmin)] <- NA
+mydata_e0$e0abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata_e0$e0abslonmax[is.nan(mydata_e0$e0abslonmax)] <- NA
+mydata_e0$e0abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata_e0$e0abslonmean[is.nan(mydata_e0$e0abslonmean)] <- NA
+mydata_e0$e0abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata_e0$e0abslonmedian[is.nan(mydata_e0$e0abslonmedian)] <- NA
+mydata_e0$e0abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata_e0$e0abslonvar[is.nan(mydata_e0$e0abslonvar)] <- NA
+mydata_e0$e0abslonrng <- mydata_e0$e0abslonmax - mydata_e0$e0abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata_e0$e0abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata_e0$e0abslatmin[is.nan(mydata_e0$e0abslatmin)] <- NA
+mydata_e0$e0abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata_e0$e0abslatmax[is.nan(mydata_e0$e0abslatmax)] <- NA
+mydata_e0$e0abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata_e0$e0abslatmean[is.nan(mydata_e0$e0abslatmean)] <- NA
+mydata_e0$e0abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata_e0$e0abslatmedian[is.nan(mydata_e0$e0abslatmedian)] <- NA
+mydata_e0$e0abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata_e0$e0abslatvar[is.nan(mydata_e0$e0abslatvar)] <- NA
+mydata_e0$e0abslatrng <- mydata_e0$e0abslatmax - mydata_e0$e0abslatmin
+
+# elevation info (SPECIES) -----
+mydata_e0$e0elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata_e0$e0elevmin[is.nan(mydata_e0$e0elevmin)] <- NA
+mydata_e0$e0elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata_e0$e0elevmax[is.nan(mydata_e0$e0elevmax)] <- NA
+mydata_e0$e0elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata_e0$e0elevmean[is.nan(mydata_e0$e0elevmean)] <- NA
+mydata_e0$e0elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata_e0$e0elevmedian[is.nan(mydata_e0$e0elevmedian)] <- NA
+mydata_e0$e0elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata_e0$e0elevvar[is.nan(mydata_e0$e0elevvar)] <- NA
+mydata_e0$e0elevrng <- mydata_e0$e0elevmax - mydata_e0$e0elevmin
+
+
+
+
+# Elevation barriers ----------------------------
+# cost statistics -----
+mydata_e0$e0ecmin <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0);mydata_e0$e0ecmin[is.nan(mydata_e0$e0ecmin)] <- NA
+mydata_e0$e0ecmax <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 1);mydata_e0$e0ecmax[is.nan(mydata_e0$e0ecmax)] <- NA
+mydata_e0$e0ecmean <- apply(m_aB_ele_mcosts, 1, function(x) mean(x, na.rm = T));mydata_e0$e0ecmean[is.nan(mydata_e0$e0ecmean)] <- NA
+mydata_e0$e0ecmedian <- apply(m_aB_ele_mcosts, 1, function(x) median(x, na.rm = T));mydata_e0$e0ecmedian[is.nan(mydata_e0$e0ecmedian)] <- NA
+mydata_e0$e0ecvar <- apply(m_aB_ele_mcosts, 1, var, na.rm = T);mydata_e0$e0ecvar[is.nan(mydata_e0$e0ecvar)] <- NA
+mydata_e0$e0ecrng <- mydata_e0$e0ecmax - mydata_e0$e0ecmin
+# length statistics -----
+mydata_e0$e0elmin <- apply(m_aB_ele_plengths, 1, quantile, na.rm = T, probs = 0);mydata_e0$e0elmin[is.nan(mydata_e0$e0elmin)] <- NA
+mydata_e0$e0elmax <- apply(m_aB_ele_plengths, 1, quantile, na.rm = T, probs = 1);mydata_e0$e0elmax[is.nan(mydata_e0$e0elmax)] <- NA
+mydata_e0$e0elmean <- apply(m_aB_ele_plengths, 1, function(x) mean(x, na.rm = T));mydata_e0$e0elmean[is.nan(mydata_e0$e0elmean)] <- NA
+mydata_e0$e0elmedian <- apply(m_aB_ele_plengths, 1, function(x) median(x, na.rm = T));mydata_e0$e0elmedian[is.nan(mydata_e0$e0elmedian)] <- NA
+mydata_e0$e0elvar <- apply(m_aB_ele_plengths, 1, var, na.rm = T);mydata_e0$e0elvar[is.nan(mydata_e0$e0elvar)] <- NA
+mydata_e0$e0elrng <- mydata_e0$e0elmax - mydata_e0$e0elmin
+# gradient statistics -----
+mydata_e0$e0egmin <- apply(m_aB_ele_gradients, 1, quantile, na.rm = T, probs = 0);mydata_e0$e0egmin[is.nan(mydata_e0$e0egmin)] <- NA
+mydata_e0$e0egmax <- apply(m_aB_ele_gradients, 1, quantile, na.rm = T, probs = 1);mydata_e0$e0egmax[is.nan(mydata_e0$e0egmax)] <- NA
+mydata_e0$e0egmean <- apply(m_aB_ele_gradients, 1, function(x) mean(x, na.rm = T));mydata_e0$e0egmean[is.nan(mydata_e0$e0egmean)] <- NA 
+mydata_e0$e0egmedian <- apply(m_aB_ele_gradients, 1, function(x) median(x, na.rm = T));mydata_e0$e0egmedian[is.nan(mydata_e0$e0egmedian)] <- NA
+mydata_e0$e0egvar <- apply(m_aB_ele_gradients, 1, var, na.rm = T);mydata_e0$e0egvar[is.nan(mydata_e0$e0egvar)] <- NA
+mydata_e0$e0egrng <- mydata_e0$e0egmax - mydata_e0$e0egmin
+# bblat statistics -----
+mydata_e0$e0ebblatmin <- apply(m_a_bblats_ele, 1, quantile, na.rm = T, probs = 0);mydata_e0$e0ebblatmin[is.nan(mydata_e0$e0ebblatmin)] <- NA
+mydata_e0$e0ebblatmax <- apply(m_a_bblats_ele, 1, quantile, na.rm = T, probs = 1);mydata_e0$e0ebblatmax[is.nan(mydata_e0$e0ebblatmax)] <- NA
+mydata_e0$e0ebblatmean <- apply(m_a_bblats_ele, 1, function(x) mean(x, na.rm = T));mydata_e0$e0ebblatmean[is.nan(mydata_e0$e0ebblatmean)] <- NA 
+mydata_e0$e0ebblatmedian <- apply(m_a_bblats_ele, 1, function(x) median(x, na.rm = T));mydata_e0$e0ebblatmedian[is.nan(mydata_e0$e0ebblatmedian)] <- NA
+mydata_e0$e0ebblatvar <- apply(m_a_bblats_ele, 1, var, na.rm = T);mydata_e0$e0ebblatvar[is.nan(mydata_e0$e0ebblatvar)] <- NA
+mydata_e0$e0ebblatrng <- mydata_e0$e0ebblatmax - mydata_e0$e0ebblatmin
+# bblon statistics -----
+mydata_e0$e0ebblonmin <- apply(m_a_bblons_ele, 1, quantile, na.rm = T, probs = 0);mydata_e0$e0ebblonmin[is.nan(mydata_e0$e0ebblonmin)] <- NA
+mydata_e0$e0ebblonmax <- apply(m_a_bblons_ele, 1, quantile, na.rm = T, probs = 1);mydata_e0$e0ebblonmax[is.nan(mydata_e0$e0ebblonmax)] <- NA
+mydata_e0$e0ebblonmean <- apply(m_a_bblons_ele, 1, function(x) mean(x, na.rm = T));mydata_e0$e0ebblonmean[is.nan(mydata_e0$e0ebblonmean)] <- NA 
+mydata_e0$e0ebblonmedian <- apply(m_a_bblons_ele, 1, function(x) median(x, na.rm = T));mydata_e0$e0ebblonmedian[is.nan(mydata_e0$e0ebblonmedian)] <- NA
+mydata_e0$e0ebblonvar <- apply(m_a_bblons_ele, 1, var, na.rm = T);mydata_e0$e0ebblonvar[is.nan(mydata_e0$e0ebblonvar)] <- NA
+mydata_e0$e0ebblonrng <- mydata_e0$e0ebblonmax - mydata_e0$e0ebblonmin
+# absbblat statistics -----
+mydata_e0$e0eabsbblatmin <- apply(abs(m_a_bblats_ele), 1, quantile, na.rm = T, probs = 0);mydata_e0$e0eabsbblatmin[is.nan(mydata_e0$e0eabsbblatmin)] <- NA
+mydata_e0$e0eabsbblatmax <- apply(abs(m_a_bblats_ele), 1, quantile, na.rm = T, probs = 1);mydata_e0$e0eabsbblatmax[is.nan(mydata_e0$e0eabsbblatmax)] <- NA
+mydata_e0$e0eabsbblatmean <- apply(abs(m_a_bblats_ele), 1, function(x) mean(x, na.rm = T));mydata_e0$e0eabsbblatmean[is.nan(mydata_e0$e0eabsbblatmean)] <- NA 
+mydata_e0$e0eabsbblatmedian <- apply(abs(m_a_bblats_ele), 1, function(x) median(x, na.rm = T));mydata_e0$e0eabsbblatmedian[is.nan(mydata_e0$e0eabsbblatmedian)] <- NA
+mydata_e0$e0eabsbblatvar <- apply(abs(m_a_bblats_ele), 1, var, na.rm = T);mydata_e0$e0eabsbblatvar[is.nan(mydata_e0$e0eabsbblatvar)] <- NA
+mydata_e0$e0eabsbblatrng <- mydata_e0$e0eabsbblatmax - mydata_e0$e0eabsbblatmin
+# absbblon statistics -----
+mydata_e0$e0eabsbblonmin <- apply(abs(m_a_bblons_ele), 1, quantile, na.rm = T, probs = 0);mydata_e0$e0eabsbblonmin[is.nan(mydata_e0$e0eabsbblonmin)] <- NA
+mydata_e0$e0eabsbblonmax <- apply(abs(m_a_bblons_ele), 1, quantile, na.rm = T, probs = 1);mydata_e0$e0eabsbblonmax[is.nan(mydata_e0$e0eabsbblonmax)] <- NA
+mydata_e0$e0eabsbblonmean <- apply(abs(m_a_bblons_ele), 1, function(x) mean(x, na.rm = T));mydata_e0$e0eabsbblonmean[is.nan(mydata_e0$e0eabsbblonmean)] <- NA 
+mydata_e0$e0eabsbblonmedian <- apply(abs(m_a_bblons_ele), 1, function(x) median(x, na.rm = T));mydata_e0$e0eabsbblonmedian[is.nan(mydata_e0$e0eabsbblonmedian)] <- NA
+mydata_e0$e0eabsbblonvar <- apply(abs(m_a_bblons_ele), 1, var, na.rm = T);mydata_e0$e0eabsbblonvar[is.nan(mydata_e0$e0eabsbblonvar)] <- NA
+mydata_e0$e0eabsbblonrng <- mydata_e0$e0eabsbblonmax - mydata_e0$e0eabsbblonmin
+# n unique destinations from A in B.
+mydata_e0$e0enbbs <- apply(abind(m_a_bblats_ele, m_a_bblons_ele, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+
+# advanced info -----
+mydata_e0$e0sympatriccells <- apply(m_aB_ele_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+mydata <- cbind(mydata, mydata_e0[,c(3:ncol(mydata_e0))])
+save(mydata, file = "Species_Barrier_Data_MEDIMAL.rdata")
+```
+
+
+```{r Create a dataframe using only those origins that are the minimum of the TEMPERATURE cost data for each species.}
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Temperature_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+mydata_t0 <- cooneyp[,cbind("Species.1", "Species.2")]
+mydata_t0$t0rowmincutc <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 0)
+for (i in 1:nrow(mydata)){
+  m_aB_tmp_mcosts[i,which(m_aB_tmp_mcosts[i,] > mydata_t0$t0rowmincutc[i])] <- NA
+}
+
+for (i in c("m_a_ids", "m_a_lats", "m_a_lons", "m_a_eles", "m_a_aspe", "m_a_slop",
+            "m_aB_tmp_mcosts", "m_aB_tmp_plengths", "m_aB_tmp_gradients")) {
+  x <- get(i)
+  x[is.na(m_aB_tmp_mcosts)] <- NA
+  assign(i, value = x)
+  rm(x); gc()
+}
+
+# btm quartile for ele DATASET -----------------------------------------------------------------------
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata_t0$t0tn <- apply(m_aB_tmp_mcosts, 1, function(x) sum(!is.na(x))) # t number
+
+# longitude info (SPECIES) -----
+mydata_t0$t0lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata_t0$t0lonmin[is.nan(mydata_t0$t0lonmin)] <- NA
+mydata_t0$t0lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata_t0$t0lonmax[is.nan(mydata_t0$t0lonmax)] <- NA
+mydata_t0$t0lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata_t0$t0lonmean[is.nan(mydata_t0$t0lonmean)] <- NA
+mydata_t0$t0lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata_t0$t0lonmedian[is.nan(mydata_t0$t0lonmedian)] <- NA
+mydata_t0$t0lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata_t0$t0lonvar[is.nan(mydata_t0$t0lonvar)] <- NA
+mydata_t0$t0lonrng <- mydata_t0$t0lonmax - mydata_t0$t0lonmin
+
+# Latitude info (SPECIES) -----
+mydata_t0$t0latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata_t0$t0latmin[is.nan(mydata_t0$t0latmin)] <- NA
+mydata_t0$t0latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata_t0$t0latmax[is.nan(mydata_t0$t0latmax)] <- NA
+mydata_t0$t0latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata_t0$t0latmean[is.nan(mydata_t0$t0latmean)] <- NA
+mydata_t0$t0latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata_t0$t0latmedian[is.nan(mydata_t0$t0latmedian)] <- NA
+mydata_t0$t0latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata_t0$t0latvar[is.nan(mydata_t0$t0latvar)] <- NA
+mydata_t0$t0latrng <- mydata_t0$t0latmax - mydata_t0$t0latmin
+
+# abslongitude info (SPECIES) -----
+mydata_t0$t0abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata_t0$t0abslonmin[is.nan(mydata_t0$t0abslonmin)] <- NA
+mydata_t0$t0abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata_t0$t0abslonmax[is.nan(mydata_t0$t0abslonmax)] <- NA
+mydata_t0$t0abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata_t0$t0abslonmean[is.nan(mydata_t0$t0abslonmean)] <- NA
+mydata_t0$t0abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata_t0$t0abslonmedian[is.nan(mydata_t0$t0abslonmedian)] <- NA
+mydata_t0$t0abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata_t0$t0abslonvar[is.nan(mydata_t0$t0abslonvar)] <- NA
+mydata_t0$t0abslonrng <- mydata_t0$t0abslonmax - mydata_t0$t0abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata_t0$t0abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata_t0$t0abslatmin[is.nan(mydata_t0$t0abslatmin)] <- NA
+mydata_t0$t0abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata_t0$t0abslatmax[is.nan(mydata_t0$t0abslatmax)] <- NA
+mydata_t0$t0abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata_t0$t0abslatmean[is.nan(mydata_t0$t0abslatmean)] <- NA
+mydata_t0$t0abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata_t0$t0abslatmedian[is.nan(mydata_t0$t0abslatmedian)] <- NA
+mydata_t0$t0abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata_t0$t0abslatvar[is.nan(mydata_t0$t0abslatvar)] <- NA
+mydata_t0$t0abslatrng <- mydata_t0$t0abslatmax - mydata_t0$t0abslatmin
+
+# elevation info (SPECIES) -----
+mydata_t0$t0elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata_t0$t0elevmin[is.nan(mydata_t0$t0elevmin)] <- NA
+mydata_t0$t0elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata_t0$t0elevmax[is.nan(mydata_t0$t0elevmax)] <- NA
+mydata_t0$t0elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata_t0$t0elevmean[is.nan(mydata_t0$t0elevmean)] <- NA
+mydata_t0$t0elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata_t0$t0elevmedian[is.nan(mydata_t0$t0elevmedian)] <- NA
+mydata_t0$t0elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata_t0$t0elevvar[is.nan(mydata_t0$t0elevvar)] <- NA
+mydata_t0$t0elevrng <- mydata_t0$t0elevmax - mydata_t0$t0elevmin
+
+# Temperature barriers ----------------------------
+# cost statistics -----
+mydata_t0$t0tcmin <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 0);mydata_t0$t0tcmin[is.nan(mydata_t0$t0tcmin)] <- NA
+mydata_t0$t0tcmax <- apply(m_aB_tmp_mcosts, 1, quantile, na.rm = T, probs = 1);mydata_t0$t0tcmax[is.nan(mydata_t0$t0tcmax)] <- NA
+mydata_t0$t0tcmean <- apply(m_aB_tmp_mcosts, 1, function(x) mean(x, na.rm = T));mydata_t0$t0tcmean[is.nan(mydata_t0$t0tcmean)] <- NA
+mydata_t0$t0tcmedian <- apply(m_aB_tmp_mcosts, 1, function(x) median(x, na.rm = T));mydata_t0$t0tcmedian[is.nan(mydata_t0$t0tcmedian)] <- NA
+mydata_t0$t0tcvar <- apply(m_aB_tmp_mcosts, 1, var, na.rm = T);mydata_t0$t0tcvar[is.nan(mydata_t0$t0tcvar)] <- NA
+mydata_t0$t0tcrng <- mydata_t0$t0tcmax - mydata_t0$t0tcmin
+# length statistics -----
+mydata_t0$t0tlmin <- apply(m_aB_tmp_plengths, 1, quantile, na.rm = T, probs = 0);mydata_t0$t0tlmin[is.nan(mydata_t0$t0tlmin)] <- NA
+mydata_t0$t0tlmax <- apply(m_aB_tmp_plengths, 1, quantile, na.rm = T, probs = 1);mydata_t0$t0tlmax[is.nan(mydata_t0$t0tlmax)] <- NA
+mydata_t0$t0tlmean <- apply(m_aB_tmp_plengths, 1, function(x) mean(x, na.rm = T));mydata_t0$t0tlmean[is.nan(mydata_t0$t0tlmean)] <- NA
+mydata_t0$t0tlmedian <- apply(m_aB_tmp_plengths, 1, function(x) median(x, na.rm = T));mydata_t0$t0tlmedian[is.nan(mydata_t0$t0tlmedian)] <- NA
+mydata_t0$t0tlvar <- apply(m_aB_tmp_plengths, 1, var, na.rm = T);mydata_t0$t0tlvar[is.nan(mydata_t0$t0tlvar)] <- NA
+mydata_t0$t0tlrng <- mydata_t0$t0tlmax - mydata_t0$t0tlmin
+# gradient statistics -----
+mydata_t0$t0tgmin <- apply(m_aB_tmp_gradients, 1, quantile, na.rm = T, probs = 0);mydata_t0$t0tgmin[is.nan(mydata_t0$t0tgmin)] <- NA
+mydata_t0$t0tgmax <- apply(m_aB_tmp_gradients, 1, quantile, na.rm = T, probs = 1);mydata_t0$t0tgmax[is.nan(mydata_t0$t0tgmax)] <- NA
+mydata_t0$t0tgmean <- apply(m_aB_tmp_gradients, 1, function(x) mean(x, na.rm = T));mydata_t0$t0tgmean[is.nan(mydata_t0$t0tgmean)] <- NA 
+mydata_t0$t0tgmedian <- apply(m_aB_tmp_gradients, 1, function(x) median(x, na.rm = T));mydata_t0$t0tgmedian[is.nan(mydata_t0$t0tgmedian)] <- NA
+mydata_t0$t0tgvar <- apply(m_aB_tmp_gradients, 1, var, na.rm = T);mydata_t0$t0tgvar[is.nan(mydata_t0$t0tgvar)] <- NA
+mydata_t0$t0tgrng <- mydata_t0$t0tgmax - mydata_t0$t0tgmin
+# bblat statistics -----
+mydata_t0$t0tbblatmin <- apply(m_a_bblats_tmp, 1, quantile, na.rm = T, probs = 0);mydata_t0$t0tbblatmin[is.nan(mydata_t0$t0tbblatmin)] <- NA
+mydata_t0$t0tbblatmax <- apply(m_a_bblats_tmp, 1, quantile, na.rm = T, probs = 1);mydata_t0$t0tbblatmax[is.nan(mydata_t0$t0tbblatmax)] <- NA
+mydata_t0$t0tbblatmean <- apply(m_a_bblats_tmp, 1, function(x) mean(x, na.rm = T));mydata_t0$t0tbblatmean[is.nan(mydata_t0$t0tbblatmean)] <- NA 
+mydata_t0$t0tbblatmedian <- apply(m_a_bblats_tmp, 1, function(x) median(x, na.rm = T));mydata_t0$t0tbblatmedian[is.nan(mydata_t0$t0tbblatmedian)] <- NA
+mydata_t0$t0tbblatvar <- apply(m_a_bblats_tmp, 1, var, na.rm = T);mydata_t0$t0tbblatvar[is.nan(mydata_t0$t0tbblatvar)] <- NA
+mydata_t0$t0tbblatrng <- mydata_t0$t0tbblatmax - mydata_t0$t0tbblatmin
+# bblon statistics -----
+mydata_t0$t0tbblonmin <- apply(m_a_bblons_tmp, 1, quantile, na.rm = T, probs = 0);mydata_t0$t0tbblonmin[is.nan(mydata_t0$t0tbblonmin)] <- NA
+mydata_t0$t0tbblonmax <- apply(m_a_bblons_tmp, 1, quantile, na.rm = T, probs = 1);mydata_t0$t0tbblonmax[is.nan(mydata_t0$t0tbblonmax)] <- NA
+mydata_t0$t0tbblonmean <- apply(m_a_bblons_tmp, 1, function(x) mean(x, na.rm = T));mydata_t0$t0tbblonmean[is.nan(mydata_t0$t0tbblonmean)] <- NA 
+mydata_t0$t0tbblonmedian <- apply(m_a_bblons_tmp, 1, function(x) median(x, na.rm = T));mydata_t0$t0tbblonmedian[is.nan(mydata_t0$t0tbblonmedian)] <- NA
+mydata_t0$t0tbblonvar <- apply(m_a_bblons_tmp, 1, var, na.rm = T);mydata_t0$t0tbblonvar[is.nan(mydata_t0$t0tbblonvar)] <- NA
+mydata_t0$t0tbblonrng <- mydata_t0$t0tbblonmax - mydata_t0$t0tbblonmin
+# absbblat statistics -----
+mydata_t0$t0tabsbblatmin <- apply(abs(m_a_bblats_tmp), 1, quantile, na.rm = T, probs = 0);mydata_t0$t0tabsbblatmin[is.nan(mydata_t0$t0tabsbblatmin)] <- NA
+mydata_t0$t0tabsbblatmax <- apply(abs(m_a_bblats_tmp), 1, quantile, na.rm = T, probs = 1);mydata_t0$t0tabsbblatmax[is.nan(mydata_t0$t0tabsbblatmax)] <- NA
+mydata_t0$t0tabsbblatmean <- apply(abs(m_a_bblats_tmp), 1, function(x) mean(x, na.rm = T));mydata_t0$t0tabsbblatmean[is.nan(mydata_t0$t0tabsbblatmean)] <- NA 
+mydata_t0$t0tabsbblatmedian <- apply(abs(m_a_bblats_tmp), 1, function(x) median(x, na.rm = T));mydata_t0$t0tabsbblatmedian[is.nan(mydata_t0$t0tabsbblatmedian)] <- NA
+mydata_t0$t0tabsbblatvar <- apply(abs(m_a_bblats_tmp), 1, var, na.rm = T);mydata_t0$t0tabsbblatvar[is.nan(mydata_t0$t0tabsbblatvar)] <- NA
+mydata_t0$t0tabsbblatrng <- mydata_t0$t0tabsbblatmax - mydata_t0$t0tabsbblatmin
+# absbblon statistics -----
+mydata_t0$t0tabsbblonmin <- apply(abs(m_a_bblons_tmp), 1, quantile, na.rm = T, probs = 0);mydata_t0$t0tabsbblonmin[is.nan(mydata_t0$t0tabsbblonmin)] <- NA
+mydata_t0$t0tabsbblonmax <- apply(abs(m_a_bblons_tmp), 1, quantile, na.rm = T, probs = 1);mydata_t0$t0tabsbblonmax[is.nan(mydata_t0$t0tabsbblonmax)] <- NA
+mydata_t0$t0tabsbblonmean <- apply(abs(m_a_bblons_tmp), 1, function(x) mean(x, na.rm = T));mydata_t0$t0tabsbblonmean[is.nan(mydata_t0$t0tabsbblonmean)] <- NA 
+mydata_t0$t0tabsbblonmedian <- apply(abs(m_a_bblons_tmp), 1, function(x) median(x, na.rm = T));mydata_t0$t0tabsbblonmedian[is.nan(mydata_t0$t0tabsbblonmedian)] <- NA
+mydata_t0$t0tabsbblonvar <- apply(abs(m_a_bblons_tmp), 1, var, na.rm = T);mydata_t0$t0tabsbblonvar[is.nan(mydata_t0$t0tabsbblonvar)] <- NA
+mydata_t0$t0tabsbblonrng <- mydata_t0$t0tabsbblonmax - mydata_t0$t0tabsbblonmin
+# n unique destinations from A in B.
+mydata_t0$t0tnbbs <- apply(abind(m_a_bblats_tmp, m_a_bblons_tmp, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# advanced info -----
+mydata_t0$t0sympatriccells <- apply(m_aB_tmp_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+mydata <- cbind(mydata, mydata_t0[,c(3:ncol(mydata_t0))])
+save(mydata, file = "Species_Barrier_Data_MEDIMAL.rdata")
+```
+
+
+```{r Create a dataframe using only those origins that are the minimum of the PRECIPITATION cost data for each species.}
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Precipitation_Results_Concat.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata")
+setwd("~/Box Sync/JMPH/PREP/MainDataFrame/Data")
+load("cooneyp.rdata")
+mydata_p0 <- cooneyp[,cbind("Species.1", "Species.2")]
+mydata_p0$p0rowmincutc <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 0)
+for (i in 1:nrow(mydata)){
+  m_aB_pcp_mcosts[i,which(m_aB_pcp_mcosts[i,] != mydata_p0$p0rowmincutc[i])] <- NA
+}
+
+for (i in c("m_a_ids", "m_a_lats", "m_a_lons", "m_a_eles", "m_a_aspe", "m_a_slop",
+            "m_aB_pcp_mcosts", "m_aB_pcp_plengths", "m_aB_pcp_gradients")) {
+  x <- get(i)
+  x[is.na(m_aB_pcp_mcosts)] <- NA
+  assign(i, value = x)
+  rm(x); gc()
+}
+
+# btm quartile for ele DATASET -----------------------------------------------------------------------
+# up to 5k origins per species summarized per row.
+
+# basic info -----
+mydata_p0$p0pn <- apply(m_aB_pcp_mcosts, 1, function(x) sum(!is.na(x))) # p number
+
+# longitude info (SPECIES) -----
+mydata_p0$p0lonmin <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 0);mydata_p0$p0lonmin[is.nan(mydata_p0$p0lonmin)] <- NA
+mydata_p0$p0lonmax <- apply(m_a_lons, 1, quantile, na.rm = T, probs = 1);mydata_p0$p0lonmax[is.nan(mydata_p0$p0lonmax)] <- NA
+mydata_p0$p0lonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata_p0$p0lonmean[is.nan(mydata_p0$p0lonmean)] <- NA
+mydata_p0$p0lonmedian <- apply(m_a_lons, 1, function(x) median(x, na.rm = T));mydata_p0$p0lonmedian[is.nan(mydata_p0$p0lonmedian)] <- NA
+mydata_p0$p0lonvar <- apply(m_a_lons, 1, var, na.rm = T);mydata_p0$p0lonvar[is.nan(mydata_p0$p0lonvar)] <- NA
+mydata_p0$p0lonrng <- mydata_p0$p0lonmax - mydata_p0$p0lonmin
+
+# Latitude info (SPECIES) -----
+mydata_p0$p0latmin <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 0);mydata_p0$p0latmin[is.nan(mydata_p0$p0latmin)] <- NA
+mydata_p0$p0latmax <- apply(m_a_lats, 1, quantile, na.rm = T, probs = 1);mydata_p0$p0latmax[is.nan(mydata_p0$p0latmax)] <- NA
+mydata_p0$p0latmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata_p0$p0latmean[is.nan(mydata_p0$p0latmean)] <- NA
+mydata_p0$p0latmedian <- apply(m_a_lats, 1, function(x) median(x, na.rm = T));mydata_p0$p0latmedian[is.nan(mydata_p0$p0latmedian)] <- NA
+mydata_p0$p0latvar <- apply(m_a_lats, 1, var, na.rm = T);mydata_p0$p0latvar[is.nan(mydata_p0$p0latvar)] <- NA
+mydata_p0$p0latrng <- mydata_p0$p0latmax - mydata_p0$p0latmin
+
+# abslongitude info (SPECIES) -----
+mydata_p0$p0abslonmin <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 0);mydata_p0$p0abslonmin[is.nan(mydata_p0$p0abslonmin)] <- NA
+mydata_p0$p0abslonmax <- apply(abs(m_a_lons), 1, quantile, na.rm = T, probs = 1);mydata_p0$p0abslonmax[is.nan(mydata_p0$p0abslonmax)] <- NA
+mydata_p0$p0abslonmean <- apply(abs(m_a_lons), 1, function(x) mean(x, na.rm = T));mydata_p0$p0abslonmean[is.nan(mydata_p0$p0abslonmean)] <- NA
+mydata_p0$p0abslonmedian <- apply(abs(m_a_lons), 1, function(x) median(x, na.rm = T));mydata_p0$p0abslonmedian[is.nan(mydata_p0$p0abslonmedian)] <- NA
+mydata_p0$p0abslonvar <- apply(abs(m_a_lons), 1, var, na.rm = T);mydata_p0$p0abslonvar[is.nan(mydata_p0$p0abslonvar)] <- NA
+mydata_p0$p0abslonrng <- mydata_p0$p0abslonmax - mydata_p0$p0abslonmin
+
+# absLatitude info (SPECIES) -----
+mydata_p0$p0abslatmin <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 0);mydata_p0$p0abslatmin[is.nan(mydata_p0$p0abslatmin)] <- NA
+mydata_p0$p0abslatmax <- apply(abs(m_a_lats), 1, quantile, na.rm = T, probs = 1);mydata_p0$p0abslatmax[is.nan(mydata_p0$p0abslatmax)] <- NA
+mydata_p0$p0abslatmean <- apply(abs(m_a_lats), 1, function(x) mean(x, na.rm = T));mydata_p0$p0abslatmean[is.nan(mydata_p0$p0abslatmean)] <- NA
+mydata_p0$p0abslatmedian <- apply(abs(m_a_lats), 1, function(x) median(x, na.rm = T));mydata_p0$p0abslatmedian[is.nan(mydata_p0$p0abslatmedian)] <- NA
+mydata_p0$p0abslatvar <- apply(abs(m_a_lats), 1, var, na.rm = T);mydata_p0$p0abslatvar[is.nan(mydata_p0$p0abslatvar)] <- NA
+mydata_p0$p0abslatrng <- mydata_p0$p0abslatmax - mydata_p0$p0abslatmin
+
+# elevation info (SPECIES) -----
+mydata_p0$p0elevmin <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 0);mydata_p0$p0elevmin[is.nan(mydata_p0$p0elevmin)] <- NA
+mydata_p0$p0elevmax <- apply(m_a_eles, 1, quantile, na.rm = T, probs = 1);mydata_p0$p0elevmax[is.nan(mydata_p0$p0elevmax)] <- NA
+mydata_p0$p0elevmean <- apply(m_a_eles, 1, function(x) mean(x, na.rm = T));mydata_p0$p0elevmean[is.nan(mydata_p0$p0elevmean)] <- NA
+mydata_p0$p0elevmedian <- apply(m_a_eles, 1, function(x) median(x, na.rm = T));mydata_p0$p0elevmedian[is.nan(mydata_p0$p0elevmedian)] <- NA
+mydata_p0$p0elevvar <- apply(m_a_eles, 1, var, na.rm = T);mydata_p0$p0elevvar[is.nan(mydata_p0$p0elevvar)] <- NA
+mydata_p0$p0elevrng <- mydata_p0$p0elevmax - mydata_p0$p0elevmin
+
+# Precip barriers ----------------------------
+# cost statistics -----
+mydata_p0$p0pcmin <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 0);mydata_p0$p0pcmin[is.nan(mydata_p0$p0pcmin)] <- NA
+mydata_p0$p0pcmax <- apply(m_aB_pcp_mcosts, 1, quantile, na.rm = T, probs = 1);mydata_p0$p0pcmax[is.nan(mydata_p0$p0pcmax)] <- NA
+mydata_p0$p0pcmean <- apply(m_aB_pcp_mcosts, 1, function(x) mean(x, na.rm = T));mydata_p0$p0pcmean[is.nan(mydata_p0$p0pcmean)] <- NA
+mydata_p0$p0pcmedian <- apply(m_aB_pcp_mcosts, 1, function(x) median(x, na.rm = T));mydata_p0$p0pcmedian[is.nan(mydata_p0$p0pcmedian)] <- NA
+mydata_p0$p0pcvar <- apply(m_aB_pcp_mcosts, 1, var, na.rm = T);mydata_p0$p0pcvar[is.nan(mydata_p0$p0pcvar)] <- NA
+mydata_p0$p0pcrng <- mydata_p0$p0pcmax - mydata_p0$p0pcmin
+# length statistics -----
+mydata_p0$p0plmin <- apply(m_aB_pcp_plengths, 1, quantile, na.rm = T, probs = 0);mydata_p0$p0plmin[is.nan(mydata_p0$p0plmin)] <- NA
+mydata_p0$p0plmax <- apply(m_aB_pcp_plengths, 1, quantile, na.rm = T, probs = 1);mydata_p0$p0plmax[is.nan(mydata_p0$p0plmax)] <- NA
+mydata_p0$p0plmean <- apply(m_aB_pcp_plengths, 1, function(x) mean(x, na.rm = T));mydata_p0$p0plmean[is.nan(mydata_p0$p0plmean)] <- NA
+mydata_p0$p0plmedian <- apply(m_aB_pcp_plengths, 1, function(x) median(x, na.rm = T));mydata_p0$p0plmedian[is.nan(mydata_p0$p0plmedian)] <- NA
+mydata_p0$p0plvar <- apply(m_aB_pcp_plengths, 1, var, na.rm = T);mydata_p0$p0plvar[is.nan(mydata_p0$p0plvar)] <- NA
+mydata_p0$p0plrng <- mydata_p0$p0plmax - mydata_p0$p0plmin
+# gradient statistics -----
+mydata_p0$p0pgmin <- apply(m_aB_pcp_gradients, 1, quantile, na.rm = T, probs = 0);mydata_p0$p0pgmin[is.nan(mydata_p0$p0pgmin)] <- NA
+mydata_p0$p0pgmax <- apply(m_aB_pcp_gradients, 1, quantile, na.rm = T, probs = 1);mydata_p0$p0pgmax[is.nan(mydata_p0$p0pgmax)] <- NA
+mydata_p0$p0pgmean <- apply(m_aB_pcp_gradients, 1, function(x) mean(x, na.rm = T));mydata_p0$p0pgmean[is.nan(mydata_p0$p0pgmean)] <- NA 
+mydata_p0$p0pgmedian <- apply(m_aB_pcp_gradients, 1, function(x) median(x, na.rm = T));mydata_p0$p0pgmedian[is.nan(mydata_p0$p0pgmedian)] <- NA
+mydata_p0$p0pgvar <- apply(m_aB_pcp_gradients, 1, var, na.rm = T);mydata_p0$p0pgvar[is.nan(mydata_p0$p0pgvar)] <- NA
+mydata_p0$p0pgrng <- mydata_p0$p0pgmax - mydata_p0$p0pgmin
+# bblat statistics -----
+mydata_p0$p0pbblatmin <- apply(m_a_bblats_pcp, 1, quantile, na.rm = T, probs = 0);mydata_p0$p0pbblatmin[is.nan(mydata_p0$p0pbblatmin)] <- NA
+mydata_p0$p0pbblatmax <- apply(m_a_bblats_pcp, 1, quantile, na.rm = T, probs = 1);mydata_p0$p0pbblatmax[is.nan(mydata_p0$p0pbblatmax)] <- NA
+mydata_p0$p0pbblatmean <- apply(m_a_bblats_pcp, 1, function(x) mean(x, na.rm = T));mydata_p0$p0pbblatmean[is.nan(mydata_p0$p0pbblatmean)] <- NA 
+mydata_p0$p0pbblatmedian <- apply(m_a_bblats_pcp, 1, function(x) median(x, na.rm = T));mydata_p0$p0pbblatmedian[is.nan(mydata_p0$p0pbblatmedian)] <- NA
+mydata_p0$p0pbblatvar <- apply(m_a_bblats_pcp, 1, var, na.rm = T);mydata_p0$p0pbblatvar[is.nan(mydata_p0$p0pbblatvar)] <- NA
+mydata_p0$p0pbblatrng <- mydata_p0$p0pbblatmax - mydata_p0$p0pbblatmin
+# bblon statistics -----
+mydata_p0$p0pbblonmin <- apply(m_a_bblons_pcp, 1, quantile, na.rm = T, probs = 0);mydata_p0$p0pbblonmin[is.nan(mydata_p0$p0pbblonmin)] <- NA
+mydata_p0$p0pbblonmax <- apply(m_a_bblons_pcp, 1, quantile, na.rm = T, probs = 1);mydata_p0$p0pbblonmax[is.nan(mydata_p0$p0pbblonmax)] <- NA
+mydata_p0$p0pbblonmean <- apply(m_a_bblons_pcp, 1, function(x) mean(x, na.rm = T));mydata_p0$p0pbblonmean[is.nan(mydata_p0$p0pbblonmean)] <- NA 
+mydata_p0$p0pbblonmedian <- apply(m_a_bblons_pcp, 1, function(x) median(x, na.rm = T));mydata_p0$p0pbblonmedian[is.nan(mydata_p0$p0pbblonmedian)] <- NA
+mydata_p0$p0pbblonvar <- apply(m_a_bblons_pcp, 1, var, na.rm = T);mydata_p0$p0pbblonvar[is.nan(mydata_p0$p0pbblonvar)] <- NA
+mydata_p0$p0pbblonrng <- mydata_p0$p0pbblonmax - mydata_p0$p0pbblonmin
+# absbblat statistics -----
+mydata_p0$p0pabsbblatmin <- apply(abs(m_a_bblats_pcp), 1, quantile, na.rm = T, probs = 0);mydata_p0$p0pabsbblatmin[is.nan(mydata_p0$p0pabsbblatmin)] <- NA
+mydata_p0$p0pabsbblatmax <- apply(abs(m_a_bblats_pcp), 1, quantile, na.rm = T, probs = 1);mydata_p0$p0pabsbblatmax[is.nan(mydata_p0$p0pabsbblatmax)] <- NA
+mydata_p0$p0pabsbblatmean <- apply(abs(m_a_bblats_pcp), 1, function(x) mean(x, na.rm = T));mydata_p0$p0pabsbblatmean[is.nan(mydata_p0$p0pabsbblatmean)] <- NA 
+mydata_p0$p0pabsbblatmedian <- apply(abs(m_a_bblats_pcp), 1, function(x) median(x, na.rm = T));mydata_p0$p0pabsbblatmedian[is.nan(mydata_p0$p0pabsbblatmedian)] <- NA
+mydata_p0$p0pabsbblatvar <- apply(abs(m_a_bblats_pcp), 1, var, na.rm = T);mydata_p0$p0pabsbblatvar[is.nan(mydata_p0$p0pabsbblatvar)] <- NA
+mydata_p0$p0pabsbblatrng <- mydata_p0$p0pabsbblatmax - mydata_p0$p0pabsbblatmin
+# absbblon statistics -----
+mydata_p0$p0pabsbblonmin <- apply(abs(m_a_bblons_pcp), 1, quantile, na.rm = T, probs = 0);mydata_p0$p0pabsbblonmin[is.nan(mydata_p0$p0pabsbblonmin)] <- NA
+mydata_p0$p0pabsbblonmax <- apply(abs(m_a_bblons_pcp), 1, quantile, na.rm = T, probs = 1);mydata_p0$p0pabsbblonmax[is.nan(mydata_p0$p0pabsbblonmax)] <- NA
+mydata_p0$p0pabsbblonmean <- apply(abs(m_a_bblons_pcp), 1, function(x) mean(x, na.rm = T));mydata_p0$p0pabsbblonmean[is.nan(mydata_p0$p0pabsbblonmean)] <- NA 
+mydata_p0$p0pabsbblonmedian <- apply(abs(m_a_bblons_pcp), 1, function(x) median(x, na.rm = T));mydata_p0$p0pabsbblonmedian[is.nan(mydata_p0$p0pabsbblonmedian)] <- NA
+mydata_p0$p0pabsbblonvar <- apply(abs(m_a_bblons_pcp), 1, var, na.rm = T);mydata_p0$p0pabsbblonvar[is.nan(mydata_p0$p0pabsbblonvar)] <- NA
+mydata_p0$p0pabsbblonrng <- mydata_p0$p0pabsbblonmax - mydata_p0$p0pabsbblonmin
+# n unique destinations from A in B.
+mydata_p0$p0pnbbs <- apply(abind(m_a_bblats_pcp, m_a_bblons_pcp, along = 3), 1, function(x)  sum(!is.na(unique(x[,1]))))
+
+# advanced info -----
+mydata_p0$p0sympatriccells <- apply(m_aB_pcp_mcosts, 1, function(x) sum(x == 0, na.rm = T))
+
+mydata <- cbind(mydata, mydata_p0[,c(3:ncol(mydata_p0))])
+setwd("~/Box Sync/JMPH/Process_Cluster_Outputs/Data")
+save(mydata, file = "Species_Barrier_Data_MEDIMAL.rdata")
+```
