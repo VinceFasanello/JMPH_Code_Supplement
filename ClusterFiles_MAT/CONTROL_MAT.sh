@@ -16,4 +16,4 @@ export LD_LIBRARY_PATH=/export/geos-3.7.2/lib:${LD_LIBRARY_PATH}
 module load R-3.6.1
 
 # Finally run the R benchmark with the command
-Rscript /home/vincefasanello/main_mat/Main_MAT${PBS_ARRAYID}.R
+Rscript /home/cbotero/main_mat/Main_MAT${PBS_ARRAYID}.R

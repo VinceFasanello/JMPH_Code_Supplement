@@ -133,83 +133,83 @@ seasonallabel = 'SEASONAL'
 
 BuildPAMfromGeoDataSet(fc, specieslabel, presencelabel, seasonallabel, PAMfname, myEnvRasters, is.bird = T)
 
-####################
-# Amphibians
-dsn = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Original geodata by Class/Amphibian Ranges/AMPHIBIANS'
-layer = 'AMPHIBIANS'
-fc <- readOGR(dsn = dsn, layer = layer)
-specieslabel = 'binomial'
-PAMfname = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/AmphibianPAM.Rdata'
-presencelabel = 'presence'
-seasonallabel = 'seasonal'
-
-BuildPAMfromGeoDataSet(fc, specieslabel, presencelabel, seasonallabel, PAMfname, myEnvRasters)
-
-####################
-# Terrestrial mammals
-dsn = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Original geodata by Class/Terrestrial_mammal Ranges/TERRESTRIAL_MAMMALS'
-layer = 'TERRESTRIAL_MAMMALS'
-fc <- readOGR(dsn = dsn, layer = layer)
-specieslabel = 'binomial'
-PAMfname = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/TerrMammalPAM.Rdata'
-presencelabel = 'presence'
-seasonallabel = 'seasonal'
-
-BuildPAMfromGeoDataSet(fc, specieslabel, presencelabel, seasonallabel, PAMfname, myEnvRasters)
-
-####################
-# Reptiles
-dsn = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Original geodata by Class/Reptilian Ranges/GARD1.1_dissolved_ranges/'
-layer = 'modeled_reptiles'
-fc <- readOGR(dsn = dsn, layer = layer)
-specieslabel = 'Binomial'
-PAMfname = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/ReptilianPAM.Rdata'
-presencelabel = NA
-seasonallabel = NA
-
-BuildPAMfromGeoDataSet(fc, specieslabel, presencelabel, seasonallabel, PAMfname, myEnvRasters)
-
-#############################################################################################################################
-# Create PAM for latitudinal bands in the niche space analysis
-load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/TerrMammalPAM.Rdata')
-
-# clean up
-myPAM$Species_name <- NULL
-myPAM$Presence_and_Absence_Matrix <- myPAM$Presence_and_Absence_Matrix[,1:2]
-
-# now divide latitudinal range into bands of different width
-myPoints <- SpatialPoints(coords = cbind(rep(0,length(seq(-90,90,by=5))), seq(-90,90,by=5)), proj4string=CRS("+proj=longlat"))
-myPoints <- spTransform(myPoints, '+proj=wag4 +lon_0=0')                         
-mylats <- coordinates(myPoints)[,2]
-
-myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats, "FiveDegBands")
-myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats[seq(1,length(mylats),by=2)], "TenDegBands")
-myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats[seq(1,length(mylats),by=3)], "FifteenDegBands")
-myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats[seq(1,length(mylats),by=4)], "TwentyDegBands")
-myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats[c(1,length(mylats))], "AllWorld")
-
-save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/LatBandsPAM.Rdata')
-
-####################################################
-####################################################
-####################################################
-
-
-# Now add environmental data to those PAMs
-
-# stack rasters to simplify coding
-load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/AmphibianPAM.Rdata')
-myPAM$Presence_and_Absence_Matrix <- lets.addvar(myPAM, myEnvRasters)
-save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/AmphibianPAM.Rdata')
-
-load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/TerrMammalPAM.Rdata')
-myPAM$Presence_and_Absence_Matrix <- lets.addvar(myPAM, myEnvRasters)
-save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/TerrMammalPAM.Rdata')
-
-load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/ReptilianPAM.Rdata')
-myPAM$Presence_and_Absence_Matrix <- lets.addvar(myPAM, myEnvRasters)
-save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/ReptilianPAM.Rdata')
-
-load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/BirdPAM.Rdata')
-myPAM$Presence_and_Absence_Matrix <- lets.addvar(myPAM, myEnvRasters)
-save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/BirdPAM.Rdata')
+# ####################
+# # Amphibians
+# dsn = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Original geodata by Class/Amphibian Ranges/AMPHIBIANS'
+# layer = 'AMPHIBIANS'
+# fc <- readOGR(dsn = dsn, layer = layer)
+# specieslabel = 'binomial'
+# PAMfname = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/AmphibianPAM.Rdata'
+# presencelabel = 'presence'
+# seasonallabel = 'seasonal'
+# 
+# BuildPAMfromGeoDataSet(fc, specieslabel, presencelabel, seasonallabel, PAMfname, myEnvRasters)
+# 
+# ####################
+# # Terrestrial mammals
+# dsn = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Original geodata by Class/Terrestrial_mammal Ranges/TERRESTRIAL_MAMMALS'
+# layer = 'TERRESTRIAL_MAMMALS'
+# fc <- readOGR(dsn = dsn, layer = layer)
+# specieslabel = 'binomial'
+# PAMfname = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/TerrMammalPAM.Rdata'
+# presencelabel = 'presence'
+# seasonallabel = 'seasonal'
+# 
+# BuildPAMfromGeoDataSet(fc, specieslabel, presencelabel, seasonallabel, PAMfname, myEnvRasters)
+# 
+# ####################
+# # Reptiles
+# dsn = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Original geodata by Class/Reptilian Ranges/GARD1.1_dissolved_ranges/'
+# layer = 'modeled_reptiles'
+# fc <- readOGR(dsn = dsn, layer = layer)
+# specieslabel = 'Binomial'
+# PAMfname = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/ReptilianPAM.Rdata'
+# presencelabel = NA
+# seasonallabel = NA
+# 
+# BuildPAMfromGeoDataSet(fc, specieslabel, presencelabel, seasonallabel, PAMfname, myEnvRasters)
+# 
+# #############################################################################################################################
+# # Create PAM for latitudinal bands in the niche space analysis
+# load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/TerrMammalPAM.Rdata')
+# 
+# # clean up
+# myPAM$Species_name <- NULL
+# myPAM$Presence_and_Absence_Matrix <- myPAM$Presence_and_Absence_Matrix[,1:2]
+# 
+# # now divide latitudinal range into bands of different width
+# myPoints <- SpatialPoints(coords = cbind(rep(0,length(seq(-90,90,by=5))), seq(-90,90,by=5)), proj4string=CRS("+proj=longlat"))
+# myPoints <- spTransform(myPoints, '+proj=wag4 +lon_0=0')                         
+# mylats <- coordinates(myPoints)[,2]
+# 
+# myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats, "FiveDegBands")
+# myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats[seq(1,length(mylats),by=2)], "TenDegBands")
+# myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats[seq(1,length(mylats),by=3)], "FifteenDegBands")
+# myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats[seq(1,length(mylats),by=4)], "TwentyDegBands")
+# myPAM$Presence_and_Absence_Matrix <- getBands(myPAM$Presence_and_Absence_Matrix, mylats[c(1,length(mylats))], "AllWorld")
+# 
+# save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/LatBandsPAM.Rdata')
+# 
+# ####################################################
+# ####################################################
+# ####################################################
+# 
+# 
+# # Now add environmental data to those PAMs
+# 
+# # stack rasters to simplify coding
+# load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/AmphibianPAM.Rdata')
+# myPAM$Presence_and_Absence_Matrix <- lets.addvar(myPAM, myEnvRasters)
+# save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/AmphibianPAM.Rdata')
+# 
+# load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/TerrMammalPAM.Rdata')
+# myPAM$Presence_and_Absence_Matrix <- lets.addvar(myPAM, myEnvRasters)
+# save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/TerrMammalPAM.Rdata')
+# 
+# load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/ReptilianPAM.Rdata')
+# myPAM$Presence_and_Absence_Matrix <- lets.addvar(myPAM, myEnvRasters)
+# save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/ReptilianPAM.Rdata')
+# 
+# load('/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/BirdPAM.Rdata')
+# myPAM$Presence_and_Absence_Matrix <- lets.addvar(myPAM, myEnvRasters)
+# save(myPAM, file = '/Users/carlos/Box/Botero Lab Shared Files v. 2/Vertebrate distributional ranges/Presence Absence Matrices/BirdPAM.Rdata')

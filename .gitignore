@@ -4,9 +4,11 @@
 .Ruserdata
 .nc
 .gdbtable
+.shp
 *.nc
 *.Rproj.user
 *.Rhistory
 *.RData
 *.Ruserdata
 *.gdbtable
+*.shp
