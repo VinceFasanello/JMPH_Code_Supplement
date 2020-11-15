@@ -1,0 +1,40 @@
+--------------------------------------------------------------
+Begin PBS Prologue Fri Sep 18 22:27:18 CDT 2020 1600486038
+Job ID:			9502849[33].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Nodes:			node09
+End PBS Prologue Fri Sep 18 22:27:18 CDT 2020 1600486038
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+          used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells 2622071 140.1    4164291 222.4  4164291 222.4
+Vcells 7337384  56.0   10898106  83.2  7807120  59.6
+          used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells 2624287 140.2    4164291 222.4  4164291 222.4
+Vcells 7604719  58.1   13157727 100.4  8475724  64.7
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+--------------------------------------------------------------
+Begin PBS Epilogue Sat Sep 19 13:20:15 CDT 2020 1600539615
+Job ID:			9502849[33].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Job Name:		Elevation${PBS_ARRAYID}-33
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=14:52:52,vmem=1798512kb,walltime=14:52:53,mem=1161604kb,energy_used=0
+Nodes:	        	node09
+End PBS Epilogue Sat Sep 19 13:20:15 CDT 2020 1600539615
+--------------------------------------------------------------

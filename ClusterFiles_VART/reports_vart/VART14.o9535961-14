@@ -1,0 +1,54 @@
+--------------------------------------------------------------
+Begin PBS Prologue Fri Oct  9 11:37:44 CDT 2020 1602261464
+Job ID:			9535961[14].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Nodes:			node17
+End PBS Prologue Fri Oct  9 11:37:44 CDT 2020 1602261464
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622085 140.1    4164291 222.4  4164291 222.4
+Vcells 10519682  80.3   17740379 135.4 10519939  80.3
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2624348 140.2    4164291 222.4  4164291 222.4
+Vcells 10789454  82.4   21368454 163.1 11919918  91.0
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+[1] "finished species 19"
+[1] "finished species 20"
+[1] "finished species 21"
+[1] "finished species 22"
+[1] "finished species 23"
+[1] "finished species 24"
+[1] "finished species 25"
+[1] "finished species 26"
+--------------------------------------------------------------
+Begin PBS Epilogue Fri Oct  9 22:53:13 CDT 2020 1602301993
+Job ID:			9535961[14].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Job Name:		VART${PBS_ARRAYID}-14
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=11:15:16,vmem=2037628kb,walltime=11:15:24,mem=1404500kb,energy_used=0
+Nodes:	        	node17
+End PBS Epilogue Fri Oct  9 22:53:13 CDT 2020 1602301993
+--------------------------------------------------------------

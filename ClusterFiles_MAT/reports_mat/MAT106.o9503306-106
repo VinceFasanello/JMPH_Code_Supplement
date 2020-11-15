@@ -1,0 +1,54 @@
+--------------------------------------------------------------
+Begin PBS Prologue Mon Sep 21 14:57:34 CDT 2020 1600718254
+Job ID:			9503306[106].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Nodes:			dl05
+End PBS Prologue Mon Sep 21 14:57:34 CDT 2020 1600718254
+--------------------------------------------------------------
+--------------------------------------------------------------
+Begin PBS Epilogue Mon Sep 21 15:04:49 CDT 2020 1600718689
+Job ID:			9503306[106].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Job Name:		MAT${PBS_ARRAYID}-106
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		
+Nodes:	        	
+/var/spool/torque/mom_priv/deleteTmpDir: noping
+End PBS Epilogue Mon Sep 21 15:04:50 CDT 2020 1600718690
+--------------------------------------------------------------
+--------------------------------------------------------------
+Begin PBS Prologue Mon Sep 21 15:06:26 CDT 2020 1600718786
+Job ID:			9503306[106].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Nodes:			dl05
+End PBS Prologue Mon Sep 21 15:06:26 CDT 2020 1600718786
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+          used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells 2622122 140.1    4165115 222.5  4165115 222.5
+Vcells 5973618  45.6   10146329  77.5  7769251  59.3
+          used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells 2624278 140.2    4165115 222.5  4165115 222.5
+Vcells 6238979  47.6   12255594  93.6  7769251  59.3
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+--------------------------------------------------------------
+Begin PBS Epilogue Wed Sep 23 18:42:08 CDT 2020 1600904528
+Job ID:			9503306[106].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Job Name:		MAT${PBS_ARRAYID}-106
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=51:31:30,vmem=1713004kb,walltime=51:35:28,mem=1071644kb,energy_used=0
+Nodes:	        	dl05
+End PBS Epilogue Wed Sep 23 18:42:09 CDT 2020 1600904529
+--------------------------------------------------------------

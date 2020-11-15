@@ -1,0 +1,90 @@
+--------------------------------------------------------------
+Begin PBS Prologue Sat Sep 19 11:26:40 CDT 2020 1600532800
+Job ID:			9503306[4].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Nodes:			node13
+End PBS Prologue Sat Sep 19 11:26:40 CDT 2020 1600532800
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622121 140.1    4165115 222.5  4165115 222.5
+Vcells 18702708 142.7   29523692 225.3 18702966 142.7
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2624476 140.2    4165115 222.5  4165115 222.5
+Vcells 18981035 144.9   29523692 225.3 20111500 153.5
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+[1] "finished species 19"
+[1] "finished species 20"
+[1] "finished species 21"
+[1] "finished species 22"
+[1] "finished species 23"
+[1] "finished species 24"
+[1] "finished species 25"
+[1] "finished species 26"
+[1] "finished species 27"
+[1] "finished species 28"
+[1] "finished species 29"
+[1] "finished species 30"
+[1] "finished species 31"
+[1] "finished species 32"
+[1] "finished species 33"
+[1] "finished species 34"
+[1] "finished species 35"
+[1] "finished species 36"
+[1] "finished species 37"
+[1] "finished species 38"
+[1] "finished species 39"
+[1] "finished species 40"
+[1] "finished species 41"
+[1] "finished species 42"
+[1] "finished species 43"
+[1] "finished species 44"
+[1] "finished species 45"
+[1] "finished species 46"
+[1] "finished species 47"
+[1] "finished species 48"
+[1] "finished species 49"
+[1] "finished species 50"
+[1] "finished species 51"
+[1] "finished species 52"
+[1] "finished species 53"
+[1] "finished species 54"
+[1] "finished species 55"
+[1] "finished species 56"
+[1] "finished species 57"
+[1] "finished species 58"
+[1] "finished species 59"
+[1] "finished species 60"
+[1] "finished species 61"
+[1] "finished species 62"
+--------------------------------------------------------------
+Begin PBS Epilogue Sat Sep 19 21:41:14 CDT 2020 1600569674
+Job ID:			9503306[4].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Job Name:		MAT${PBS_ARRAYID}-4
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=10:14:35,vmem=2391160kb,walltime=10:14:29,mem=1761748kb,energy_used=0
+Nodes:	        	node13
+End PBS Epilogue Sat Sep 19 21:41:14 CDT 2020 1600569674
+--------------------------------------------------------------

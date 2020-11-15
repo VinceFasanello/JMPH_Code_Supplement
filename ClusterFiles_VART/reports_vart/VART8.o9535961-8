@@ -1,0 +1,66 @@
+--------------------------------------------------------------
+Begin PBS Prologue Fri Oct  9 11:31:09 CDT 2020 1602261069
+Job ID:			9535961[8].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Nodes:			node20
+End PBS Prologue Fri Oct  9 11:31:09 CDT 2020 1602261069
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622097 140.1    4164291 222.4  4164291 222.4
+Vcells 13247356 101.1   21668158 165.4 13247613 101.1
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2624391 140.2    4164291 222.4  4164291 222.4
+Vcells 13519962 103.2   26081789 199.0 14650426 111.8
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+[1] "finished species 19"
+[1] "finished species 20"
+[1] "finished species 21"
+[1] "finished species 22"
+[1] "finished species 23"
+[1] "finished species 24"
+[1] "finished species 25"
+[1] "finished species 26"
+[1] "finished species 27"
+[1] "finished species 28"
+[1] "finished species 29"
+[1] "finished species 30"
+[1] "finished species 31"
+[1] "finished species 32"
+[1] "finished species 33"
+[1] "finished species 34"
+[1] "finished species 35"
+[1] "finished species 36"
+[1] "finished species 37"
+[1] "finished species 38"
+--------------------------------------------------------------
+Begin PBS Epilogue Fri Oct  9 22:16:43 CDT 2020 1602299803
+Job ID:			9535961[8].mgt2.cluster
+Username:		vincefasanello
+Group:			cbotero
+Job Name:		VART${PBS_ARRAYID}-8
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=10:45:01,vmem=2339708kb,walltime=10:45:28,mem=1706580kb,energy_used=0
+Nodes:	        	node20
+End PBS Epilogue Fri Oct  9 22:16:43 CDT 2020 1602299803
+--------------------------------------------------------------

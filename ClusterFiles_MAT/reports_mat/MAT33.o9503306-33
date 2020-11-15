@@ -1,0 +1,40 @@
+--------------------------------------------------------------
+Begin PBS Prologue Sat Sep 19 20:39:51 CDT 2020 1600565991
+Job ID:			9503306[33].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Nodes:			node12
+End PBS Prologue Sat Sep 19 20:39:51 CDT 2020 1600565991
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+          used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells 2622071 140.1    4165115 222.5  4165115 222.5
+Vcells 7337368  56.0   10898087  83.2  7769251  59.3
+          used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells 2624298 140.2    4165115 222.5  4165115 222.5
+Vcells 7604711  58.1   13157704 100.4  8735176  66.7
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+--------------------------------------------------------------
+Begin PBS Epilogue Sun Sep 20 12:14:14 CDT 2020 1600622054
+Job ID:			9503306[33].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Job Name:		MAT${PBS_ARRAYID}-33
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=15:34:25,vmem=1773772kb,walltime=15:34:18,mem=1137992kb,energy_used=0
+Nodes:	        	node12
+End PBS Epilogue Sun Sep 20 12:14:15 CDT 2020 1600622055
+--------------------------------------------------------------

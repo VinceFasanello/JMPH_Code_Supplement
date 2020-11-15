@@ -1,0 +1,70 @@
+--------------------------------------------------------------
+Begin PBS Prologue Sat Sep 19 11:26:41 CDT 2020 1600532801
+Job ID:			9503306[7].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Nodes:			node15
+End PBS Prologue Sat Sep 19 11:26:41 CDT 2020 1600532801
+--------------------------------------------------------------
+         used (Mb) gc trigger (Mb) max used (Mb)
+Ncells 262711 14.1     641851 34.3   431440 23.1
+Vcells 442980  3.4    8388608 64.0  1753412 13.4
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2622101 140.1    4165115 222.5  4165115 222.5
+Vcells 14156572 108.1   22977394 175.4 14156829 108.1
+           used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells  2624406 140.2    4165115 222.5  4165115 222.5
+Vcells 14430131 110.1   27652872 211.0 15560595 118.8
+[1] "finished species 1"
+[1] "finished species 2"
+[1] "finished species 3"
+[1] "finished species 4"
+[1] "finished species 5"
+[1] "finished species 6"
+[1] "finished species 7"
+[1] "finished species 8"
+[1] "finished species 9"
+[1] "finished species 10"
+[1] "finished species 11"
+[1] "finished species 12"
+[1] "finished species 13"
+[1] "finished species 14"
+[1] "finished species 15"
+[1] "finished species 16"
+[1] "finished species 17"
+[1] "finished species 18"
+[1] "finished species 19"
+[1] "finished species 20"
+[1] "finished species 21"
+[1] "finished species 22"
+[1] "finished species 23"
+[1] "finished species 24"
+[1] "finished species 25"
+[1] "finished species 26"
+[1] "finished species 27"
+[1] "finished species 28"
+[1] "finished species 29"
+[1] "finished species 30"
+[1] "finished species 31"
+[1] "finished species 32"
+[1] "finished species 33"
+[1] "finished species 34"
+[1] "finished species 35"
+[1] "finished species 36"
+[1] "finished species 37"
+[1] "finished species 38"
+[1] "finished species 39"
+[1] "finished species 40"
+[1] "finished species 41"
+[1] "finished species 42"
+--------------------------------------------------------------
+Begin PBS Epilogue Sat Sep 19 21:03:31 CDT 2020 1600567411
+Job ID:			9503306[7].mgt2.cluster
+Username:		cbotero
+Group:			cbotero
+Job Name:		MAT${PBS_ARRAYID}-7
+Limits:           	nodes=1:ppn=1,walltime=167:00:00,pmem=8gb,neednodes=1:ppn=1,mem=4gb
+Resources:		cput=09:36:37,vmem=2438252kb,walltime=09:36:45,mem=1805128kb,energy_used=0
+Nodes:	        	node15
+End PBS Epilogue Sat Sep 19 21:03:31 CDT 2020 1600567411
+--------------------------------------------------------------
