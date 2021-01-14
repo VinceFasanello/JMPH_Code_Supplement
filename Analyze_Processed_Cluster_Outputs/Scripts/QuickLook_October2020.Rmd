@@ -74,48 +74,48 @@ collapsepairs <- T # OPTIONS: T, F
 minlatovperc <- 0.0 # only retain values greater than OR equal to this value
 mineleovperc <- 0.0
 minMATovperc <- 0.0
-mydata <- mydatahold
+ELEmydata <- mydatahold
 ```
 
 ```{r}
-if(allowmigrants == F){mydata <- mydata[which(mydata$Migration == 1.0),]} # retain only non-migrants if asked to do so. 
-if(allowsympatry == F){mydata <- mydata[which(mydata$ele_cmin > 0),]} # retain only allopatric/parapatric species if asked to do so.
-mydata <- mydata[which(mydata$lat_ov_perc_smrnge >= minlatovperc),]
-mydata <- mydata[which(mydata$ele_ov_perc_smrnge >= mineleovperc),]
-mydata <- mydata[which(mydata$MAT_ov_perc_smrnge >= minMATovperc),]
+if(allowmigrants == F){ELEmydata <- ELEmydata[which(ELEmydata$Migration == 1.0),]} # retain only non-migrants if asked to do so. 
+if(allowsympatry == F){ELEmydata <- ELEmydata[which(ELEmydata$ele_cmin > 0),]} # retain only allopatric/parapatric species if asked to do so.
+ELEmydata <- ELEmydata[which(ELEmydata$lat_ov_perc_smrnge >= minlatovperc),]
+ELEmydata <- ELEmydata[which(ELEmydata$ele_ov_perc_smrnge >= mineleovperc),]
+ELEmydata <- ELEmydata[which(ELEmydata$MAT_ov_perc_smrnge >= minMATovperc),]
 
-a <- seq(1:(nrow(mydata)/2)) # fix pair ids so loop below will function correctly
-b <- seq(1:(nrow(mydata)/2))
+a <- seq(1:(nrow(ELEmydata)/2)) # fix pair ids so loop below will function correctly
+b <- seq(1:(nrow(ELEmydata)/2))
 d <- c()
 for (i in 1:length(a)) {
   d <- c(d, a[i], b[i])
 }
-mydata$uniquePairId <- d
+ELEmydata$uniquePairId <- d
 
 if(collapsepairs == T){
   if(mycost %in% c("ele_cmin", "ele_cmean", "ele_cmedian", "ele_cmean_btm50", "ele_cmean_btm25")){
-    mypairdata <- mydata[1,]
-    mypairs <- unique(mydata$uniquePairId)
+    mypairdata <- ELEmydata[1,]
+    mypairs <- unique(ELEmydata$uniquePairId)
     for (i in 1:length(mypairs)) {
-      pairData <- mydata[which(mydata$uniquePairId == mypairs[i]), ]
+      pairData <- ELEmydata[which(ELEmydata$uniquePairId == mypairs[i]), ]
       mypairdata[i,] <- pairData[ which(pairData$ele_cmin == min(pairData$ele_cmin, na.rm = T))[1], ] # choose the single member with the lower elevational path cost. 
     }
     
   }
   if(mycost %in% c("MAT_cmin", "MAT_cmean", "MAT_cmedian", "MAT_cmean_btm50", "MAT_cmean_btm25")){
-    mypairdata <- mydata[1,]
-    mypairs <- unique(mydata$uniquePairId)
+    mypairdata <- ELEmydata[1,]
+    mypairs <- unique(ELEmydata$uniquePairId)
     for (i in 1:length(mypairs)) {
-      pairData <- mydata[which(mydata$uniquePairId == mypairs[i]), ]
+      pairData <- ELEmydata[which(ELEmydata$uniquePairId == mypairs[i]), ]
       mypairdata[i,] <- pairData[ which(pairData$MAT_cmin == min(pairData$MAT_cmin, na.rm = T))[1], ] # choose the single member with the lower MAT path cost. 
     }
   }
-  mydata <- mypairdata; rm(mypairdata, mypairs, pairData)
+  ELEmydata <- mypairdata; rm(mypairdata, mypairs, pairData)
 }
-mydata <- mydata[!is.na(mydata[, mycost]),] # remove NA cases
-pruned.tree <-drop.tip(tree, setdiff(tree$tip.label, row.names(mydata))) # clean up tree tips.
-mydata$cost <- mydata[, mycost] # easier to work with cost name
-mydata$lcost <- log(mydata$cost + abs(min(mydata$cost, na.rm = T)) + 1) # easier to work with lcost name
+ELEmydata <- ELEmydata[!is.na(ELEmydata[, mycost]),] # remove NA cases
+pruned.tree <-drop.tip(tree, setdiff(tree$tip.label, row.names(ELEmydata))) # clean up tree tips.
+ELEmydata$cost <- ELEmydata[, mycost] # easier to work with cost name
+ELEmydata$lcost <- log(ELEmydata$cost + abs(min(ELEmydata$cost, na.rm = T)) + 1) # easier to work with lcost name
 ```
 
 
@@ -123,36 +123,315 @@ mydata$lcost <- log(mydata$cost + abs(min(mydata$cost, na.rm = T)) + 1) # easier
 
 GLOBAL
 ```{R}
-ggpairs(mydata[, c("splatmean", "lcost")], title = paste0("cost = log ", mycost))
+ggpairs(ELEmydata[, c("splatmean", "lcost")], title = paste0("cost = log ", mycost))
 
 
-mymodq <- gls(lcost ~ splatmean + I(splatmean^2), correlation = corPagel(1, phy = pruned.tree), data = mydata, method = "REML")
-# mymodq <- glm(lcost ~ splatmean + I(splatmean^2), data = mydata)
+ELEmydata <- ELEmydata[order(factor(rownames(ELEmydata), levels = unique(pruned.tree$tip.label))),]
+rownames(ELEmydata) == pruned.tree$tip.label
+
+mymodq <- gls(lcost ~ splatmean + I(splatmean^2), correlation = corPagel(1, phy = pruned.tree), data = ELEmydata, method = "REML")
+# mymodq <- glm(lcost ~ splatmean + I(splatmean^2), data = ELEmydata)
 summary(mymodq)
 
-mymod <- gls(lcost ~ splatmean, correlation = corPagel(1, phy = pruned.tree), data = mydata, method = "REML")
-summary(mymod)
+x <- predict(mymodq)
+cor(x,log(ELEmydata$lcost))
 
-AIC(mymodq, mymod)
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+pdf(file = "MountainPassFigure_ele50global.pdf", width = 3.5, height = 3)
+# plot Effects of elevation
+plot(ELEmydata$splatmean, ELEmydata$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Elevation cost )", main = "Global")
+
+# plot fitted quadratic effect
+myx <- seq(min(ELEmydata$splatmean), max(ELEmydata$splatmean), by=0.5)
+mycoefs<-coef(mymodq)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lwd=3)
+dev.off()
+
+# mymod <- gls(lcost ~ splatmean, correlation = corPagel(1, phy = pruned.tree), data = ELEmydata,method = "REML")
+# summary(mymod)
+# 
+# AIC(mymodq, mymod)
+
 ```
 
 
 
 N.Hemisphere
 ```{R}
-mydatan <- mydata[mydata$splatmean > 0,]
-pruned.treen <-drop.tip(tree, setdiff(tree$tip.label, row.names(mydatan)))
+ELEmydatan <- ELEmydata[ELEmydata$splatmean > 0,]
+pruned.treen <-drop.tip(tree, setdiff(tree$tip.label, row.names(ELEmydatan)))
 
-ggpairs(mydatan[, c("splatmean", "lcost")], title = paste0("cost = log ", mycost, "            *N.hemisphere only"))
+GGally::ggpairs(ELEmydatan[, c("splatmean", "lcost")], title = paste0("cost = log ", mycost, "            *N.hemisphere only"))
 
-mymodq <- gls(lcost ~ splatmean + I(splatmean^2), correlation = corPagel(1, phy = pruned.treen), data = mydatan, method = "REML")
-summary(mymodq)
+ELEmydatan <- ELEmydatan[order(factor(rownames(ELEmydatan), levels = unique(pruned.treen$tip.label))),]
+rownames(ELEmydatan) == pruned.treen$tip.label
 
-mymod <- gls(lcost ~ splatmean, correlation = corPagel(1, phy = pruned.treen), data = mydatan, method = "REML")
+# mymodq <- gls(lcost ~ splatmean + I(splatmean^2), correlation = corPagel(1, phy = pruned.treen), data = ELEmydatan, method = "REML")
+# # mymodq <- glm(lcost ~ splatmean + I(splatmean^2), data = ELEmydatan)
+# summary(mymodq)
+
+mymod <- gls(lcost ~ splatmean, correlation = corPagel(1, phy = pruned.treen), data = ELEmydatan, method = "REML")
+# mymod <- glm(lcost ~ splatmean, data = ELEmydatan)
 summary(mymod)
 
-AIC(mymodq, mymod)
+
+x <- predict(mymod)
+cor(x,log(ELEmydatan$lcost))
+
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+pdf(file = "MountainPassFigure_ele50nhemi.pdf", width = 3.5, height = 3)
+# plot Effects of elevation
+plot(ELEmydatan$splatmean, ELEmydatan$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Elevation cost )", main = "N.Hemisphere")
+
+# plot fitted quadratic effect
+myx <- seq(min(ELEmydatan$splatmean), max(ELEmydatan$splatmean), by=0.5)
+mycoefs<-coef(mymod)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lwd = 3)
+dev.off()
+# AIC(mymodq, mymod)
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r Load Data}
+# main dataframe ---------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Species_Barrier_Data_BONES.rdata")
+
+
+# phylo ------------------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees")
+load(file = "BirdTrees.Rdata")
+tree <- trees[[1]]; rm(trees) # pick tree (VF GET TREES FROM COONEY!!! and use MCC tree.)
+tree <- drop.tip(tree, tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)]) # initial name matching.
+mydata <- mydata[which(mydata$Species.1 %in% tree$tip.label),]
+rownames(mydata) <- mydata$Species.1
+
+mydata$lat_ov_perc_smrnge[which(mydata$lat_ov_perc_smrnge < 0)] <- 0; # hist(mydata$lat_ov_perc_smrnge, 30)
+mydata$ele_ov_perc_smrnge[which(mydata$ele_ov_perc_smrnge < 0)] <- 0; # hist(mydata$ele_ov_perc_smrnge, 30)
+mydata$MAT_ov_perc_smrnge[which(mydata$MAT_ov_perc_smrnge < 0)] <- 0; # hist(mydata$MAT_ov_perc_smrnge, 30)
+mydatahold <- mydata
+```
+<br><br><br><br><br>
+
+
+
+
+```{r}
+mycost <- "MAT_cmean_btm50" # OPTIONS: "ele_cmin", "ele_cmean", "ele_cmedian"; "MAT_cmin", "MAT_cmean", "MAT_cmedian"
+allowmigrants <- F # OPTIONS: T, F
+allowsympatry <- F # OPTIONS: T, F
+collapsepairs <- T # OPTIONS: T, F
+minlatovperc <- 0.0 # only retain values greater than OR equal to this value
+mineleovperc <- 0.0
+minMATovperc <- 0.0
+MATmydata <- mydatahold
+```
+
+```{r}
+if(allowmigrants == F){MATmydata <- MATmydata[which(MATmydata$Migration == 1.0),]} # retain only non-migrants if asked to do so. 
+if(allowsympatry == F){MATmydata <- MATmydata[which(MATmydata$MAT_cmin > 0),]} # retain only allopatric/parapatric species if asked to do so.
+MATmydata <- MATmydata[which(MATmydata$lat_ov_perc_smrnge >= minlatovperc),]
+MATmydata <- MATmydata[which(MATmydata$ele_ov_perc_smrnge >= mineleovperc),]
+MATmydata <- MATmydata[which(MATmydata$MAT_ov_perc_smrnge >= minMATovperc),]
+
+a <- seq(1:(nrow(MATmydata)/2)) # fix pair ids so loop below will function correctly
+b <- seq(1:(nrow(MATmydata)/2))
+d <- c()
+for (i in 1:length(a)) {
+  d <- c(d, a[i], b[i])
+}
+MATmydata$uniquePairId <- d
+
+if(collapsepairs == T){
+  if(mycost %in% c("ele_cmin", "ele_cmean", "ele_cmedian", "ele_cmean_btm50", "ele_cmean_btm25")){
+    mypairdata <- MATmydata[1,]
+    mypairs <- unique(MATmydata$uniquePairId)
+    for (i in 1:length(mypairs)) {
+      pairData <- MATmydata[which(MATmydata$uniquePairId == mypairs[i]), ]
+      mypairdata[i,] <- pairData[ which(pairData$ele_cmin == min(pairData$ele_cmin, na.rm = T))[1], ] # choose the single member with the lower elevational path cost. 
+    }
+    
+  }
+  if(mycost %in% c("MAT_cmin", "MAT_cmean", "MAT_cmedian", "MAT_cmean_btm50", "MAT_cmean_btm25")){
+    mypairdata <- MATmydata[1,]
+    mypairs <- unique(MATmydata$uniquePairId)
+    for (i in 1:length(mypairs)) {
+      pairData <- MATmydata[which(MATmydata$uniquePairId == mypairs[i]), ]
+      mypairdata[i,] <- pairData[ which(pairData$MAT_cmin == min(pairData$MAT_cmin, na.rm = T))[1], ] # choose the single member with the lower MAT path cost. 
+    }
+  }
+  MATmydata <- mypairdata; rm(mypairdata, mypairs, pairData)
+}
+MATmydata <- MATmydata[!is.na(MATmydata[, mycost]),] # remove NA cases
+pruned.tree <-drop.tip(tree, setdiff(tree$tip.label, row.names(MATmydata))) # clean up tree tips.
+MATmydata$cost <- MATmydata[, mycost] # easier to work with cost name
+MATmydata$lcost <- log(MATmydata$cost + abs(min(MATmydata$cost, na.rm = T)) + 1) # easier to work with lcost name
+
+```
+
+
+
+
+GLOBAL
+```{R}
+ggpairs(MATmydata[, c("splatmean", "lcost")], title = paste0("cost = log ", mycost))
+
+
+MATmydata <- MATmydata[order(factor(rownames(MATmydata), levels = unique(pruned.tree$tip.label))),]
+rownames(MATmydata) == pruned.tree$tip.label
+
+MATmymodq <- gls(lcost ~ splatmean + I(splatmean^2), correlation = corPagel(1, phy = pruned.tree), data = MATmydata, method = "REML")
+# MATmymodq <- glm(lcost ~ splatmean + I(splatmean^2), data = MATmydata)
+summary(MATmymodq)
+
+x <- predict(MATmymodq)
+cor(x,log(MATmydata$lcost))
+
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+pdf(file = "MountainPassFigure_mat50global.pdf", width = 3.5, height = 3)
+# plot Effects of elevation
+plot(MATmydata$splatmean, MATmydata$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Temperature cost )", main = "Global")
+
+# plot fitted quadratic effect
+myx <- seq(min(MATmydata$splatmean), max(MATmydata$splatmean), by=0.5)
+mycoefs<-coef(MATmymodq)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lwd=3)
+dev.off()
+
+# MATmymod <- gls(lcost ~ splatmean, correlation = corPagel(1, phy = pruned.tree), data = MATmydata,method = "REML")
+# summary(MATmymod)
+# 
+# AIC(MATmymodq, MATmymod)
+```
+
+
+
+N.Hemisphere
+```{R}
+MATmydatan <- MATmydata[MATmydata$splatmean > 0,]
+pruned.treen <-drop.tip(tree, setdiff(tree$tip.label, row.names(MATmydatan)))
+
+GGally::ggpairs(MATmydatan[, c("splatmean", "lcost")], title = paste0("cost = log ", mycost, "            *N.hemisphere only"))
+
+MATmydatan <- MATmydatan[order(factor(rownames(MATmydatan), levels = unique(pruned.treen$tip.label))),]
+rownames(MATmydatan) == pruned.treen$tip.label
+
+# MATmymodq <- gls(lcost ~ splatmean + I(splatmean^2), correlation = corPagel(1, phy = pruned.treen), data = MATmydatan, method = "REML")
+# # MATmymodq <- glm(lcost ~ splatmean + I(splatmean^2), data = MATmydatan)
+# summary(MATmymodq)
+
+# MATmymod <- gls(lcost ~ splatmean, correlation = corPagel(1, phy = pruned.treen), data = MATmydatan, method = "REML")
+MATmymod <- glm(lcost ~ splatmean, data = MATmydatan)
+summary(MATmymod)
+
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+pdf(file = "MountainPassFigure_mat50nhemi.pdf", width = 3.5, height = 3)
+# plot Effects of elevation
+plot(MATmydatan$splatmean, MATmydatan$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Temperature cost )", main = "N.Hemisphere")
+
+# plot fitted quadratic effect
+myx <- seq(min(MATmydatan$splatmean), max(MATmydatan$splatmean), by=0.5)
+mycoefs<-coef(MATmymod)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lwd = 3)
+dev.off()
+
+x <- predict(MATmymod)
+cor(x,log(MATmydatan$lcost))
+
+# AIC(MATmymodq, MATmymod)
+```
+
+
+
+
+
+
+
+```{r}
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+pdf(file = "MountainPassFigure_new.pdf", width = 7, height = 7)
+layout(matrix(1:4,2,2, byrow = T))
+
+plot(ELEmydata$splatmean, ELEmydata$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Elevation cost )", main = "Global")
+
+# plot fitted quadratic effect
+myx <- seq(min(ELEmydata$splatmean), max(ELEmydata$splatmean), by=0.5)
+mycoefs<-coef(mymodq)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lwd=3)
+
+
+plot(ELEmydatan$splatmean, ELEmydatan$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Elevation cost )", main = "N.Hemisphere")
+
+# plot fitted quadratic effect
+myx <- seq(min(ELEmydatan$splatmean), max(ELEmydatan$splatmean), by=0.5)
+mycoefs<-coef(mymod)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lwd = 3)
+
+
+plot(MATmydata$splatmean, MATmydata$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Temperature cost )", main = "Global")
+
+# plot fitted quadratic effect
+myx <- seq(min(MATmydata$splatmean), max(MATmydata$splatmean), by=0.5)
+mycoefs<-coef(MATmymodq)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lwd=3)
+
+
+plot(MATmydatan$splatmean, MATmydatan$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Temperature cost )", main = "N.Hemisphere")
+
+# plot fitted quadratic effect
+myx <- seq(min(MATmydatan$splatmean), max(MATmydatan$splatmean), by=0.5)
+mycoefs<-coef(MATmymod)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lwd = 3)
+dev.off()
+```
+
+
 
 
 
@@ -167,7 +446,8 @@ AIC(mymodq, mymod)
 
 
 ```{r}
-
+mydata$tlmean <- log(mydata$MAT_cmean + abs(min(mydata$MAT_cmean, na.rm = T)) + 1) # easier to work with lcost name
+mydata$latmean <- mydata$splatmean
 
 my.pgls.mod <- gls(I(log(tlmean)) ~ latmean + I(latmean^2), correlation = corPagel(1, phy = pruned.tree), data = mydata, method = "REML")
 summary(my.pgls.mod);hist(residuals(my.pgls.mod))
@@ -177,9 +457,9 @@ x <- predict(my.pgls.mod)
 cor(x,log(mydata$tlmean))
 
 
-plot(log(mydata$tlmean) ~ log(mydata$elmean))
+plot(log(mydata$tlmean) ~ log(mydata$lcost))
 abline(a = 0, b = 1)
-cor.test(log(mydata$tlmean),log(mydata$elmean))
+cor.test(log(mydata$tlmean),log(mydata$lcost))
 
 ######################
 # what about only using N hemisphere data?

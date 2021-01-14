@@ -18,6 +18,7 @@ load("cooneyp.rdata")
 setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
 load(file = "Elevation_Results_Concat.rdata"); rm(m_a_bblats_ele, m_a_bblons_ele)
 load(file = "MAT_Results_Concat.rdata"); rm(m_a_bblats_MAT, m_a_bblons_MAT)
+load(file = "VarT_Results_Concat.rdata"); rm(m_a_bblats_VarT, m_a_bblons_VarT)
 
 `%!in%` <- compose(`!`, `%in%`)
 ```
@@ -27,6 +28,8 @@ load(file = "MAT_Results_Concat.rdata"); rm(m_a_bblats_MAT, m_a_bblons_MAT)
 
 ```{r Create a SIMPLE 1 row per species dataset}
 sum(cooneyp$Species.1bl != rownames(m_aB_ele_mcosts)) # confirm identical n rows and sort order.
+sum(cooneyp$Species.1bl != rownames(m_aB_MAT_mcosts))
+sum(cooneyp$Species.1bl != rownames(m_aB_VarT_mcosts))
 
 # retain interest columns only.
 mydata <- cooneyp[,c("Species.1" , "Species.2", "Species.1bl" , "Species.2bl", "uniquePairId", "Pair.age..MY.",
@@ -52,6 +55,7 @@ for (i in 1:nrow(m_a_lonlat)) {
   r12 <- paste(r12[,1], r12[,2], sep = ",")
   m_a_lonlat[i,][m_a_lonlat[i,] %in% r12] <- "sym"
   m_a_lonlat[i,][m_a_lonlat[i,] %!in% r12 & m_a_lonlat[i,] != "sym" & !is.na(m_a_lonlat[i,])] <- "alo"
+  # print(i)
 }
 
 m_aB_ele_mcosts[m_a_lonlat == "sym"] <- 0
@@ -62,10 +66,13 @@ m_aB_MAT_mcosts[m_a_lonlat == "sym"] <- 0
 m_aB_MAT_plengths[m_a_lonlat == "sym"] <- 0
 # fix bblons and bblats later!!!!!
 
+m_aB_VarT_mcosts[m_a_lonlat == "sym"] <- 0
+m_aB_VarT_plengths[m_a_lonlat == "sym"] <- 0
+# fix bblons and bblats later!!!!!
 
-# *these values are broadly identical, only 2 species disagree -- I think these two species are still running on cluster, check again after re downloading upon run completion
 mydata$ele_npaths <- apply(m_aB_ele_mcosts, 1, function(x) sum(!is.na(x))) # n good ele paths (not sympatric, not iso by water)
 mydata$MAT_npaths <- apply(m_aB_MAT_mcosts, 1, function(x) sum(!is.na(x))) # n good MAT paths 
+mydata$VarT_npaths <- apply(m_aB_VarT_mcosts, 1, function(x) sum(!is.na(x))) # n good VarT paths 
 
 mydata$splonmean <- apply(m_a_lons, 1, function(x) mean(x, na.rm = T));mydata$splonmean[is.nan(mydata$splonmean)] <- NA # longitude info (SPECIES)
 mydata$splatmean <- apply(m_a_lats, 1, function(x) mean(x, na.rm = T));mydata$splatmean[is.nan(mydata$splatmean)] <- NA # Latitude info (SPECIES)
@@ -79,13 +86,12 @@ mydata$MAT_cmin <- apply(m_aB_MAT_mcosts, 1, quantile, na.rm = T, probs = 0);myd
 mydata$MAT_cmean <- apply(m_aB_MAT_mcosts, 1, function(x) mean(x, na.rm = T));mydata$MAT_cmean[is.nan(mydata$MAT_cmean)] <- NA
 mydata$MAT_cmedian <- apply(m_aB_MAT_mcosts, 1, function(x) median(x, na.rm = T));mydata$MAT_cmedian[is.nan(mydata$MAT_cmedian)] <- NA
 
-# separated by water Y/N (if no paths then yes, if paths then no...pretty easy).
+mydata$VarT_cmin <- apply(m_aB_VarT_mcosts, 1, quantile, na.rm = T, probs = 0);mydata$VarT_cmin[is.nan(mydata$VarT_cmin)] <- NA
+mydata$VarT_cmean <- apply(m_aB_VarT_mcosts, 1, function(x) mean(x, na.rm = T));mydata$VarT_cmean[is.nan(mydata$VarT_cmean)] <- NA
+mydata$VarT_cmedian <- apply(m_aB_VarT_mcosts, 1, function(x) median(x, na.rm = T));mydata$VarT_cmedian[is.nan(mydata$VarT_cmedian)] <- NA
 
 setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
 save(mydata, file = "Species_Barrier_Data_BONES.rdata")
-
-
-
 ```
 
 
@@ -121,6 +127,7 @@ for (i in 1:nrow(mydata)){
   
   m_aB_ele_plengths_btm25[i,which(m_aB_ele_mcosts[i,] < mydata$ele_rowmincut[i])] <- NA
   m_aB_ele_plengths_btm25[i,which(m_aB_ele_mcosts[i,] > mydata$ele_25_rowmaxcut[i])] <- NA
+  # print(i)
 }
 
 # # checks show working as intended. 
@@ -166,20 +173,57 @@ for (i in 1:nrow(mydata)){
   m_aB_MAT_plengths_btm25[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_25_rowmaxcut[i])] <- NA
 }
 
-# # checks show working as intended. 
-# rowSums(!is.na(m_aB_MAT_mcosts[10:20,])); rowMeans(m_aB_MAT_mcosts[10:20,], na.rm = T)
-# rowSums(!is.na(m_aB_MAT_mcosts_btm50[10:20,])); rowMeans(m_aB_MAT_mcosts_btm50[10:20,], na.rm = T)
-# rowSums(!is.na(m_aB_MAT_mcosts_btm25[10:20,])); rowMeans(m_aB_MAT_mcosts_btm25[10:20,], na.rm = T)
-
 mydata$MAT_cmean_btm50 <- apply(m_aB_MAT_mcosts_btm50, 1, function(x) mean(x, na.rm = T));mydata$MAT_cmean_btm50[is.nan(mydata$MAT_cmean_btm50)] <- NA # mean cost for btm half of paths
 mydata$MAT_cmean_btm25 <- apply(m_aB_MAT_mcosts_btm25, 1, function(x) mean(x, na.rm = T));mydata$MAT_cmean_btm25[is.nan(mydata$MAT_cmean_btm25)] <- NA # mean cost for btm 25% of paths
-
-
-setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
-save(mydata, file = "Species_Barrier_Data_BONES.rdata")
 ```
 
 
+btm50 & btm25 - MAT mcost
+```{r}
+mydata$VarT_rowmincut <- NA
+
+mydata$VarT_50_rowmaxcut <- NA
+m_aB_VarT_mcosts_btm50 <- m_aB_VarT_mcosts
+m_aB_VarT_plengths_btm50 <- m_aB_VarT_plengths
 
 
+mydata$VarT_25_rowmaxcut <- NA
+m_aB_VarT_mcosts_btm25 <- m_aB_VarT_mcosts
+m_aB_VarT_plengths_btm25 <- m_aB_VarT_plengths
+
+
+mydata$VarT_rowmincut <- apply(m_aB_VarT_mcosts, 1, quantile, na.rm = T, probs = 0)
+mydata$VarT_50_rowmaxcut <- apply(m_aB_VarT_mcosts, 1, quantile, na.rm = T, probs = 0.50)
+mydata$VarT_25_rowmaxcut <- apply(m_aB_VarT_mcosts, 1, quantile, na.rm = T, probs = 0.25)
+
+
+for (i in 1:nrow(mydata)){
+  m_aB_VarT_mcosts_btm50[i,which(m_aB_VarT_mcosts[i,] < mydata$VarT_rowmincut[i])] <- NA
+  m_aB_VarT_mcosts_btm50[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_50_rowmaxcut[i])] <- NA
+  
+  m_aB_VarT_plengths_btm50[i,which(m_aB_VarT_mcosts[i,] < mydata$VarT_rowmincut[i])] <- NA
+  m_aB_VarT_plengths_btm50[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_50_rowmaxcut[i])] <- NA
+  
+  m_aB_VarT_mcosts_btm25[i,which(m_aB_VarT_mcosts[i,] < mydata$VarT_rowmincut[i])] <- NA
+  m_aB_VarT_mcosts_btm25[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_25_rowmaxcut[i])] <- NA
+  
+  m_aB_VarT_plengths_btm25[i,which(m_aB_VarT_mcosts[i,] < mydata$VarT_rowmincut[i])] <- NA
+  m_aB_VarT_plengths_btm25[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_25_rowmaxcut[i])] <- NA
+}
+
+mydata$VarT_cmean_btm50 <- apply(m_aB_VarT_mcosts_btm50, 1, function(x) mean(x, na.rm = T));mydata$VarT_cmean_btm50[is.nan(mydata$VarT_cmean_btm50)] <- NA # mean cost for btm half of paths
+mydata$VarT_cmean_btm25 <- apply(m_aB_VarT_mcosts_btm25, 1, function(x) mean(x, na.rm = T));mydata$VarT_cmean_btm25[is.nan(mydata$VarT_cmean_btm25)] <- NA # mean cost for btm 25% of paths
+
+# plot(log(mydata$VarT_cmean))
+# plot(log(mydata$VarT_cmean_btm50))
+# plot(log(mydata$VarT_cmean_btm25))
+# plot(log(mydata$VarT_cmin))
+```
+
+
+```{r}
+mydata <- mydata[,which(colnames(mydata) %!in% c("ele_rowmincut", "MAT_rowmincut", "VarT_rowmincut"))]
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+save(mydata, file = "Species_Barrier_Data_BONES.rdata")
+```
 
