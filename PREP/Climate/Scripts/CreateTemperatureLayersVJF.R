@@ -324,7 +324,7 @@ save(tasrng,
 
 
 # create MAT raster ----------------------------------------
-setwd("/Users/boterolab1/Box Sync/JMPH/PREP/Climate/Data") 
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/Climate/Data") 
 load(file = "tas_rasters_VJF.rdata")
 MAT <- mean(tas, na.rm = T)
 plot(MAT)

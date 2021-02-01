@@ -63,11 +63,11 @@ mydatahold <- mydata
 <br><br><br><br><br>
 
 ```{r}
-mycost <- "cmean_btm25" # OPTIONS: "cmin", "cmean", "cmean_btm50, cmean_btm25, "cmedian
+mycost <- "cmean" # OPTIONS: "cmin", "cmean", "cmean_btm50, cmean_btm25, "cmedian
 allowmigrants <- F # OPTIONS: T, F
 allowsympatry <- F # OPTIONS: T, F
 collapsepairs <- T # OPTIONS: T, F
-minoverperc <- 0.5
+minoverperc <- 0.0
 ELEmydata <- mydatahold
 MATmydata <- mydatahold
 VARTmydata <- mydatahold
@@ -148,21 +148,27 @@ GLOBAL
 ```{R}
 ELEmydata$splatmean <- rowMeans(cbind(ELEmydata$centroid_lat_sp1, ELEmydata$centroid_lat_sp2), na.rm = T)
 ELEmydata$splonmean <- rowMeans(cbind(ELEmydata$centroid_lon_sp1, ELEmydata$centroid_lon_sp2), na.rm = T)
+ELEmydata$pairmeanelev <- rowMeans(cbind(ELEmydata$mean_ele_sp1, ELEmydata$mean_ele_sp2))
+ELEmydata$pairrngelev <- rowMeans(cbind(ELEmydata$ele_range_sp1, ELEmydata$ele_range_sp2))
+ELEmydata$splatmean2 <- ELEmydata$splatmean^2
 
-ggpairs(ELEmydata[, c("splatmean", "lcost")], title = paste0("cost = log ", mycost))
+ggpairs(ELEmydata[, c("lcost", "splatmean", "splatmean2", "pairmeanelev", "pairrngelev", "centroid_distance","ele_ov_perc_smrnge", "Pair.age..MY.")], title = paste0("cost = log ", mycost))
 
 
 ELEmydata <- ELEmydata[order(factor(rownames(ELEmydata), levels = unique(ELEpruned.tree$tip.label))),]
 sum(rownames(ELEmydata) != ELEpruned.tree$tip.label)
 mymodq <- gls(lcost ~ splatmean + I(splatmean^2) + 
-                I(rowMeans(cbind(mean_ele_sp1, mean_ele_sp2))) + 
-                I(rowMeans(cbind(ele_range_sp1, ele_range_sp2))) + 
+                pairmeanelev + 
+                pairrngelev + 
                 centroid_distance + 
+                ele_ov_perc_smrnge+
                 Pair.age..MY.,
               correlation = corPagel(1, phy = ELEpruned.tree), data = ELEmydata, method = "REML")
-# mymodq <- glm(lcost ~ splatmean + I(splatmean^2) + I(rowMeans(cbind(mean_ele_sp1, mean_ele_sp2))) +  I(rowMeans(cbind(ele_range_sp1, ele_range_sp2))) + centroid_distance + Pair.age..MY., data = ELEmydata)
 summary(mymodq)
-coefficients(mymodq)
+
+
+require(MuMIn)
+dd <- dredge(mymodq)
 
 x <- predict(mymodq)
 cor(x,log(ELEmydata$lcost))
@@ -190,11 +196,30 @@ require(spdep)
 require(spmoran)
 ELEmydata$splatmean2 <- ELEmydata$splatmean^2
 y <- ELEmydata$lcost
-x <- ELEmydata[,c("splatmean", "splatmean2")]
+x <- ELEmydata[,c("splatmean", "splatmean2", "pairmeanelev", "pairrngelev", "centroid_distance", "ele_ov_perc_smrnge","Pair.age..MY." )]
 coords <- cbind(ELEmydata$splonmean, ELEmydata$splatmean)
 meig <- meigen(coords=coords)
-res <- esf(y=y, x=x, meig=meig, vif=10)
+
+res <- resf(y=y, x=x, meig=meig, nvc = TRUE)
 res
 plot_s(res)
+
+
+
+res <- resf_vc(y=y, x=x, meig=meig, xconst_nvc_sel = T)
+res
+plot_s(res)
+
+
+x <- ELEmydata[,c("splatmean", "splatmean2", "pairmeanelev" ,"pairrngelev","Pair.age..MY.", "ele_ov_perc_smrnge")]
+res <- resf_qr(y=y, x=x, meig=meig, boot=TRUE)
+plot_qr(res,1)
+plot_qr(res,2)
+plot_qr(res,3)
+plot_qr(res,4)
+plot_qr(res,5)
+plot_qr(res,6)
+plot_qr(res,7)
+
 ```
 

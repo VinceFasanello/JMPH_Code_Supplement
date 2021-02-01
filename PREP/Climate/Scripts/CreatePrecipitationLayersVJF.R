@@ -248,3 +248,13 @@ save(pcpmax,
      file = "pcpmax_rasters_VJF.rdata")
 save(pcprng,
      file = "pcprng_rasters_VJF.rdata")
+
+
+# create PCP raster ----------------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/Climate/Data") 
+load(file = "pcp_rasters_VJF.rdata")
+PCP <- sum(pcp, na.rm = T)
+plot(PCP)
+dim(pcp[[1]]) == dim(PCP) # looks good. 
+save(PCP, file = "PCP_raster_VJF.rdata")
+# ---------------------------------------------------------
