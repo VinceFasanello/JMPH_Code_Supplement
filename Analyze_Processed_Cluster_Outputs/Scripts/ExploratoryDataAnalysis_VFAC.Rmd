@@ -186,6 +186,33 @@ myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
 lines(c(0,0), c(-10,100), lty=2)
 lines(myx,myy,col = 'red', lwd=3)
 dev.off()
+
+
+
+
+
+
+
+
+
+MATmydata$splatmean <- rowMeans(cbind(MATmydata$centroid_lat_sp1, MATmydata$centroid_lat_sp2), na.rm = T)
+MATmydata$splonmean <- rowMeans(cbind(MATmydata$centroid_lon_sp1, MATmydata$centroid_lon_sp2), na.rm = T)
+MATmydata$pairmeanelev <- rowMeans(cbind(MATmydata$mean_ele_sp1, MATmydata$mean_ele_sp2))
+MATmydata$pairrngelev <- rowMeans(cbind(MATmydata$ele_range_sp1, MATmydata$ele_range_sp2))
+MATmydata$splatmean2 <- MATmydata$splatmean^2
+
+ggpairs(MATmydata[, c("lcost", "splatmean", "splatmean2", "pairmeanelev", "pairrngelev", "centroid_distance","ele_ov_perc_smrnge", "Pair.age..MY.")], title = paste0("cost = log ", mycost))
+
+
+MATmydata <- MATmydata[order(factor(rownames(MATmydata), levels = unique(MATpruned.tree$tip.label))),]
+sum(rownames(MATmydata) != MATpruned.tree$tip.label)
+mymodq <- gls(lcost ~ splatmean + I(splatmean^2) + 
+                pairmeanelev + 
+                pairrngelev + 
+                centroid_distance + 
+                Pair.age..MY.,
+              correlation = corPagel(1, phy = MATpruned.tree), data = MATmydata, method = "REML")
+summary(mymodq)
 ```
 
 
