@@ -1,0 +1,41 @@
+---
+title: "JMPH_ANGELA&VINCEexploreModels"
+output:
+  html_document: default
+---
+
+Prepare the workspace.
+```{r Top Matter, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, error = FALSE) # rmd options
+
+rm(list = ls()); invisible(gc()) # cleaning
+
+options(scipen = 999) # turn off scientific notation
+
+'%notin%' <- Negate('%in%')
+
+require(ggplot2) # load packages
+require(GGally)
+require(gridExtra)
+require(grid)
+require(lattice)
+require(ggplotify)
+require(quantreg)
+require(viridis)
+require(caper)
+require(splines)
+library(dplyr)
+library(stringr)
+library(maps)
+library(brms)
+library(caper)
+library(ape)
+library(EnvStats)
+library(forecast)
+require (nlme)
+
+```
+<br><br><br><br><br>
+
+
+
