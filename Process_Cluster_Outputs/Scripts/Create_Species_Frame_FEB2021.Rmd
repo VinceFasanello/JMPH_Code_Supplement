@@ -1,0 +1,406 @@
+
+
+```{r Top Matter}
+rm(list = ls()); invisible(gc())
+
+require(rgdal)
+require(sp)
+require(raster)
+require(reshape2)
+require(abind)
+require(purrr)
+require(ggplot2)
+require(rgeos)
+
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/MainDataFrame/Data")
+load("a_mats_UNM_basic.rdata"); rm(m_a_eles, m_a_slop, m_a_aspe)
+load("cooneyp_beefy.Rdata")
+
+
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+load(file = "Elevation_Results_Concat.rdata"); rm(m_a_bblats_ele, m_a_bblons_ele, m_aB_ele_plengths)
+load(file = "MAT_Results_Concat.rdata"); rm(m_a_bblats_MAT, m_a_bblons_MAT, m_aB_MAT_plengths)
+load(file = "VarT_Results_Concat.rdata"); rm(m_a_bblats_VarT, m_a_bblons_VarT, m_aB_VarT_plengths)
+
+
+wdPAM <- "/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data"
+setwd(wdPAM); load("LonLat_BirdPAM_raster.rdata")
+
+
+'%!in%' <- Negate('%in%')
+```
+
+# prep the coooney frame so it is less unwieldy
+```{r}
+mydata <- cooneyp; rm(cooneyp)
+mydata <- mydata[, c("uniquePair", "uniquePairId", "sortcol", "sortorder", "Species.1", "Species.2", "Species.1bl", "Species.2bl",
+                     "Pair.age..MY.", "Migration", "Body.mass..log.", "Passerine...non.passerine",
+                     "n_pam_cells_sp1", "n_pam_cells_sp2", "Range.overlap",
+                     "centroid_lon_sp1", "centroid_lon_sp2", "centroid_lat_sp1", "centroid_lat_sp2", "centroid_distance",
+                     "min_lat_sp1", "min_lat_sp2", "max_lat_sp1", "max_lat_sp2", "lat_range_sp1", "lat_range_sp2", "lat_ov_range", "lat_ov_perc_smrnge",
+                     "min_ele_sp1", "min_ele_sp2", "max_ele_sp1", "max_ele_sp2", "ele_range_sp1", "ele_range_sp2", "ele_ov_range", "ele_ov_perc_smrnge", "mean_ele_sp1", "mean_ele_sp2",  "med_ele_sp1", "med_ele_sp2", 
+                     "min_MAT_sp1", "min_MAT_sp2", "max_MAT_sp1", "max_MAT_sp2", "MAT_range_sp1", "MAT_range_sp2", "MAT_ov_range", "MAT_ov_perc_smrnge", "mean_MAT_sp1", "mean_MAT_sp2",  "med_MAT_sp1", "med_MAT_sp2", 
+                     "min_VarT_sp1", "min_VarT_sp2", "max_VarT_sp1", "max_VarT_sp2", "VarT_range_sp1", "VarT_range_sp2", "VarT_ov_range", "VarT_ov_perc_smrnge", "mean_VarT_sp1", "mean_VarT_sp2",  "med_VarT_sp1", "med_VarT_sp2"
+                     )]
+```
+
+
+
+
+
+```{r Create a SIMPLE 1 row per species dataset}
+sum(mydata$Species.1bl != rownames(m_aB_ele_mcosts)) # confirm identical n rows and sort order.
+sum(mydata$Species.1bl != rownames(m_aB_MAT_mcosts))
+sum(mydata$Species.1bl != rownames(m_aB_VarT_mcosts))
+
+# sympatric cells.
+#  - identify paths that should be 0-cost b/c sympatry & replace with appropriate data.
+#     - find set that is shared pts in range 1 and range 2
+#     - note n sympatric cells in range 1
+#     - find cost, len, and bb cells that correspond to the lonlat pts in share set and replace with appropriate data
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data")
+load("cbPAM.rdata")
+m_a_lonlat <- matrix(paste(m_a_lons,m_a_lats,sep=","),dim(m_a_lons)[1],dim(m_a_lons)[2])
+m_a_lonlat[m_a_lonlat == "NA,NA"] <- NA
+
+for (i in 1:nrow(m_a_lonlat)) {
+  r12 <- cbPAM[, c("Longitude(x)", "Latitude(y)", mydata$Species.1bl[i], mydata$Species.2bl[i])]
+  r12 <- matrix(r12[r12[,3] == 1 & r12[,4] == 1,], ncol = 4)
+  r12 <- paste(r12[,1], r12[,2], sep = ",")
+  m_a_lonlat[i,][m_a_lonlat[i,] %in% r12] <- "sym"
+  m_a_lonlat[i,][m_a_lonlat[i,] %!in% r12 & m_a_lonlat[i,] != "sym" & !is.na(m_a_lonlat[i,])] <- "alo"
+  # print(i)
+}
+m_aB_ele_mcosts[m_a_lonlat == "sym"] <- 0
+m_aB_MAT_mcosts[m_a_lonlat == "sym"] <- 0
+m_aB_VarT_mcosts[m_a_lonlat == "sym"] <- 0
+```
+
+# look at cost distributions (for non-sympatric sp only) to inform summary stats
+!!! TAKES A WHILE TO RUN, UNCOMMENT ONLY WHEN NEEDED !!!
+```{r}
+# x <- m_aB_ele_mcosts
+# y <- apply(x, 1, min, na.rm = T)
+# x <- x[y > 0 & y < Inf,]
+# nrow(x)
+# 
+# pdf("pair_cost_hists_ELEVATION.pdf", width = 7, height = 7)
+# for(i in 1:nrow(x)){
+# z <- ggplot()+
+#   geom_density(aes(x[i,]))+
+#   geom_vline(xintercept = mean(x[i,], na.rm = T), color = "black")+
+#   geom_vline(xintercept = quantile(x[i,], 0.50, na.rm=T), color = "red")+
+#   geom_vline(xintercept = quantile(x[i,], 0.25, na.rm=T), color = "purple")+
+#   geom_vline(xintercept = quantile(x[i,], 0.125, na.rm=T), color = "blue")+
+#   geom_vline(xintercept = quantile(x[i,], 0, na.rm=T), color = "gray")
+# print(z)
+# }
+# dev.off()
+```
+
+
+# calculate summary fields of interest
+```{r}
+mydata$ele_c25 <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0.25); mydata$ele_c25[is.nan(mydata$ele_c25)] <- NA
+mydata$ele_c12.5 <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0.125); mydata$ele_c50[is.nan(mydata$ele_c12.5)] <- NA
+mydata$ele_c0 <- apply(m_aB_ele_mcosts, 1, quantile, na.rm = T, probs = 0); mydata$ele_c0[is.nan(mydata$ele_c0)] <- NA
+
+mydata$MAT_c25 <- apply(m_aB_MAT_mcosts, 1, quantile, na.rm = T, probs = 0.25); mydata$MAT_c25[is.nan(mydata$MAT_c25)] <- NA
+mydata$MAT_c12.5 <- apply(m_aB_MAT_mcosts, 1, quantile, na.rm = T, probs = 0.125); mydata$MAT_c50[is.nan(mydata$MAT_c12.5)] <- NA
+mydata$MAT_c0 <- apply(m_aB_MAT_mcosts, 1, quantile, na.rm = T, probs = 0); mydata$MAT_c0[is.nan(mydata$MAT_c0)] <- NA
+
+mydata$VarT_c25 <- apply(m_aB_VarT_mcosts, 1, quantile, na.rm = T, probs = 0.25); mydata$VarT_c25[is.nan(mydata$VarT_c25)] <- NA
+mydata$VarT_c12.5 <- apply(m_aB_VarT_mcosts, 1, quantile, na.rm = T, probs = 0.125); mydata$VarT_c50[is.nan(mydata$VarT_c12.5)] <- NA
+mydata$VarT_c0 <- apply(m_aB_VarT_mcosts, 1, quantile, na.rm = T, probs = 0); mydata$VarT_c0[is.nan(mydata$VarT_c0)] <- NA
+
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+save(mydata, file = "Species_Barrier_Data_BONES_beefier.rdata")
+```
+
+
+Prune matrices and calculate summaries.
+```{r}
+# ele -----------------------------------------------------------------------
+ele_c25 <- m_aB_ele_mcosts
+ele_c12.5 <- m_aB_ele_mcosts
+ele_c0 <- m_aB_ele_mcosts
+
+ele_lon25 <- m_a_lons
+ele_lon12.5 <- m_a_lons
+ele_lon0 <- m_a_lons
+
+ele_lat25 <- m_a_lats
+ele_lat12.5 <- m_a_lats
+ele_lat0 <- m_a_lats
+
+for(i in 1:nrow(m_aB_ele_mcosts)){
+  ele_c25[i,which(m_aB_ele_mcosts[i,] > mydata$ele_c25[i])] <- NA
+  ele_c12.5[i,which(m_aB_ele_mcosts[i,] > mydata$ele_c12.5[i])] <- NA
+  ele_c0[i,which(m_aB_ele_mcosts[i,] > mydata$ele_c0[i])] <- NA
+  
+  ele_lon25[i,which(m_aB_ele_mcosts[i,] > mydata$ele_c25[i])] <- NA
+  ele_lon12.5[i,which(m_aB_ele_mcosts[i,] > mydata$ele_c12.5[i])] <- NA
+  ele_lon0[i,which(m_aB_ele_mcosts[i,] > mydata$ele_c0[i])] <- NA
+    
+  ele_lat25[i,which(m_aB_ele_mcosts[i,] > mydata$ele_c25[i])] <- NA
+  ele_lat12.5[i,which(m_aB_ele_mcosts[i,] > mydata$ele_c12.5[i])] <- NA
+  ele_lat0[i,which(m_aB_ele_mcosts[i,] > mydata$ele_c0[i])] <- NA
+}
+
+# sum(!is.na(ele_c25)); sum(!is.na(ele_c12.5)); sum(!is.na(ele_c0)) # working as intended
+
+
+mydata$centroid_lon_sp1_ele_c25 <- NA
+mydata$centroid_lat_sp1_ele_c25 <- NA
+mydata$centroid_lon_sp1_ele_c12.5 <- NA
+mydata$centroid_lat_sp1_ele_c12.5 <- NA
+mydata$centroid_lon_sp1_ele_c0 <- NA
+mydata$centroid_lat_sp1_ele_c0 <- NA
+for(i in 1:nrow(mydata)){
+  
+  # c25
+  coords1 <- data.frame(cbind(lon=ele_lon25[i,], lat = ele_lat25[i,])); coords1 <- coords1[complete.cases(coords1),]
+  coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)
+  centroid1 <- rgeos::gCentroid(coords1)
+  mydata$centroid_lon_sp1_ele_c25[i] <- centroid1@coords[1]
+  mydata$centroid_lat_sp1_ele_c25[i] <- centroid1@coords[2]  
+ 
+  # c12.5
+  coords1 <- data.frame(cbind(lon=ele_lon12.5[i,], lat = ele_lat12.5[i,])); coords1 <- coords1[complete.cases(coords1),]
+  coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)
+  centroid1 <- rgeos::gCentroid(coords1)
+  mydata$centroid_lon_sp1_ele_c12.5[i] <- centroid1@coords[1]
+  mydata$centroid_lat_sp1_ele_c12.5[i] <- centroid1@coords[2]
+  
+  # c0
+  coords1 <- data.frame(cbind(lon=ele_lon0[i,], lat = ele_lat0[i,])); coords1 <- coords1[complete.cases(coords1),]
+  coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)
+  centroid1 <- rgeos::gCentroid(coords1)
+  mydata$centroid_lon_sp1_ele_c0[i] <- centroid1@coords[1]
+  mydata$centroid_lat_sp1_ele_c0[i] <- centroid1@coords[2]
+}
+
+# MAT -----------------------------------------------------------------------
+MAT_c25 <- m_aB_MAT_mcosts
+MAT_c12.5 <- m_aB_MAT_mcosts
+MAT_c0 <- m_aB_MAT_mcosts
+
+MAT_lon25 <- m_a_lons
+MAT_lon12.5 <- m_a_lons
+MAT_lon0 <- m_a_lons
+
+MAT_lat25 <- m_a_lats
+MAT_lat12.5 <- m_a_lats
+MAT_lat0 <- m_a_lats
+
+for(i in 1:nrow(m_aB_MAT_mcosts)){
+  MAT_c25[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_c25[i])] <- NA
+  MAT_c12.5[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_c12.5[i])] <- NA
+  MAT_c0[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_c0[i])] <- NA
+  
+  MAT_lon25[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_c25[i])] <- NA
+  MAT_lon12.5[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_c12.5[i])] <- NA
+  MAT_lon0[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_c0[i])] <- NA
+    
+  MAT_lat25[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_c25[i])] <- NA
+  MAT_lat12.5[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_c12.5[i])] <- NA
+  MAT_lat0[i,which(m_aB_MAT_mcosts[i,] > mydata$MAT_c0[i])] <- NA
+}
+
+
+mydata$centroid_lon_sp1_MAT_c25 <- NA
+mydata$centroid_lat_sp1_MAT_c25 <- NA
+mydata$centroid_lon_sp1_MAT_c12.5 <- NA
+mydata$centroid_lat_sp1_MAT_c12.5 <- NA
+mydata$centroid_lon_sp1_MAT_c0 <- NA
+mydata$centroid_lat_sp1_MAT_c0 <- NA
+for(i in 1:nrow(mydata)){
+  
+  # c25
+  coords1 <- data.frame(cbind(lon=MAT_lon25[i,], lat = MAT_lat25[i,])); coords1 <- coords1[complete.cases(coords1),]
+  coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)
+  centroid1 <- rgeos::gCentroid(coords1)
+  mydata$centroid_lon_sp1_MAT_c25[i] <- centroid1@coords[1]
+  mydata$centroid_lat_sp1_MAT_c25[i] <- centroid1@coords[2]  
+ 
+  # c12.5
+  coords1 <- data.frame(cbind(lon=MAT_lon12.5[i,], lat = MAT_lat12.5[i,])); coords1 <- coords1[complete.cases(coords1),]
+  coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)
+  centroid1 <- rgeos::gCentroid(coords1)
+  mydata$centroid_lon_sp1_MAT_c12.5[i] <- centroid1@coords[1]
+  mydata$centroid_lat_sp1_MAT_c12.5[i] <- centroid1@coords[2]
+  
+  # c0
+  coords1 <- data.frame(cbind(lon=MAT_lon0[i,], lat = MAT_lat0[i,])); coords1 <- coords1[complete.cases(coords1),]
+  coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)
+  centroid1 <- rgeos::gCentroid(coords1)
+  mydata$centroid_lon_sp1_MAT_c0[i] <- centroid1@coords[1]
+  mydata$centroid_lat_sp1_MAT_c0[i] <- centroid1@coords[2]
+}
+
+
+# VarT -----------------------------------------------------------------------
+VarT_c25 <- m_aB_VarT_mcosts
+VarT_c12.5 <- m_aB_VarT_mcosts
+VarT_c0 <- m_aB_VarT_mcosts
+
+VarT_lon25 <- m_a_lons
+VarT_lon12.5 <- m_a_lons
+VarT_lon0 <- m_a_lons
+
+VarT_lat25 <- m_a_lats
+VarT_lat12.5 <- m_a_lats
+VarT_lat0 <- m_a_lats
+
+for(i in 1:nrow(m_aB_VarT_mcosts)){
+  VarT_c25[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_c25[i])] <- NA
+  VarT_c12.5[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_c12.5[i])] <- NA
+  VarT_c0[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_c0[i])] <- NA
+  
+  VarT_lon25[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_c25[i])] <- NA
+  VarT_lon12.5[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_c12.5[i])] <- NA
+  VarT_lon0[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_c0[i])] <- NA
+    
+  VarT_lat25[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_c25[i])] <- NA
+  VarT_lat12.5[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_c12.5[i])] <- NA
+  VarT_lat0[i,which(m_aB_VarT_mcosts[i,] > mydata$VarT_c0[i])] <- NA
+}
+
+# sum(!is.na(VarT_c25)); sum(!is.na(VarT_c12.5)); sum(!is.na(VarT_c0)) # working as intended
+
+
+mydata$centroid_lon_sp1_VarT_c25 <- NA
+mydata$centroid_lat_sp1_VarT_c25 <- NA
+mydata$centroid_lon_sp1_VarT_c12.5 <- NA
+mydata$centroid_lat_sp1_VarT_c12.5 <- NA
+mydata$centroid_lon_sp1_VarT_c0 <- NA
+mydata$centroid_lat_sp1_VarT_c0 <- NA
+for(i in 1:nrow(mydata)){
+  
+  # c25
+  coords1 <- data.frame(cbind(lon=VarT_lon25[i,], lat = VarT_lat25[i,])); coords1 <- coords1[complete.cases(coords1),]
+  coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)
+  centroid1 <- rgeos::gCentroid(coords1)
+  mydata$centroid_lon_sp1_VarT_c25[i] <- centroid1@coords[1]
+  mydata$centroid_lat_sp1_VarT_c25[i] <- centroid1@coords[2]  
+ 
+  # c12.5
+  coords1 <- data.frame(cbind(lon=VarT_lon12.5[i,], lat = VarT_lat12.5[i,])); coords1 <- coords1[complete.cases(coords1),]
+  coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)
+  centroid1 <- rgeos::gCentroid(coords1)
+  mydata$centroid_lon_sp1_VarT_c12.5[i] <- centroid1@coords[1]
+  mydata$centroid_lat_sp1_VarT_c12.5[i] <- centroid1@coords[2]
+  
+  # c0
+  coords1 <- data.frame(cbind(lon=VarT_lon0[i,], lat = VarT_lat0[i,])); coords1 <- coords1[complete.cases(coords1),]
+  coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)
+  centroid1 <- rgeos::gCentroid(coords1)
+  mydata$centroid_lon_sp1_VarT_c0[i] <- centroid1@coords[1]
+  mydata$centroid_lat_sp1_VarT_c0[i] <- centroid1@coords[2]
+}
+```
+
+Save a species-level dataframe as an intermediate, but this will not be our unit of analysis. 
+```{r}
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+save(mydata, file = "Species_Barrier_Data_FEB2021.rdata")
+```
+
+
+Create pair level dataframe
+```{r}
+a <- seq(1:(nrow(mydata)/2)) # fix pair ids so loop below will function correctly
+b <- seq(1:(nrow(mydata)/2))
+d <- c()
+for (i in 1:length(a)) {
+  d <- c(d, a[i], b[i])
+}
+mydata$uniquePairId <- d
+
+mypairs <- unique(mydata$uniquePairId)
+
+i <- 1
+pairdata <- mydata[which(mydata$uniquePairId == mypairs[i]), ]
+newdata <- pairdata[1,]
+
+# Latitude -----------------------------------------------------
+newdata$lat_range_pair_mean <- mean(newdata$lat_range_sp1, newdata$lat_range_sp2)
+newdata$lat_mean_pair <- mean(newdata$centroid_lat_sp1, newdata$centroid_lat_sp2)
+
+# elevation
+newdata$ele_range_pair_mean <- mean(newdata$ele_range_sp1, newdata$ele_range_sp2)
+newdata$lat_mean_pair_ele_c25 <- mean(pairdata$centroid_lat_sp1_ele_c25)
+newdata$lat_mean_pair_ele_c12.5 <- mean(pairdata$centroid_lat_sp1_ele_c12.5)
+newdata$lat_mean_pair_ele_c0 <- mean(pairdata$centroid_lat_sp1_ele_c0)
+
+# MAT
+newdata$MAT_range_pair_mean <- mean(newdata$MAT_range_sp1, newdata$MAT_range_sp2)
+newdata$lat_mean_pair_MAT_c25 <- mean(pairdata$centroid_lat_sp1_MAT_c25)
+newdata$lat_mean_pair_MAT_c12.5 <- mean(pairdata$centroid_lat_sp1_MAT_c12.5)
+newdata$lat_mean_pair_MAT_c0 <- mean(pairdata$centroid_lat_sp1_MAT_c0)
+
+# VarT
+newdata$VarT_range_pair_mean <- mean(newdata$VarT_range_sp1, newdata$VarT_range_sp2)
+newdata$lat_mean_pair_VarT_c25 <- mean(pairdata$centroid_lat_sp1_VarT_c25)
+newdata$lat_mean_pair_VarT_c12.5 <- mean(pairdata$centroid_lat_sp1_VarT_c12.5)
+newdata$lat_mean_pair_VarT_c0 <- mean(pairdata$centroid_lat_sp1_VarT_c0)
+
+newdata$centroid_distance_ele_c25 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c25[1],pairdata$centroid_lat_sp1_ele_c25[1]), c(pairdata$centroid_lon_sp1_ele_c25[2],pairdata$centroid_lat_sp1_ele_c25[2]), lonlat = T)
+newdata$centroid_distance_ele_c12.5 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c12.5[1],pairdata$centroid_lat_sp1_ele_c12.5[1]), c(pairdata$centroid_lon_sp1_ele_c12.5[2],pairdata$centroid_lat_sp1_ele_c12.5[2]), lonlat = T)
+newdata$centroid_distance_ele_c0 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c0[1],pairdata$centroid_lat_sp1_ele_c0[1]), c(pairdata$centroid_lon_sp1_ele_c0[2],pairdata$centroid_lat_sp1_ele_c0[2]), lonlat = T)
+newdata$centroid_distance_MAT_c25 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_MAT_c25[1],pairdata$centroid_lat_sp1_MAT_c25[1]), c(pairdata$centroid_lon_sp1_MAT_c25[2],pairdata$centroid_lat_sp1_MAT_c25[2]), lonlat = T)
+newdata$centroid_distance_MAT_c12.5 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_MAT_c12.5[1],pairdata$centroid_lat_sp1_MAT_c12.5[1]), c(pairdata$centroid_lon_sp1_MAT_c12.5[2],pairdata$centroid_lat_sp1_MAT_c12.5[2]), lonlat = T)
+newdata$centroid_distance_MAT_c0 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_MAT_c0[1],pairdata$centroid_lat_sp1_MAT_c0[1]), c(pairdata$centroid_lon_sp1_MAT_c0[2],pairdata$centroid_lat_sp1_MAT_c0[2]), lonlat = T)
+newdata$centroid_distance_VarT_c25 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_VarT_c25[1],pairdata$centroid_lat_sp1_VarT_c25[1]), c(pairdata$centroid_lon_sp1_VarT_c25[2],pairdata$centroid_lat_sp1_VarT_c25[2]), lonlat = T)
+newdata$centroid_distance_VarT_c12.5 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_VarT_c12.5[1],pairdata$centroid_lat_sp1_VarT_c12.5[1]), c(pairdata$centroid_lon_sp1_VarT_c12.5[2],pairdata$centroid_lat_sp1_VarT_c12.5[2]), lonlat = T)
+newdata$centroid_distance_VarT_c0 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_VarT_c0[1],pairdata$centroid_lat_sp1_VarT_c0[1]), c(pairdata$centroid_lon_sp1_VarT_c0[2],pairdata$centroid_lat_sp1_VarT_c0[2]), lonlat = T)
+
+newdataseed <- newdata
+for (i in 2:max(d)) {
+  pairdata <- mydata[which(mydata$uniquePairId == mypairs[i]), ]
+  newdata <- pairdata[1,]
+  
+  # Latitude -----------------------------------------------------
+  newdata$lat_range_pair_mean <- mean(newdata$lat_range_sp1, newdata$lat_range_sp2)
+  newdata$lat_mean_pair <- mean(newdata$centroid_lat_sp1, newdata$centroid_lat_sp2)
+  
+  # elevation
+  newdata$ele_range_pair_mean <- mean(newdata$ele_range_sp1, newdata$ele_range_sp2)
+  newdata$lat_mean_pair_ele_c25 <- mean(pairdata$centroid_lat_sp1_ele_c25)
+  newdata$lat_mean_pair_ele_c12.5 <- mean(pairdata$centroid_lat_sp1_ele_c12.5)
+  newdata$lat_mean_pair_ele_c0 <- mean(pairdata$centroid_lat_sp1_ele_c0)
+  
+  # MAT
+  newdata$MAT_range_pair_mean <- mean(newdata$MAT_range_sp1, newdata$MAT_range_sp2)
+  newdata$lat_mean_pair_MAT_c25 <- mean(pairdata$centroid_lat_sp1_MAT_c25)
+  newdata$lat_mean_pair_MAT_c12.5 <- mean(pairdata$centroid_lat_sp1_MAT_c12.5)
+  newdata$lat_mean_pair_MAT_c0 <- mean(pairdata$centroid_lat_sp1_MAT_c0)
+  
+  # VarT
+  newdata$VarT_range_pair_mean <- mean(newdata$VarT_range_sp1, newdata$VarT_range_sp2)
+  newdata$lat_mean_pair_VarT_c25 <- mean(pairdata$centroid_lat_sp1_VarT_c25)
+  newdata$lat_mean_pair_VarT_c12.5 <- mean(pairdata$centroid_lat_sp1_VarT_c12.5)
+  newdata$lat_mean_pair_VarT_c0 <- mean(pairdata$centroid_lat_sp1_VarT_c0)
+  
+  newdata$centroid_distance_ele_c25 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c25[1],pairdata$centroid_lat_sp1_ele_c25[1]), c(pairdata$centroid_lon_sp1_ele_c25[2],pairdata$centroid_lat_sp1_ele_c25[2]), lonlat = T)
+  newdata$centroid_distance_ele_c12.5 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c12.5[1],pairdata$centroid_lat_sp1_ele_c12.5[1]), c(pairdata$centroid_lon_sp1_ele_c12.5[2],pairdata$centroid_lat_sp1_ele_c12.5[2]), lonlat = T)
+  newdata$centroid_distance_ele_c0 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c0[1],pairdata$centroid_lat_sp1_ele_c0[1]), c(pairdata$centroid_lon_sp1_ele_c0[2],pairdata$centroid_lat_sp1_ele_c0[2]), lonlat = T)
+  newdata$centroid_distance_MAT_c25 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_MAT_c25[1],pairdata$centroid_lat_sp1_MAT_c25[1]), c(pairdata$centroid_lon_sp1_MAT_c25[2],pairdata$centroid_lat_sp1_MAT_c25[2]), lonlat = T)
+  newdata$centroid_distance_MAT_c12.5 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_MAT_c12.5[1],pairdata$centroid_lat_sp1_MAT_c12.5[1]), c(pairdata$centroid_lon_sp1_MAT_c12.5[2],pairdata$centroid_lat_sp1_MAT_c12.5[2]), lonlat = T)
+  newdata$centroid_distance_MAT_c0 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_MAT_c0[1],pairdata$centroid_lat_sp1_MAT_c0[1]), c(pairdata$centroid_lon_sp1_MAT_c0[2],pairdata$centroid_lat_sp1_MAT_c0[2]), lonlat = T)
+  newdata$centroid_distance_VarT_c25 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_VarT_c25[1],pairdata$centroid_lat_sp1_VarT_c25[1]), c(pairdata$centroid_lon_sp1_VarT_c25[2],pairdata$centroid_lat_sp1_VarT_c25[2]), lonlat = T)
+  newdata$centroid_distance_VarT_c12.5 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_VarT_c12.5[1],pairdata$centroid_lat_sp1_VarT_c12.5[1]), c(pairdata$centroid_lon_sp1_VarT_c12.5[2],pairdata$centroid_lat_sp1_VarT_c12.5[2]), lonlat = T)
+  newdata$centroid_distance_VarT_c0 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_VarT_c0[1],pairdata$centroid_lat_sp1_VarT_c0[1]), c(pairdata$centroid_lon_sp1_VarT_c0[2],pairdata$centroid_lat_sp1_VarT_c0[2]), lonlat = T)
+  
+  newdataseed <- rbind(newdataseed, newdata)
+}
+mypairdata <- newdataseed
+```
+
+Save the pair-level dataframe. 
+```{r}
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+save(mypairdata, file = "Pair_Barrier_Data_FEB2021.rdata")
+```
+
+

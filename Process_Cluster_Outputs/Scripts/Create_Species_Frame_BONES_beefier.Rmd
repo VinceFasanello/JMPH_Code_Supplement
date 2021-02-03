@@ -24,6 +24,16 @@ load(file = "VarT_Results_Concat.rdata"); rm(m_a_bblats_VarT, m_a_bblons_VarT)
 '%!in%' <- Negate('%in%')
 ```
 
+# prep the coooney frame so it is less unwieldy
+```{r}
+mydata <- cooneyp; rm(cooneyp)
+mydata <- mydata[, c("uniquePair", "uniquePairId" ,"Species.1", "Species.2", "Species.1bl", "Species.2bl",
+                     "Pair.age..MY.", "Migration", "body.mass..log.", "Passerine...non.passerine",
+                     "n_pam_cells_sp1", "n_pam_cells_sp2",
+                     "Range.overlap",)]
+```
+
+
 
 
 

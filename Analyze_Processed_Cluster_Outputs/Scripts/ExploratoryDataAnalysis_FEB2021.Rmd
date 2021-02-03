@@ -1,0 +1,266 @@
+---
+title: "JMPH_ANGELA&VINCEexploreModels"
+output:
+  html_document: default
+---
+
+Prepare the workspace.
+```{r Top Matter, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, error = FALSE) # rmd options
+
+rm(list = ls()); invisible(gc()) # cleaning
+
+options(scipen = 999) # turn off scientific notation
+
+'%notin%' <- Negate('%in%')
+
+require(ggplot2) # load packages
+require(GGally)
+require(gridExtra)
+require(grid)
+require(lattice)
+require(ggplotify)
+require(quantreg)
+require(viridis)
+require(caper)
+require(splines)
+library(dplyr)
+library(stringr)
+library(maps)
+library(brms)
+library(caper)
+library(ape)
+library(EnvStats)
+library(forecast)
+require (nlme)
+
+```
+<br><br><br><br><br>
+
+
+
+
+Load data
+```{r Load Data}
+# main dataframe ---------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+load(file =  "Pair_Barrier_Data_FEB2021.rdata")
+mydata <- mypairdata; rm(mypairdata)
+
+# phylo ------------------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees")
+load(file = "BirdTrees.Rdata")
+tree <- trees[[1]]; rm(trees) # pick tree (VF GET TREES FROM COONEY!!! and use MCC tree.)
+tree <- drop.tip(tree, tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)]) # initial name matching.
+mydata <- mydata[which(mydata$Species.1 %in% tree$tip.label),]
+rownames(mydata) <- mydata$Species.1
+mydatahold <- mydata
+```
+<br><br><br><br><br>
+
+```{r}
+allowmigrants <- F # OPTIONS: T, F 
+allowsympatry <- F # OPTIONS: T, F
+minoverperc <- 0.25
+
+# f, f, 0.25 looks nice.
+```
+
+```{r}
+if(allowmigrants == F){
+  mydata <- mydata[which(mydata$Migration == 1.0),]
+} # retain only non-migrants if asked to do so. 
+
+if(allowsympatry == F){
+  mydata <- mydata[which(mydata$ele_c0 > 0),]
+} # retain only allopatric/parapatric species if asked to do so.
+```
+
+```{r}
+mydata$log_ele_c25 <- log( mydata$ele_c25 + abs(min( mydata$ele_c25 , na.rm = T)) + 1)
+ggplot(data = mydata[mydata$ele_ov_perc_smrnge >= minoverperc,], aes(x = lat_mean_pair_ele_c25, y = log_ele_c25, color = log_ele_c25))+
+  geom_point()+
+  scale_color_viridis()
+
+mydata$log_MAT_c25 <- log( mydata$MAT_c25 + abs(min( mydata$MAT_c25 , na.rm = T)) + 1)
+ggplot(data = mydata[mydata$MAT_ov_perc_smrnge >= minoverperc,], aes(x = lat_mean_pair_MAT_c25, y = log_MAT_c25, color = log_MAT_c25))+
+  geom_point()+
+  scale_color_viridis()
+
+mydata$log_VarT_c25 <- log( mydata$VarT_c25 + abs(min( mydata$VarT_c25 , na.rm = T)) + 1)
+ggplot(data = mydata[mydata$VarT_ov_perc_smrnge >= minoverperc,], aes(x = lat_mean_pair_VarT_c25, y = log_VarT_c25, color = log_VarT_c25))+
+  geom_point()+
+  scale_color_viridis()
+```
+
+Most Basic Elevation Model
+```{r}
+temp <- mydata
+temp <- temp[temp$ele_ov_perc_smrnge >= minoverperc,]
+temp <- temp[!is.na(temp$ele_c25),] # remove NA cases
+temp.tree <- drop.tip(tree, setdiff(tree$tip.label, row.names(temp))) # clean up tree tips.
+temp <- temp[order(factor(rownames(temp), levels = unique(temp.tree$tip.label))),]
+sum(rownames(temp) != temp.tree$tip.label)
+temp$log_ele_c25 <-  log(temp$ele_c25 + abs(min(temp$ele_c25, na.rm = T)) + 1)
+
+m <- gls(log_ele_c25 ~  lat_mean_pair_ele_c25 +  I(lat_mean_pair_ele_c25^2),
+         correlation = corPagel(1, phy = temp.tree), data = temp, method = "REML")
+summary(m)
+
+# plot Effects of elevation
+plot(temp$lat_mean_pair_ele_c25, temp$log_ele_c25, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( Elevation cost )", main = "Global model")
+
+# plot fitted quadratic effect
+myx <- seq(min(temp$lat_mean_pair_ele_c25), max(temp$lat_mean_pair_ele_c25), by=0.5)
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+```
+
+Most basic Temperature Model
+```{r}
+temp <- mydata
+temp <- temp[temp$MAT_ov_perc_smrnge >= minoverperc,]
+temp <- temp[!is.na(temp$MAT_c25),] # remove NA cases
+temp.tree <- drop.tip(tree, setdiff(tree$tip.label, row.names(temp))) # clean up tree tips.
+temp <- temp[order(factor(rownames(temp), levels = unique(temp.tree$tip.label))),]
+sum(rownames(temp) != temp.tree$tip.label)
+temp$log_MAT_c25 <-  log(temp$MAT_c25 + abs(min(temp$MAT_c25, na.rm = T)) + 1)
+
+m <- gls(log_MAT_c25 ~  lat_mean_pair_MAT_c25 +  I(lat_mean_pair_MAT_c25^2),
+         correlation = corPagel(1, phy = temp.tree), data = temp, method = "REML")
+summary(m)
+
+# plot Effects of MATvation
+plot(temp$lat_mean_pair_MAT_c25, temp$log_MAT_c25, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( MATvation cost )", main = "Global model")
+
+# plot fitted quadratic effect
+myx <- seq(min(temp$lat_mean_pair_MAT_c25), max(temp$lat_mean_pair_MAT_c25), by=0.5)
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+```
+
+Most basic Temperature Model
+```{r}
+temp <- mydata
+temp <- temp[temp$VarT_ov_perc_smrnge >= minoverperc,]
+temp <- temp[!is.na(temp$VarT_c25),] # remove NA cases
+temp.tree <- drop.tip(tree, setdiff(tree$tip.label, row.names(temp))) # clean up tree tips.
+temp <- temp[order(factor(rownames(temp), levels = unique(temp.tree$tip.label))),]
+sum(rownames(temp) != temp.tree$tip.label)
+temp$log_VarT_c25 <-  log(temp$VarT_c25 + abs(min(temp$VarT_c25, na.rm = T)) + 1)
+
+m <- gls(log_VarT_c25 ~  lat_mean_pair_VarT_c25 +  I(lat_mean_pair_VarT_c25^2),
+         correlation = corPagel(1, phy = temp.tree), data = temp, method = "REML")
+summary(m)
+
+# plot Effects of VarTvation
+plot(temp$lat_mean_pair_VarT_c25, temp$log_VarT_c25, pch = 16, col = rgb(0,0,0,0.7), xlab = "Latitude",
+     ylab = "log( VarTvation cost )", main = "Global model")
+
+# plot fitted quadratic effect
+myx <- seq(min(temp$lat_mean_pair_VarT_c25), max(temp$lat_mean_pair_VarT_c25), by=0.5)
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+```
+
+
+
+
+
+Load data
+```{r Load Data}
+# main dataframe ---------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+load(file =  "Pair_Barrier_Data_FEB2021.rdata")
+mydata <- mypairdata; rm(mypairdata)
+
+# phylo ------------------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees")
+load(file = "BirdTrees.Rdata")
+tree <- trees[[1]]; rm(trees) # pick tree (VF GET TREES FROM COONEY!!! and use MCC tree.)
+tree <- drop.tip(tree, tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)]) # initial name matching.
+mydata <- mydata[which(mydata$Species.1 %in% tree$tip.label),]
+rownames(mydata) <- mydata$Species.1
+mydatahold <- mydata
+```
+<br><br><br><br><br>
+
+```{r}
+allowmigrants <- F # OPTIONS: T, F 
+allowsympatry <- F # OPTIONS: T, F
+minoverperc <- -100000
+
+# f, f, 0.25 looks nice.
+```
+
+```{r}
+if(allowmigrants == F){
+  mydata <- mydata[which(mydata$Migration == 1.0),]
+} # retain only non-migrants if asked to do so. 
+
+if(allowsympatry == F){
+  mydata <- mydata[which(mydata$ele_c0 > 0),]
+} # retain only allopatric/parapatric species if asked to do so.
+```
+
+
+```{r}
+temp <- mydata
+temp <- temp[temp$ele_ov_perc_smrnge >= minoverperc,]
+temp <- temp[!is.na(temp$ele_c25),] # remove NA cases
+temp.tree <- drop.tip(tree, setdiff(tree$tip.label, row.names(temp))) # clean up tree tips.
+temp <- temp[order(factor(rownames(temp), levels = unique(temp.tree$tip.label))),]
+sum(rownames(temp) != temp.tree$tip.label)
+temp$log_ele_c25 <-  log(temp$ele_c25 + abs(min(temp$ele_c25, na.rm = T)) + 1)
+temp$n_pam_cells_mean <- rowMeans(cbind(temp$n_pam_cells_sp1, temp$n_pam_cells_sp2))
+temp$ele_mean <- rowMeans(cbind(temp$mean_ele_sp1, temp$mean_ele_sp2))
+
+m <- gls(log_ele_c25 ~  ele_range_pair_mean + n_pam_cells_mean + centroid_distance_ele_c25 + ele_mean + Pair.age..MY. + ele_ov_perc_smrnge,
+         correlation = corPagel(1, phy = temp.tree), data = temp, method = "REML")
+summary(m)
+```
+
+```{r}
+temp <- mydata
+temp <- temp[temp$MAT_ov_perc_smrnge >= minoverperc,]
+temp <- temp[!is.na(temp$MAT_c25),] # remove NA cases
+temp.tree <- drop.tip(tree, setdiff(tree$tip.label, row.names(temp))) # clean up tree tips.
+temp <- temp[order(factor(rownames(temp), levels = unique(temp.tree$tip.label))),]
+sum(rownames(temp) != temp.tree$tip.label)
+temp$log_MAT_c25 <-  log(temp$MAT_c25 + abs(min(temp$MAT_c25, na.rm = T)) + 1)
+temp$n_pam_cells_mean <- rowMeans(cbind(temp$n_pam_cells_sp1, temp$n_pam_cells_sp2))
+temp$mat_mean <- rowMeans(cbind(temp$mean_MAT_sp1, temp$mean_MAT_sp2))
+
+m <- gls(log_MAT_c25 ~  MAT_range_pair_mean + n_pam_cells_mean + centroid_distance_MAT_c25 + mat_mean + Pair.age..MY. + MAT_ov_perc_smrnge,
+         correlation = corPagel(1, phy = temp.tree), data = temp, method = "REML")
+m <- gls(log_MAT_c25 ~  MAT_range_pair_mean + n_pam_cells_mean + centroid_distance_MAT_c25 + mat_mean + MAT_ov_perc_smrnge,
+         correlation = corPagel(1, phy = temp.tree), data = temp, method = "REML")
+summary(m)
+```
+
+
+
+```{r}
+temp <- mydata
+temp <- temp[temp$VarT_ov_perc_smrnge >= minoverperc,]
+temp <- temp[!is.na(temp$VarT_c25),] # remove NA cases
+temp.tree <- drop.tip(tree, setdiff(tree$tip.label, row.names(temp))) # clean up tree tips.
+temp <- temp[order(factor(rownames(temp), levels = unique(temp.tree$tip.label))),]
+sum(rownames(temp) != temp.tree$tip.label)
+temp$log_VarT_c25 <-  log(temp$VarT_c25 + abs(min(temp$VarT_c25, na.rm = T)) + 1)
+temp$n_pam_cells_mean <- rowMeans(cbind(temp$n_pam_cells_sp1, temp$n_pam_cells_sp2))
+temp$VarT_mean <- rowMeans(cbind(temp$mean_VarT_sp1, temp$mean_VarT_sp2))
+
+m <- gls(log_VarT_c25 ~  VarT_range_pair_mean + n_pam_cells_mean + centroid_distance_VarT_c25 + VarT_mean + Pair.age..MY. + VarT_ov_perc_smrnge,
+         correlation = corPagel(1, phy = temp.tree), data = temp, method = "REML")
+summary(m)
+```
+

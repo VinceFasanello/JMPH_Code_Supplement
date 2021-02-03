@@ -63,7 +63,7 @@ mydatahold <- mydata
 <br><br><br><br><br>
 
 ```{r}
-mycost <- "cmean" # OPTIONS: "cmin", "cmean", "cmean_btm50, cmean_btm25, "cmedian
+mycost <- "cmean_btm50" # OPTIONS: "cmin", "cmean", "cmean_btm50, cmean_btm25, "cmedian
 allowmigrants <- F # OPTIONS: T, F
 allowsympatry <- F # OPTIONS: T, F
 collapsepairs <- T # OPTIONS: T, F
