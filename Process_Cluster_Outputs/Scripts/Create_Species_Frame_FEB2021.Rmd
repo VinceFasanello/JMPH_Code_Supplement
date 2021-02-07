@@ -326,24 +326,35 @@ newdata <- pairdata[1,]
 # Latitude -----------------------------------------------------
 newdata$lat_range_pair_mean <- mean(newdata$lat_range_sp1, newdata$lat_range_sp2)
 newdata$lat_mean_pair <- mean(newdata$centroid_lat_sp1, newdata$centroid_lat_sp2)
+newdata$lon_range_pair_mean <- mean(newdata$lon_range_sp1, newdata$lon_range_sp2)
+newdata$lon_mean_pair <- mean(newdata$centroid_lon_sp1, newdata$centroid_lon_sp2)
 
 # elevation
 newdata$ele_range_pair_mean <- mean(newdata$ele_range_sp1, newdata$ele_range_sp2)
 newdata$lat_mean_pair_ele_c25 <- mean(pairdata$centroid_lat_sp1_ele_c25)
 newdata$lat_mean_pair_ele_c12.5 <- mean(pairdata$centroid_lat_sp1_ele_c12.5)
 newdata$lat_mean_pair_ele_c0 <- mean(pairdata$centroid_lat_sp1_ele_c0)
+newdata$lon_mean_pair_ele_c25 <- mean(pairdata$centroid_lon_sp1_ele_c25)
+newdata$lon_mean_pair_ele_c12.5 <- mean(pairdata$centroid_lon_sp1_ele_c12.5)
+newdata$lon_mean_pair_ele_c0 <- mean(pairdata$centroid_lon_sp1_ele_c0)
 
 # MAT
 newdata$MAT_range_pair_mean <- mean(newdata$MAT_range_sp1, newdata$MAT_range_sp2)
 newdata$lat_mean_pair_MAT_c25 <- mean(pairdata$centroid_lat_sp1_MAT_c25)
 newdata$lat_mean_pair_MAT_c12.5 <- mean(pairdata$centroid_lat_sp1_MAT_c12.5)
 newdata$lat_mean_pair_MAT_c0 <- mean(pairdata$centroid_lat_sp1_MAT_c0)
+newdata$lon_mean_pair_MAT_c25 <- mean(pairdata$centroid_lon_sp1_MAT_c25)
+newdata$lon_mean_pair_MAT_c12.5 <- mean(pairdata$centroid_lon_sp1_MAT_c12.5)
+newdata$lon_mean_pair_MAT_c0 <- mean(pairdata$centroid_lon_sp1_MAT_c0)
 
 # VarT
 newdata$VarT_range_pair_mean <- mean(newdata$VarT_range_sp1, newdata$VarT_range_sp2)
 newdata$lat_mean_pair_VarT_c25 <- mean(pairdata$centroid_lat_sp1_VarT_c25)
 newdata$lat_mean_pair_VarT_c12.5 <- mean(pairdata$centroid_lat_sp1_VarT_c12.5)
 newdata$lat_mean_pair_VarT_c0 <- mean(pairdata$centroid_lat_sp1_VarT_c0)
+newdata$lon_mean_pair_VarT_c25 <- mean(pairdata$centroid_lon_sp1_VarT_c25)
+newdata$lon_mean_pair_VarT_c12.5 <- mean(pairdata$centroid_lon_sp1_VarT_c12.5)
+newdata$lon_mean_pair_VarT_c0 <- mean(pairdata$centroid_lon_sp1_VarT_c0)
 
 newdata$centroid_distance_ele_c25 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c25[1],pairdata$centroid_lat_sp1_ele_c25[1]), c(pairdata$centroid_lon_sp1_ele_c25[2],pairdata$centroid_lat_sp1_ele_c25[2]), lonlat = T)
 newdata$centroid_distance_ele_c12.5 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c12.5[1],pairdata$centroid_lat_sp1_ele_c12.5[1]), c(pairdata$centroid_lon_sp1_ele_c12.5[2],pairdata$centroid_lat_sp1_ele_c12.5[2]), lonlat = T)
@@ -360,27 +371,38 @@ for (i in 2:max(d)) {
   pairdata <- mydata[which(mydata$uniquePairId == mypairs[i]), ]
   newdata <- pairdata[1,]
   
-  # Latitude -----------------------------------------------------
+# Latitude -----------------------------------------------------
   newdata$lat_range_pair_mean <- mean(newdata$lat_range_sp1, newdata$lat_range_sp2)
   newdata$lat_mean_pair <- mean(newdata$centroid_lat_sp1, newdata$centroid_lat_sp2)
+  newdata$lon_range_pair_mean <- mean(newdata$lon_range_sp1, newdata$lon_range_sp2)
+  newdata$lon_mean_pair <- mean(newdata$centroid_lon_sp1, newdata$centroid_lon_sp2)
   
   # elevation
   newdata$ele_range_pair_mean <- mean(newdata$ele_range_sp1, newdata$ele_range_sp2)
   newdata$lat_mean_pair_ele_c25 <- mean(pairdata$centroid_lat_sp1_ele_c25)
   newdata$lat_mean_pair_ele_c12.5 <- mean(pairdata$centroid_lat_sp1_ele_c12.5)
   newdata$lat_mean_pair_ele_c0 <- mean(pairdata$centroid_lat_sp1_ele_c0)
+  newdata$lon_mean_pair_ele_c25 <- mean(pairdata$centroid_lon_sp1_ele_c25)
+  newdata$lon_mean_pair_ele_c12.5 <- mean(pairdata$centroid_lon_sp1_ele_c12.5)
+  newdata$lon_mean_pair_ele_c0 <- mean(pairdata$centroid_lon_sp1_ele_c0)
   
   # MAT
   newdata$MAT_range_pair_mean <- mean(newdata$MAT_range_sp1, newdata$MAT_range_sp2)
   newdata$lat_mean_pair_MAT_c25 <- mean(pairdata$centroid_lat_sp1_MAT_c25)
   newdata$lat_mean_pair_MAT_c12.5 <- mean(pairdata$centroid_lat_sp1_MAT_c12.5)
   newdata$lat_mean_pair_MAT_c0 <- mean(pairdata$centroid_lat_sp1_MAT_c0)
+  newdata$lon_mean_pair_MAT_c25 <- mean(pairdata$centroid_lon_sp1_MAT_c25)
+  newdata$lon_mean_pair_MAT_c12.5 <- mean(pairdata$centroid_lon_sp1_MAT_c12.5)
+  newdata$lon_mean_pair_MAT_c0 <- mean(pairdata$centroid_lon_sp1_MAT_c0)
   
   # VarT
   newdata$VarT_range_pair_mean <- mean(newdata$VarT_range_sp1, newdata$VarT_range_sp2)
   newdata$lat_mean_pair_VarT_c25 <- mean(pairdata$centroid_lat_sp1_VarT_c25)
   newdata$lat_mean_pair_VarT_c12.5 <- mean(pairdata$centroid_lat_sp1_VarT_c12.5)
   newdata$lat_mean_pair_VarT_c0 <- mean(pairdata$centroid_lat_sp1_VarT_c0)
+  newdata$lon_mean_pair_VarT_c25 <- mean(pairdata$centroid_lon_sp1_VarT_c25)
+  newdata$lon_mean_pair_VarT_c12.5 <- mean(pairdata$centroid_lon_sp1_VarT_c12.5)
+  newdata$lon_mean_pair_VarT_c0 <- mean(pairdata$centroid_lon_sp1_VarT_c0)
   
   newdata$centroid_distance_ele_c25 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c25[1],pairdata$centroid_lat_sp1_ele_c25[1]), c(pairdata$centroid_lon_sp1_ele_c25[2],pairdata$centroid_lat_sp1_ele_c25[2]), lonlat = T)
   newdata$centroid_distance_ele_c12.5 <- raster::pointDistance(c(pairdata$centroid_lon_sp1_ele_c12.5[1],pairdata$centroid_lat_sp1_ele_c12.5[1]), c(pairdata$centroid_lon_sp1_ele_c12.5[2],pairdata$centroid_lat_sp1_ele_c12.5[2]), lonlat = T)
