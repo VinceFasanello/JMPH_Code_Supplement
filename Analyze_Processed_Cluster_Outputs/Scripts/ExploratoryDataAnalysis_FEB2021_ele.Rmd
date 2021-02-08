@@ -1,5 +1,5 @@
 ---
-title: "JMPH_ANGELA&VINCEexploreModels"
+title: "JMPH_EDA_ele"
 output:
   html_document: default
 ---
@@ -129,6 +129,8 @@ load(file = "BirdTrees.Rdata")
 tree <- trees[[1]]; rm(trees) # pick tree (VF GET TREES FROM COONEY!!! and use MCC tree.)
 tree <- drop.tip(tree, tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)]) # initial name matching.
 mydata <- mydata[which(mydata$Species.1 %in% tree$tip.label),]
+mydata <- mydata[match(tree$tip.label, mydata$Species.1),]
+sum(mydata$Species.1 != tree$tip.label)
 ```
 <br><br><br><br><br>
 
@@ -142,9 +144,13 @@ mydata <- mydata[which(mydata$Species.1 %in% tree$tip.label),]
 
 # model reduction ----------------------
 # m <- gls(lcost ~ lat +  I(lat^2), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m)
-m <- gls(lcost ~ lat, correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m) # lambda = 0.1641264
-mylambda <-  0.1641264 # m$modelStruct$corStruct[1]
-m <- gls(lcost ~ lat, correlation = corPagel(mylambda, phy = tree, fixed = T), data = mydata, method = "REML")
+m <- gls(lcost ~ lat, correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); cor(predict(m),log(mydata$lcost))
+mylambda <-  -0.01828372
+m <- gls(lcost ~ lat, correlation = corVince(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m); cor(predict(m),log(mydata$lcost))
+
+
+
+
 
 # spatial autocorr ---------------------
 matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
@@ -155,60 +161,17 @@ moran.test(residuals(m), nb2listw(nb))$p.value
 sarcol <- SpatialFiltering(formula = lcost ~ lat, data = mydata,nb=nb, style="W", ExactEV = TRUE)
 mydata[,c((basecols+1):(basecols+1+ dim(fitted(sarcol))[2]-1))]<-fitted(sarcol)
 
-# vector 1 added --- 
-m <- gls(lcost ~ lat + V16, correlation = corPagel(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m) 
+# vector 1 added ---
+m <- gls(lcost ~ lat + V16, correlation = corVince(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m); cor(predict(m),log(mydata$lcost))
 matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
 spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
-moran.test(residuals(m), nb2listw(nb))$p.value # OK! keep going....
+moran.test(residuals(m), nb2listw(nb))$p.value # too much.
 
-# vector 2 added --- 
-m <- gls(lcost ~ lat + V16 + V17, corPagel(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m) 
+# # vector 2 added --- 
+m <- gls(lcost ~ lat + V16 + V17, correlation = corVince(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m); cor(predict(m),log(mydata$lcost))
 matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
 spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
-moran.test(residuals(m), nb2listw(nb))$p.value # OK! keep going....
-
-# vector 3 added --- 
-m <- gls(lcost ~ lat + V16 + V17 + V18, corPagel(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m) 
-matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
-spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
-moran.test(residuals(m), nb2listw(nb))$p.value # OK! keep going....
-
-# vector 4 added --- 
-m <- gls(lcost ~ lat + V16 + V17 + V18 + V19, corPagel(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m) 
-matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
-spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
-moran.test(residuals(m), nb2listw(nb))$p.value #  OK! keep going....
-
-# vector 5 added --- 
-m <- gls(lcost ~ lat + V16 + V17 + V18 + V19 + V20, corPagel(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m) 
-matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
-spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
-moran.test(residuals(m), nb2listw(nb))$p.value #  OK! keep going....
-
-# vector 6 added --- 
-m <- gls(lcost ~ lat + V16 + V17 + V18 + V19 + V20 + V21, corPagel(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m) 
-matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
-spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
-moran.test(residuals(m), nb2listw(nb))$p.value # OK.
-
-# # vector 7 added --- 
-# m <- gls(lcost ~ lat + V16 + V17 + V18 + V19 + V20 + V21 + V22, corPagel(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m) 
-# matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
-# spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
-# moran.test(residuals(m), nb2listw(nb))$p.value # too much.
-
-
-
-
-
-# plot ---------------------------------
-plot(mydata$lat, mydata$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "lat",
-     ylab = paste0("log ", costvar, " cost" ), main = "Global model")
-myx <- seq(min(mydata$lat), max(mydata$lat), by=0.5) # plot fit
-mycoefs<-coef(m)
-myy <- mycoefs[1] + mycoefs[2]*myx
-lines(c(0,0), c(-10,100), lty=2)
-lines(myx,myy,col = 'red')
+moran.test(residuals(m), nb2listw(nb))$p.value # too much.
 
 # view spatial component 1 ---
 ggplot(world)+
@@ -222,29 +185,18 @@ ggplot(world)+
   geom_point(data = mydata, aes(y=lat, x=lon, color = V17)) + 
   scale_color_viridis()
 
-# view spatial component 3 ---
-ggplot(world)+
-  geom_sf() + 
-  geom_point(data = mydata, aes(y=lat, x=lon, color = V18)) + 
-  scale_color_viridis()
 
-# view spatial component 4 ---
-ggplot(world)+
-  geom_sf() + 
-  geom_point(data = mydata, aes(y=lat, x=lon, color = V19)) + 
-  scale_color_viridis()
 
-# view spatial component 5 ---
-ggplot(world)+
-  geom_sf() + 
-  geom_point(data = mydata, aes(y=lat, x=lon, color = V20)) + 
-  scale_color_viridis()
 
-# view spatial component 6 ---
-ggplot(world)+
-  geom_sf() + 
-  geom_point(data = mydata, aes(y=lat, x=lon, color = V21)) + 
-  scale_color_viridis()
+# plot ---------------------------------
+m <- gls(lcost ~ lat, correlation = corVince(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m); cor(predict(m),log(mydata$lcost))
+plot(mydata$lat, mydata$lcost, pch = 16, col = rgb(0,0,0,0.7), xlab = "lat",
+     ylab = paste0("log ", costvar, " cost" ), main = "Global model")
+myx <- seq(min(mydata$lat), max(mydata$lat), by=0.5) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
 
 # cleanup mydata for next set of models ---
 mydata <- mydata[,1:basecols]
@@ -254,11 +206,14 @@ mydata <- mydata[,1:basecols]
 # PROCESS model
 ```{r}
 # model reduction ----------------------
-# m <- gls(scale(lcost) ~ scale(pair_age) + scale(range_size) + scale(niche_position) + scale(niche_breadth) + scale(niche_overlap) + scale(distance),
-#          correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); car::vif(m) # remove pair_age
+m <- gls(scale(lcost) ~ scale(pair_age) + scale(range_size) + scale(niche_position) + scale(niche_breadth) + scale(niche_overlap) + scale(distance),
+         correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); car::vif(m); cor(predict(m),log(mydata$lcost)) # remove pair_age
 m <- gls(scale(lcost) ~ scale(range_size) + scale(niche_position) + scale(niche_breadth) + scale(niche_overlap) + scale(distance),
-         correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); car::vif(m) # OK.
-mylambda <- -0.01123826
+         correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); cor(predict(m),log(mydata$lcost))
+mylambda <- -0.02266697
+m <- gls(scale(lcost) ~ scale(range_size) + scale(niche_position) + scale(niche_breadth) + scale(niche_overlap) + scale(distance),
+         correlation = corVince(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m); cor(predict(m),log(mydata$lcost))
+
 
 # spatial autocorr ---------------------
 matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
@@ -270,13 +225,22 @@ sarcol <- SpatialFiltering(formula = scale(lcost) ~ scale(range_size) + scale(ni
 mydata[,c((basecols+1):(basecols+1+ dim(fitted(sarcol))[2]-1))]<-fitted(sarcol)
 
 # vector 1 added --- 
-m <- gls(scale(lcost) ~ scale(range_size) + scale(niche_position) + scale(niche_breadth) + scale(niche_overlap) + scale(distance) + V16, correlation = corVince(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m) 
+m <- gls(scale(lcost) ~ scale(range_size) + scale(niche_position) + scale(niche_breadth) + scale(niche_overlap) + scale(distance) + V16, correlation = corVince(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m);cor(predict(m),log(mydata$lcost))
 matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
 spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
 moran.test(residuals(m), nb2listw(nb))$p.value # OK! keep going....
 
+# vector 2 added --- 
+m <- gls(scale(lcost) ~ scale(range_size) + scale(niche_position) + scale(niche_breadth) + scale(niche_overlap) + scale(distance) + V16 + V17, correlation = corVince(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m);cor(predict(m),log(mydata$lcost))
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # OK! keep going....
 
-
+# vector 3 added --- 
+m <- gls(scale(lcost) ~ scale(range_size) + scale(niche_position) + scale(niche_breadth) + scale(niche_overlap) + scale(distance) + V16 + V17 + V18, correlation = corVince(mylambda, phy = tree, fixed = T), data = mydata, method = "REML"); summary(m);cor(predict(m),log(mydata$lcost))
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # OK!  done.
 
 # View lcost ---
 ggplot(world)+
@@ -318,5 +282,17 @@ ggplot(world)+
 ggplot(world)+
   geom_sf() + 
   geom_point(data = mydata, aes(y=lat, x=lon, color = V16)) + 
+  scale_color_viridis()
+
+# view spatial component 2 ---
+ggplot(world)+
+  geom_sf() + 
+  geom_point(data = mydata, aes(y=lat, x=lon, color = V17)) + 
+  scale_color_viridis()
+
+# view spatial component 3 ---
+ggplot(world)+
+  geom_sf() + 
+  geom_point(data = mydata, aes(y=lat, x=lon, color = V18)) + 
   scale_color_viridis()
 ```
