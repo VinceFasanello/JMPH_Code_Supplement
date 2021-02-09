@@ -481,3 +481,30 @@ ggplot(world)+
   geom_point(data = mydata, aes(y=lat, x=lon, color = V28)) + 
   scale_color_viridis()
 ```
+
+```{r}
+mydata$lat2 <- mydata$lat^2
+pdf("pairs_VarT.pdf", width=10, height=10)
+ggpairs(mydata[, c("lcost", "lat", "lat2", "pair_age", "range_size", "niche_position", "niche_breadth", "niche_overlap", "distance")])
+dev.off()
+
+# is distance related to latitude?
+m <- gls(log(distance) ~  lat +  I(lat^2), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); cor(predict(m),log(mydata$lcost))
+plot(mydata$lat, log(mydata$distance), pch = 16, col = rgb(0,0,0,0.7), xlab = "lat",
+     ylab = paste0("log ", costvar, " distance" ), main = "Global model")
+myx <- seq(min(mydata$lat), max(mydata$lat), by=0.5) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+
+# is steepness related to latitude?
+m <- gls(I(log(lcost/distance)) ~  lat +  I(lat^2), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); cor(predict(m),log(mydata$lcost))
+plot(mydata$lat, I(log(mydata$lcost/mydata$distance)), pch = 16, col = rgb(0,0,0,0.7), xlab = "lat",
+     ylab = paste0("log ", costvar, " steepness" ), main = "Global model")
+myx <- seq(min(mydata$lat), max(mydata$lat), by=0.5) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+```
