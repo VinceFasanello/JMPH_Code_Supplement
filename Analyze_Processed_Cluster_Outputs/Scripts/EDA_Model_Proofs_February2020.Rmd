@@ -1,0 +1,209 @@
+---
+title: "JMPH_basic_model_proofs"
+output:
+  html_document: default
+---
+
+Prepare the Workspace
+```{r, Prepare the Workspace}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, error = FALSE) # rmd options
+rm(list = ls()); invisible(gc()) # cleaning
+```
+<br><br><br><br><br>
+
+Control Block
+```{r, Control Block} 
+# f, f, 0.25 looks nice.
+allowmigrants <- F # OPTIONS: T, F 
+allowsympatry <- F # OPTIONS: T, F
+minoverperc <- 0 # remove pairs that do not have elevational overlap
+costvar <- "ele"
+```
+<br><br><br><br><br>
+
+Packages & Prefs
+```{r, Packages & Prefs}
+options(scipen = 999) # turn off scientific notation
+'%notin%' <- Negate('%in%')
+require(ggplot2) # load packages
+require(GGally)
+require(viridis)
+require(caper)
+library(dplyr)
+library(stringr)
+library(maps)
+library(ape)
+library(EnvStats)
+library(forecast)
+require(nlme)
+require(geodist)
+require(letsR)
+require(spdep)
+require(spatialreg)
+require(rnaturalearth)
+require(rnaturalearthdata)
+require(rgeos)
+require(sf)
+require(rgdal)
+require(raster)
+world <- ne_coastline(scale = "medium", returnclass = "sf")
+```
+<br><br><br><br><br>
+
+Load Main Data
+```{r, Load Main Data}
+# main dataframe ---------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+load(file =  "Pair_Barrier_Data_FEB2021.rdata")
+mydata <- mypairdata; rm(mypairdata)
+rownames(mydata) <- mydata$Species.1
+mydatahold <- mydata
+```
+<br><br><br><br><br>
+
+Impose masks & do calcuations
+```{r, Impose masks & do calcuations}
+mydata$cost <- mydata[, paste0(costvar, "_c25")] 
+mydata <- mydata[!is.na(mydata$cost),]
+mydata$lcost <- log( mydata$cost + abs(min( mydata$cost , na.rm = T)) + 1)
+
+mydata$ele_overlap <- mydata[,paste0(costvar, "_ov_perc_smrnge")]
+mydata <- mydata[mydata$ele_overlap > minoverperc,]
+
+if(allowmigrants == F){
+  mydata <- mydata[which(mydata$Migration == 1.0),]
+} # retain only non-migrants if asked to do so. 
+
+if(allowsympatry == F){
+  mydata <- mydata[which(mydata[,paste0(costvar, "_c0")] > 0 ),]
+} # retain only allopatric/parapatric species if asked to do so.
+
+mydata$lat <- mydata[,paste0("lat_mean_pair_", costvar, "_c25")]
+mydata$lon <- mydata[,paste0("lon_mean_pair_", costvar, "_c25")]
+mydata$thermal_niche_breadth <- mydata$MAT_range_pair_mean # mydata[,paste0(costvar, "_range_pair_mean")]
+
+mydata <- mydata[,c("uniquePairId", "Species.1", "Species.2", "Species.1bl", "Species.2bl",
+                    "thermal_niche_breadth", "lcost", "lat", "lon")]
+
+distm <- mydata[,c("lon", "lat")]
+distm <- geodist(distm, measure = "geodesic")
+rownames(distm) <- rownames(mydata)
+colnames(distm) <- rownames(mydata)
+basecols <- ncol(mydata)
+
+# neightbors
+coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+k1 <- knn2nb(knearneigh(coords, longlat = T))
+nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=max(unlist(nbdists(k1, coords, longlat = T))),longlat=T)
+```
+<br><br><br><br><br>
+
+load phylo and prune
+```{r, load phylo and prune}
+# phylo ------------------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees")
+load(file = "BirdTrees.Rdata")
+tree <- trees[[1]]; rm(trees) # pick tree (VF GET TREES FROM COONEY!!! and use MCC tree.)
+tree <- drop.tip(tree, tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)]) # initial name matching.
+mydata <- mydata[which(mydata$Species.1 %in% tree$tip.label),]
+mydata <- mydata[match(tree$tip.label, mydata$Species.1),]
+sum(mydata$Species.1 != tree$tip.label)
+```
+<br><br><br><br><br>
+
+world plots
+```{r, world plots}
+ggplot(world)+
+  geom_sf() + 
+  geom_point(data = mydata[order(mydata$lcost),], aes(y=lat, x=lon, color = lcost), alpha = 0.9) +
+  scale_color_viridis()
+ggplot(world)+
+  geom_sf() + 
+  geom_point(data = mydata[order(mydata$thermal_niche_breadth),], aes(y=lat, x=lon, color = thermal_niche_breadth), alpha = 0.9) +
+  scale_color_viridis()
+ggplot(world)+
+  geom_sf() + 
+  geom_point(data = mydata[order(mydata$lat),], aes(y=lat, x=lon, color = lat), alpha = 0.9) +
+  scale_color_viridis()
+```
+<br><br><br><br><br>
+
+Is elevational barrier size predicted by thermal niche breadth?
+```{r, Is elevational barrier size predicted by thermal niche breadth}
+m <- gls(scale(lcost) ~ scale(thermal_niche_breadth), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML");summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(mydata$lcost))))
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = F)
+print(paste("moran's I: ", moran.test(residuals(m), nb2listw(nb))$p.value)) # no evidence for spatial autocorrelation.
+
+# plot ---------------------------------
+plot(scale(mydata$thermal_niche_breadth), scale(mydata$lcost), pch = 16, col = rgb(0,0,0,0.7),
+     xlab = "thermal niche breadth", ylab = paste0("log ", costvar, " cost" ), main = "Global model")
+myx <- seq(min(scale(mydata$thermal_niche_breadth)), max(scale(mydata$thermal_niche_breadth)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+m <- gls(scale(lcost) ~ scale(thermal_niche_breadth), data = mydata, method = "REML")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lty=2)
+```
+<br><br><br><br><br>
+
+Is thermal niche breadth predicted by latitude?
+```{r, Is thermal niche breadth predicted by latitude}
+# without quadratic term ----------------------------------------------------------------
+m <- gls(scale(thermal_niche_breadth) ~ scale(lat), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(mydata$thermal_niche_breadth))))
+
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = F)
+print(paste("moran's I: ", moran.test(residuals(m), nb2listw(nb))$p.value)) # no evidence for spatial autocorrelation.
+
+# plot ---------------------------------
+plot(scale(mydata$lat), scale(mydata$thermal_niche_breadth), pch = 16, col = rgb(0,0,0,0.7),
+     xlab = "latitude", ylab = "thermal niche breadth", main = "Global model")
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+m <- gls(scale(thermal_niche_breadth) ~ scale(lat), data = mydata, method = "REML")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lty=2)
+```
+<br><br><br><br><br>
+
+Is thermal niche breadth predicted by latitude plus latitude2? (better fit, but visually makes little sense)
+```{r, Is thermal niche breadth predicted by latitude plus latitude2}
+m <- gls(scale(thermal_niche_breadth) ~ scale(lat) + scale(I(lat^2)), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(mydata$thermal_niche_breadth))))
+
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = F)
+print(paste("moran's I: ", moran.test(residuals(m), nb2listw(nb))$p.value)) # no evidence for spatial autocorrelation.
+
+# plot ---------------------------------
+plot(scale(mydata$lat), scale(mydata$thermal_niche_breadth), pch = 16, col = rgb(0,0,0,0.7),
+     xlab = "latitude", ylab = "thermal niche breadth", main = "Global model")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+m <- gls(scale(thermal_niche_breadth) ~ scale(lat) + scale(I(lat^2)), data = mydata, method = "REML")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lty=2)
+```
+<br><br><br><br><br>
