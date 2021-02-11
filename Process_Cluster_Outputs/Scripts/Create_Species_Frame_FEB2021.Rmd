@@ -419,9 +419,50 @@ for (i in 2:max(d)) {
 mypairdata <- newdataseed
 ```
 
+Add realm data
+```{r}
+require(rgdal)
+require(sp)
+require(raster)
+require(reshape2)
+require(abind)
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data")
+load(file = "LonLat_BirdPAM_raster.rdata"); rasterpam <- LonLat_BirdPAM_raster; rm(LonLat_BirdPAM_raster)
+
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/WWFRegions/Data")
+my_spdf <- readOGR( dsn= paste0(getwd(),"/wwf_terr_ecos"), layer="wwf_terr_ecos", verbose=FALSE) # load ogr
+my_spdf <- spTransform(my_spdf, crs(rasterpam)); crs(my_spdf) # adjust projection
+spdfdata <- my_spdf@data; str(spdfdata) # save the dataframe
+spdfdata <- spdfdata[,c("OBJECTID", "ECO_NAME", "REALM", "BIOME")] # retain interest columns
+spdfdata$ECO_NAME <- as.character(spdfdata$ECO_NAME) # adjust entry text
+spdfdata$REALM <- as.character(spdfdata$REALM)
+new_spdf <- raster::rasterize(x = my_spdf, y = rasterpam, field = "OBJECTID") # rasterize
+
+mypairdata$Realm1 <- NA
+mypairdata$Realm2 <- NA
+for (i in 1:length(mypairdata$Realm1)) {
+    mypairdata$Realm1[i] <- extract(x = new_spdf, y = matrix(data = c(mypairdata$centroid_lon_sp1[i], mypairdata$centroid_lat_sp1[i]), nrow = 1))
+    mypairdata$Realm2[i] <- extract(x = new_spdf, y = matrix(data = c(mypairdata$centroid_lon_sp2[i], mypairdata$centroid_lat_sp2[i]), nrow = 1))
+} # populated
+
+for (i in 1:nrow(spdfdata)) {
+  mypairdata$Realm1[mypairdata$Realm1 == spdfdata$OBJECTID[i]] <- spdfdata$REALM[i]
+  mypairdata$Realm2[mypairdata$Realm2 == spdfdata$OBJECTID[i]] <- spdfdata$REALM[i]
+  print(i)
+} # populated
+
+sum(is.na(mypairdata$Realm2) & is.na(mypairdata$Realm1)) # few are missing both!
+sum(mypairdata$Realm1 != mypairdata$Realm2, na.rm = T)
+unique(mypairdata$Realm1)
+```
+
+
+
+
 Save the pair-level dataframe. 
 ```{r}
 setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+rownames(mypairdata) <- mypairdata$Species.1
 save(mypairdata, file = "Pair_Barrier_Data_FEB2021.rdata")
 ```
 
