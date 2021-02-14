@@ -81,9 +81,10 @@ if(allowsympatry == F){
 mydata$lat <- mydata[,paste0("lat_mean_pair_", costvar, "_c25")]
 mydata$lon <- mydata[,paste0("lon_mean_pair_", costvar, "_c25")]
 mydata$thermal_niche_breadth <- mydata$MAT_range_pair_mean # mydata[,paste0(costvar, "_range_pair_mean")]
+mydata$thermal_niche_position <- rowMeans(cbind(mydata[, paste0("mean_", "MAT" ,"_sp1")], mydata[, paste0("mean_","MAT","_sp2")]))
 
 mydata <- mydata[,c("uniquePairId", "Species.1", "Species.2", "Species.1bl", "Species.2bl",
-                    "thermal_niche_breadth", "lcost", "lat", "lon")]
+                    "thermal_niche_breadth","thermal_niche_position", "lcost", "lat", "lon")]
 
 distm <- mydata[,c("lon", "lat")]
 distm <- geodist(distm, measure = "geodesic")
@@ -123,8 +124,18 @@ ggplot(world)+
   scale_color_viridis()
 ggplot(world)+
   geom_sf() + 
+  geom_point(data = mydata[order(mydata$thermal_niche_position),], aes(y=lat, x=lon, color = thermal_niche_position), alpha = 0.9) +
+  scale_color_viridis()
+ggplot(world)+
+  geom_sf() + 
   geom_point(data = mydata[order(mydata$lat),], aes(y=lat, x=lon, color = lat), alpha = 0.9) +
   scale_color_viridis()
+
+
+# there is an effect of thermal niche position on elevational barrier size even after accounting for latitude (so it isn't "just latitude").
+m <- gls(scale(lcost) ~ scale(thermal_niche_breadth) + scale(thermal_niche_position) + scale(lat), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML");summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(mydata$lcost))))
+
 ```
 <br><br><br><br><br>
 
