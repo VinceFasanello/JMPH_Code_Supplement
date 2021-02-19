@@ -63,25 +63,76 @@ mydatahold <- mydata
 
 Impose masks & do calcuations
 ```{r, Impose masks & do calcuations}
+
+# dependent variable: elevational barrier size ---
 mydata$cost <- mydata[, paste0(costvar, "_c25")] 
 mydata <- mydata[!is.na(mydata$cost),]
 mydata$lcost <- log( mydata$cost + abs(min( mydata$cost , na.rm = T)) + 1)
 
+# data filtering -----------------------
+# elevational overlap ---
 mydata$ele_overlap <- mydata[,paste0(costvar, "_ov_perc_smrnge")]
 mydata <- mydata[mydata$ele_overlap > minoverperc,]
 
+# migration ---
 if(allowmigrants == F){
   mydata <- mydata[which(mydata$Migration == 1.0),]
-} # retain only non-migrants if asked to do so. 
+}
 
+# patry
 if(allowsympatry == F){
   mydata <- mydata[which(mydata[,paste0(costvar, "_c0")] > 0 ),]
-} # retain only allopatric/parapatric species if asked to do so.
+}
 
-mydata$lat <- mydata[,paste0("lat_mean_pair_", costvar, "_c25")]
+
+# longitude ----------------------------
 mydata$lon <- mydata[,paste0("lon_mean_pair_", costvar, "_c25")]
-mydata$thermal_niche_breadth <- mydata$MAT_range_pair_mean # mydata[,paste0(costvar, "_range_pair_mean")]
-mydata$thermal_niche_position <- rowMeans(cbind(mydata[, paste0("mean_", "MAT" ,"_sp1")], mydata[, paste0("mean_","MAT","_sp2")]))
+
+# latitude ----------------------------
+mydata$lat <- mydata[,paste0("lat_mean_pair_", costvar, "_c25")]
+
+# temperature breadth -----------------
+mydata$thermal_niche_breadth <- mydata$MAT_range_pair_mean  # mean (MAT range(MAT sp1 full range), MAT range(MAT sp2 full range))
+
+# mean annual temperature --------------
+mydata$thermal_niche_position <- rowMeans(cbind(mydata[, paste0("mean_", "MAT" ,"_sp1")], mydata[, paste0("mean_","MAT","_sp2")])) # mean ( mean(MAT sp1 full range), mean(MAT sp2 full range))
+
+# precipitation breadth --------------- 
+mydata$precip_niche_breadth <- mydata$pcp_range_pair_mean # mean (PCP range(MApcp sp1 full range), PCP range (MApcp sp2 full range))
+
+
+# mountain mass ------------------------
+mtns <- readOGR(dsn="~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/GMBA", layer="GMBA Mountain Inventory_v1.2-World", verbose = FALSE)
+wdPAM <- "/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data"
+setwd(wdPAM); load("LonLat_BirdPAM_raster.rdata")
+mtns <- rasterize(mtns, LonLat_BirdPAM_raster)
+mtns@data@values[!is.na(mtns@data@values)] <- 1 # replace mountain IDs with simple coding. 1 for mountain...
+mtns@data@values[is.na(mtns@data@values)] <- 0 # ...0 for no mountain
+
+mydata$mtnmass <- NA; basecols <- basecols + 1
+for (i in 1:nrow(mydata)) {
+  coords1<-data.frame(lon=mydata$lon[i], lat=mydata$lat[i]); coordinates(coords1)<-c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster) # get coordinates
+  z <- extract(mtns, coords1, buffer = (density(mydata$distance)$x[which.max(density(mydata$distance)$y)]))
+  mydata$mtnmass[i] <- sum(z[[1]]) / length(z[[1]])
+}
+
+# water buffering ----------------------
+
+# dispersal ability --------------------
+
+# pair age -----------------------------
+mydata$pair_age <- mydata$Pair.age..MY.
+
+# distance -----------------------------
+mydata$distance <- mydata[,paste0("centroid_distance_",costvar,"_c25")]
+
+# length of boundary -------------------
+
+
+
+
+
+
 
 mydata <- mydata[,c("uniquePairId", "Species.1", "Species.2", "Species.1bl", "Species.2bl",
                     "thermal_niche_breadth","thermal_niche_position", "lcost", "lat", "lon")]

@@ -340,4 +340,14 @@ dim(tas[[1]]) == dim(VarT) # looks good.
 save(VarT, file = "VarT_raster_VJF.rdata")
 # ---------------------------------------------------------
 
+# create temp range raster ----------------------------------------
+temp <- brick(tas)
+MATrt <- calc(temp,max)
+MATrb <- calc(temp,min)
+MATr <- MATrt - MATrb
+plot(MATr)
+dim(tas[[1]]) == dim(MATr) # looks good. 
+save(MATr, file = "MATr_raster_VJF.rdata")
+# ---------------------------------------------------------
+
 

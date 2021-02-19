@@ -253,8 +253,19 @@ save(pcprng,
 # create PCP raster ----------------------------------------
 setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/Climate/Data") 
 load(file = "pcp_rasters_VJF.rdata")
-PCP <- sum(pcp, na.rm = T)
+PCP <- calc(pcp, fun=mean, na.rm = T)
 plot(PCP)
 dim(pcp[[1]]) == dim(PCP) # looks good. 
 save(PCP, file = "PCP_raster_VJF.rdata")
 # ---------------------------------------------------------
+
+# create temp range raster ----------------------------------------
+temp <- brick(pcp)
+PCPrt <- calc(temp,max)
+PCPrb <- calc(temp,min)
+PCPr <- PCPrt - PCPrb
+plot(PCPr)
+dim(pcp[[1]]) == dim(PCPr) # looks good. 
+save(PCPr, file = "PCPr_raster_VJF.rdata")
+# ---------------------------------------------------------
+

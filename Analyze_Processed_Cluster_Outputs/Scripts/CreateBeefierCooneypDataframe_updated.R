@@ -261,6 +261,9 @@ for (i in 1:nrow(cooney)) {
   cooney$pcpr_ov_range[i] <- cooney$pcpr_minofmaxs[i] - cooney$pcpr_maxofmins[i]
   cooney$pcpr_ov_perc_smrnge[i] <- cooney$pcpr_ov_range[i] / min(cooney$pcpr_range_sp1[i], cooney$pcpr_range_sp2[i], na.rm = T)
   
+  # basic info --------------------------------------------
+  cooney$n_pam_cells_sp1[i] <- length(!is.na(lat_1$latitude)); cooney$n_pam_cells_sp2[i] <- length(!is.na(lat_2$latitude)) # range size
+  
   # temperature --------------------------------------------
   tasmax_1 <- colMeans(extract(x=tasmax, y = coords1), na.rm = T) # species 1
   tasmin_1 <- colMeans(extract(x=tasmin, y = coords1), na.rm = T)
