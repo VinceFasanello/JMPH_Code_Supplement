@@ -59,6 +59,7 @@ load(file = "pcpmax_rasters_VJF.rdata")
 load(file = "pcprng_rasters_VJF.rdata")
 load(file = "PCP_raster_VJF.rdata")
 load(file = "PCPr_raster_VJF.rdata")
+load(file = "VarP_raster_VJF.rdata")
 
 # Load Pair Data (COONEY) ------------------------------------------------------
 setwd(wdSpeciesNames); load("cooney.rdata")
@@ -108,6 +109,11 @@ cooney$pcp_maxofmins <- NA; cooney$pcp_minofmaxs <- NA; cooney$pcp_ov_range <- N
 cooney$min_pcpr_sp1 <- NA; cooney$max_pcpr_sp1 <- NA; cooney$pcpr_range_sp1 <- NA; cooney$mean_pcpr_sp1 <- NA; cooney$med_pcpr_sp1 <- NA
 cooney$min_pcpr_sp2 <- NA; cooney$max_pcpr_sp2 <- NA; cooney$pcpr_range_sp2 <- NA; cooney$mean_pcpr_sp2 <- NA; cooney$med_pcpr_sp2 <- NA
 cooney$pcpr_maxofmins <- NA; cooney$pcpr_minofmaxs <- NA; cooney$pcpr_ov_range <- NA; cooney$pcpr_ov_perc_smrnge <- NA
+
+# VarP fields
+cooney$min_VarP_sp1 <- NA; cooney$max_VarP_sp1 <- NA; cooney$VarP_range_sp1 <- NA; cooney$mean_VarP_sp1 <- NA; cooney$med_VarP_sp1 <- NA
+cooney$min_VarP_sp2 <- NA; cooney$max_VarP_sp2 <- NA; cooney$VarP_range_sp2 <- NA; cooney$mean_VarP_sp2 <- NA; cooney$med_VarP_sp2 <- NA
+cooney$VarP_maxofmins <- NA; cooney$VarP_minofmaxs <- NA; cooney$VarP_ov_range <- NA; cooney$VarP_ov_perc_smrnge <- NA
 
 # temperature fields
 cooney[, c("tasmax_sp1_1", "tasmax_sp1_2", "tasmax_sp1_3", "tasmax_sp1_4", "tasmax_sp1_5", "tasmax_sp1_6", "tasmax_sp1_7", "tasmax_sp1_8", "tasmax_sp1_9", "tasmax_sp1_10", "tasmax_sp1_11", "tasmax_sp1_12")] <- NA
@@ -260,6 +266,22 @@ for (i in 1:nrow(cooney)) {
   cooney$pcpr_minofmaxs[i] <- min(cooney$max_pcpr_sp1[i], cooney$max_pcpr_sp2[i], na.rm = T)
   cooney$pcpr_ov_range[i] <- cooney$pcpr_minofmaxs[i] - cooney$pcpr_maxofmins[i]
   cooney$pcpr_ov_perc_smrnge[i] <- cooney$pcpr_ov_range[i] / min(cooney$pcpr_range_sp1[i], cooney$pcpr_range_sp2[i], na.rm = T)
+  
+  # VarP ----------------------------------------------------
+  VarP_1<-as.data.frame(extract(x=VarP, y=coords1)); VarP_1$sp <- "sp1"; colnames(VarP_1) <- c("VarP", "sp") # get dfs -----
+  VarP_2<-as.data.frame(extract(x=VarP, y=coords2)); VarP_2$sp <- "sp2"; colnames(VarP_2) <- c("VarP", "sp")
+  cooney$mean_VarP_sp1[i] <- mean(VarP_1$VarP, na.rm = T)
+  cooney$mean_VarP_sp2[i] <- mean(VarP_2$VarP, na.rm = T)
+  cooney$med_VarP_sp1[i] <- median(VarP_1$VarP, na.rm = T)
+  cooney$med_VarP_sp2[i] <- median(VarP_2$VarP, na.rm = T)
+  cooney$min_VarP_sp1[i] <- min(VarP_1$VarP, na.rm = T); cooney$max_VarP_sp1[i] <- max(VarP_1$VarP, na.rm = T) # max and min -----
+  cooney$min_VarP_sp2[i] <- min(VarP_2$VarP, na.rm = T); cooney$max_VarP_sp2[i] <- max(VarP_2$VarP, na.rm = T)
+  cooney$VarP_range_sp1[i] <- abs(cooney$min_VarP_sp1[i] - cooney$max_VarP_sp1[i]) # range -----
+  cooney$VarP_range_sp2[i] <- abs(cooney$min_VarP_sp2[i] - cooney$max_VarP_sp2[i])
+  cooney$VarP_maxofmins[i] <- max(cooney$min_VarP_sp1[i], cooney$min_VarP_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
+  cooney$VarP_minofmaxs[i] <- min(cooney$max_VarP_sp1[i], cooney$max_VarP_sp2[i], na.rm = T)
+  cooney$VarP_ov_range[i] <- cooney$VarP_minofmaxs[i] - cooney$VarP_maxofmins[i]
+  cooney$VarP_ov_perc_smrnge[i] <- cooney$VarP_ov_range[i] / min(cooney$VarP_range_sp1[i], cooney$VarP_range_sp2[i], na.rm = T)
   
   # basic info --------------------------------------------
   cooney$n_pam_cells_sp1[i] <- length(!is.na(lat_1$latitude)); cooney$n_pam_cells_sp2[i] <- length(!is.na(lat_2$latitude)) # range size

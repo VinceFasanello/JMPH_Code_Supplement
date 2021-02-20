@@ -269,3 +269,11 @@ dim(pcp[[1]]) == dim(PCPr) # looks good.
 save(PCPr, file = "PCPr_raster_VJF.rdata")
 # ---------------------------------------------------------
 
+
+# create temp range raster ----------------------------------------
+temp <- brick(pcp)
+VarP <- calc(temp,var, na.rm = T)
+plot(VarP)
+dim(pcp[[1]]) == dim(VarP) # looks good. 
+save(VarP, file = "VarP_raster_VJF.rdata")
+# ---------------------------------------------------------

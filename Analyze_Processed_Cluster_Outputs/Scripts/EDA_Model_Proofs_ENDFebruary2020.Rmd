@@ -1,0 +1,358 @@
+---
+title: "JMPH_basic_model_proofs"
+output:
+  html_document: default
+---
+
+Prepare the Workspace
+```{r, Prepare the Workspace}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, error = FALSE) # rmd options
+rm(list = ls()); invisible(gc()) # cleaning
+```
+<br><br><br><br><br>
+
+Control Block
+```{r, Control Block} 
+# f, f, 0.25 looks nice.
+allowmigrants <- F # OPTIONS: T, F 
+allowsympatry <- F # OPTIONS: T, F
+minoverperc <- 0 # remove pairs that do not have elevational overlap
+costvar <- "ele"
+```
+<br><br><br><br><br>
+
+Packages & Prefs
+```{r, Packages & Prefs}
+options(scipen = 999) # turn off scientific notation
+'%notin%' <- Negate('%in%')
+require(ggplot2) # load packages
+require(GGally)
+require(viridis)
+require(caper)
+library(dplyr)
+library(stringr)
+library(maps)
+library(ape)
+library(EnvStats)
+library(forecast)
+require(nlme)
+require(geodist)
+require(letsR)
+require(spdep)
+require(spatialreg)
+require(rnaturalearth)
+require(rnaturalearthdata)
+require(rgeos)
+require(sf)
+require(rgdal)
+require(raster)
+world <- ne_coastline(scale = "medium", returnclass = "sf")
+vlog <- function(x){
+   log( x + abs(min( x , na.rm = T)) + 1)
+}
+```
+<br><br><br><br><br>
+
+Load Main Data
+```{r, Load Main Data}
+# main dataframe ---------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+load(file =  "Pair_Barrier_Data_FEB2021.rdata")
+mydata <- mypairdata; rm(mypairdata)
+rownames(mydata) <- mydata$Species.1
+mydatahold <- mydata
+```
+<br><br><br><br><br>
+
+Impose masks & do calcuations
+```{r, Impose masks & do calcuations}
+
+# dependent variable: elevational barrier size ---
+mydata$cost <- mydata[, paste0(costvar, "_c25")] 
+
+# data filtering -----------------------
+# elevational overlap ---
+mydata$ele_overlap <- mydata[,paste0(costvar, "_ov_perc_smrnge")]
+mydata <- mydata[mydata$ele_overlap > minoverperc,]
+
+# migration ---
+if(allowmigrants == F){
+  mydata <- mydata[which(mydata$Migration == 1.0),]
+}
+
+# patry
+if(allowsympatry == F){
+  mydata <- mydata[which(mydata[,paste0(costvar, "_c0")] > 0 ),]
+}
+
+
+# longitude ----------------------------
+mydata$lon <- mydata[,paste0("lon_mean_pair_", costvar, "_c25")]
+
+# latitude ----------------------------
+mydata$lat <- mydata[,paste0("lat_mean_pair_", costvar, "_c25")]
+
+# temperature breadth -----------------
+mydata$tas_breadth <- mydata$tas_range # mean(mean(sp1 annual tas range -- one value per cell), mean(sp2 annual tas range -- one value per cell))
+# mydata$tas_breadth <- rowMeans(mydata[, c("mean_VarT_sp1", "mean_VarT_sp2")])
+
+# mean annual temperature --------------
+mydata$tas_position <- mydata$tas_mean # mean(mean(sp1 annual tas mean  -- one value per cell), mean(sp2 annual tas mean  -- one value per cell))
+
+# precipitation breadth --------------- 
+mydata$pcp_breadth <- mydata$pcp_range # mean(mean(sp1 annual pcp range  -- one value per cell), mean(sp2 annual pcp range  -- one value per cell))
+
+# precipitation breadth --------------- 
+mydata$pcp_position <- mydata$pcp_mean # mean(mean(sp1 annual pcp mean  -- one value per cell), mean(sp2 annual pcp mean  -- one value per cell))
+
+# distance -----------------------------
+mydata$distance <- mydata[,paste0("centroid_distance_",costvar,"_c25")]
+
+# mountain mass ------------------------
+mtns <- readOGR(dsn="~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/GMBA", layer="GMBA Mountain Inventory_v1.2-World", verbose = FALSE)
+wdPAM <- "/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data"
+setwd(wdPAM); load("LonLat_BirdPAM_raster.rdata")
+mtns <- rasterize(mtns, LonLat_BirdPAM_raster)
+mtns@data@values[!is.na(mtns@data@values)] <- 1 # replace mountain IDs with simple coding. 1 for mountain...
+mtns@data@values[is.na(mtns@data@values)] <- 0 # ...0 for no mountain
+
+mydata$mtn_mass <- NA
+for (i in 1:nrow(mydata)) {
+  coords1<-data.frame(lon=mydata$lon[i], lat=mydata$lat[i]); coordinates(coords1)<-c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster) # get coordinates
+  z <- extract(mtns, coords1, buffer = (density(mydata$distance)$x[which.max(density(mydata$distance)$y)]))
+  mydata$mtn_mass[i] <- sum(z[[1]]) / length(z[[1]])
+}
+
+# water buffering ----------------------
+mydata$water_buffering <- NA
+
+# dispersal ability --------------------
+dispab <- read.csv("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/Bird Hand-Wing Index/Dataset HWI 2020-04-10.csv")
+mydata$dispersal_ability <- NA
+for (i in 1:nrow(mydata)){
+  dispab_sp1 <- dispab$HWI[dispab$IUCN.name == mydata$Species.1bl[i]]
+  dispab_sp2 <- dispab$HWI[dispab$IUCN.name == mydata$Species.2bl[i]]
+  dispab_pair <- mean(c(dispab_sp1, dispab_sp2), na.rm = T)
+  mydata$dispersal_ability[i] <- dispab_pair
+  rm(dispab_sp1, dispab_sp2, dispab_pair)
+}
+mydata <- mydata[!is.nan(mydata$dispersal_ability),]
+
+# pair age -----------------------------
+mydata$pair_age <- mydata$Pair.age..MY.
+
+
+# length of boundary -------------------
+mydata$boundary_length <- mydata$boundary_length_ele_c25
+
+
+# retain cols of interest only.
+mydata <- mydata[,c("uniquePairId", "Species.1", "Species.2", "Species.1bl", "Species.2bl", "cost", "lat", "lon",
+                    "tas_breadth","tas_position", "pcp_breadth","pcp_position", "mtn_mass", "water_buffering", "dispersal_ability", "pair_age", "distance", "boundary_length")]
+```
+
+Remove pairs that slipped through the cracks.
+```{r}
+
+```
+
+
+
+Neighbors for sptial analysis. 
+```{r}
+distm <- mydata[,c("lon", "lat")]
+distm <- geodist(distm, measure = "geodesic")
+rownames(distm) <- rownames(mydata)
+colnames(distm) <- rownames(mydata)
+basecols <- ncol(mydata)
+
+# neightbors
+coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+k1 <- knn2nb(knearneigh(coords, longlat = T))
+nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=max(unlist(nbdists(k1, coords, longlat = T))),longlat=T)
+```
+<br><br><br><br><br>
+
+load phylo and prune
+```{r, load phylo and prune}
+# phylo ------------------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees")
+load(file = "BirdTrees.Rdata")
+tree <- trees[[1]]; rm(trees) # pick tree (VF GET TREES FROM COONEY!!! and use MCC tree.)
+tree <- drop.tip(tree, tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)]) # initial name matching.
+mydata <- mydata[which(mydata$Species.1 %in% tree$tip.label),]
+mydata <- mydata[match(tree$tip.label, mydata$Species.1),]
+sum(mydata$Species.1 != tree$tip.label)
+```
+<br><br><br><br><br>
+
+plots for transformations
+```{r, world plots}
+for (i in c("cost", "lat", "lon","tas_breadth","tas_position","pcp_breadth","pcp_position", "mtn_mass", "dispersal_ability", "pair_age", "distance", "boundary_length")) {
+# for (i in c("cost", "lat", "lon","tas_breadth","tas_position","pcp_breadth","pcp_position", "mtn_mass", "water_buffering", "dispersal_ability", "pair_age", "distance", "boundary_length")) {
+hist(mydata[, i], breaks = 100, main = i)
+}
+```
+
+
+world plots
+```{r, world plots}
+for (i in c("cost", "lat", "lon","tas_breadth","tas_position", "pcp_breadth","pcp_position", "mtn_mass", "dispersal_ability", "pair_age", "distance", "boundary_length")) {
+# for (i in c("cost", "lat", "lon","tas_breadth","tas_position","pcp_breadth","pcp_position", "mtn_mass", "water_buffering", "dispersal_ability", "pair_age", "distance", "boundary_length")) {
+  if(i %in% c("cost", "tas_breadth", "mtn_mass", "dispersal_ability", "pair_age", "distance", "boundary_length")){
+  myc <- mydata[, i]; myc <- vlog(myc)
+  hist(myc, main = i, breaks = 100)
+  } else {
+  myc <- mydata[, i];
+  hist(myc, main = i, breaks = 100)
+  }
+}
+```
+<br><br><br><br><br>
+
+world plots
+```{r, world plots}
+plot(scale(I(vlog(cost))) ~ scale(I((lat))), data = mydata)
+plot(scale(I(vlog(cost))) ~ scale(I(vlog(tas_breadth))), data = mydata)
+plot(scale(I(vlog(cost))) ~ scale(I((tas_position))), data = mydata)
+plot(scale(I(vlog(cost))) ~ scale(I((pcp_breadth))), data = mydata)
+plot(scale(I(vlog(cost))) ~ scale(I((pcp_position))), data = mydata)
+plot(scale(I(vlog(cost))) ~ scale(I(vlog(mtn_mass))), data = mydata)
+plot(scale(I(vlog(cost))) ~ scale(I(vlog(dispersal_ability))), data = mydata)
+plot(scale(I(vlog(cost))) ~ scale(I(vlog(pair_age))), data = mydata)
+plot(scale(I(vlog(cost))) ~ scale(I(vlog(distance))), data = mydata)
+plot(scale(I(vlog(cost))) ~ scale(I(vlog(boundary_length))), data = mydata)
+
+```
+
+world plots
+```{r, world plots}
+for (i in c("cost", "lat", "lon","tas_breadth","tas_position", "pcp_breadth","pcp_position", "mtn_mass", "dispersal_ability", "pair_age", "distance", "boundary_length")) {
+# for (i in c("cost", "lat", "lon","tas_breadth","tas_position","pcp_breadth","pcp_position", "mtn_mass", "water_buffering", "dispersal_ability", "pair_age", "distance", "boundary_length")) {
+  if(i %in% c("cost", "tas_breadth", "mtn_mass", "dispersal_ability", "pair_age", "distance", "boundary_length")){
+  myc <- mydata[, i]; myc <- vlog(myc)
+    x <- ggplot(world)+
+    geom_sf() + 
+    geom_point(data = mydata[order(mydata[, i]),], aes(y=lat, x=lon, color = myc), alpha = 0.9) +
+    ggtitle(i)+
+    scale_color_viridis()
+  print(x) 
+  } else {
+      x <- ggplot(world)+
+    geom_sf() + 
+    geom_point(data = mydata[order(mydata[, i]),], aes(y=lat, x=lon, color = get(i)), alpha = 0.9) +
+    ggtitle(i)+
+    scale_color_viridis()
+  print(x) 
+  }
+}
+```
+<br><br><br><br><br>
+
+Is elevational barrier size predicted by thermal niche breadth?
+```{r, Is elevational barrier size predicted by thermal niche breadth}
+m <- gls(scale(I(vlog(cost))) ~ scale(I(vlog(tas_breadth))), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML");summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$cost))))))
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = F)
+print(paste("moran's I: ", moran.test(residuals(m), nb2listw(nb))$p.value)) # no evidence for spatial autocorrelation.
+
+# plot ---------------------------------
+plot(scale(I(vlog(mydata$tas_breadth))), scale(I(vlog(mydata$cost))), pch = 16, col = rgb(0,0,0,0.7),
+     xlab = "thermal niche breadth", ylab = paste0("log ", costvar, " cost" ), main = "Global model")
+myx <- seq(min(scale(vlog(mydata$tas_breadth))), max(scale(vlog(mydata$tas_breadth))), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+m <- gls(scale(I(vlog(cost))) ~ scale(I(log(tas_breadth))), data = mydata, method = "REML")
+myx <- seq(min(scale(vlog(mydata$tas_breadth))), max(scale(vlog(mydata$tas_breadth))), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lty=2)
+```
+<br><br><br><br><br>
+
+Is thermal niche breadth predicted by latitude plus latitude2? 
+```{r, Is thermal niche breadth predicted by latitude plus latitude2}
+m <- gls(scale(I(vlog(tas_breadth))) ~ scale(lat) + scale(I(lat^2)), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$tas_breadth))))))
+
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = F)
+print(paste("moran's I: ", moran.test(residuals(m), nb2listw(nb))$p.value)) # no evidence for spatial autocorrelation.
+
+# plot ---------------------------------
+plot(scale(mydata$lat), scale(I(vlog(mydata$tas_breadth))), pch = 16, col = rgb(0,0,0,0.7),
+     xlab = "latitude", ylab = "thermal niche breadth", main = "Global model")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+m <- gls(scale(I(vlog(tas_breadth))) ~ scale(lat) + scale(I(lat^2)), data = mydata, method = "REML")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lty=2)
+```
+<br><br><br><br><br>
+
+
+Is barrier size predicted by latitude plus latitude2? 
+```{r, Is thermal niche breadth predicted by latitude plus latitude2}
+m <- gls(scale(I(vlog(cost))) ~ scale(lat) + scale(I(lat^2)), correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$cost))))))
+
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = F)
+print(paste("moran's I: ", moran.test(residuals(m), nb2listw(nb))$p.value)) # no evidence for spatial autocorrelation.
+
+# plot ---------------------------------
+plot(scale(mydata$lat), scale(I(vlog(mydata$cost))), pch = 16, col = rgb(0,0,0,0.7),
+     xlab = "latitude", ylab = "lcost", main = "Global model")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+m <- gls(scale(I(vlog(cost))) ~ scale(lat) + scale(I(lat^2)), data = mydata, method = "REML")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lty=2)
+```
+
+
+```{r}
+# most basic proof -- looks GOOD!
+m <- gls(scale(I(vlog(cost))) ~ scale(I(vlog(tas_breadth))),
+         correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); #car::vif(m) # boundary length
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$cost))))))
+
+
+# full model -- looks wonky. relationships flip and change a lot!
+m <- gls(scale(I(vlog(cost))) ~ scale(I(vlog(tas_breadth))) + scale(tas_position) + scale(pcp_breadth) + scale(pcp_position) + 
+           scale(I(vlog(mtn_mass))) + scale(I(vlog(dispersal_ability))) + scale(I(vlog(pair_age))) + scale(I(vlog(distance))) + scale(I(vlog(boundary_length))),
+         correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); car::vif(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$cost))))))
+
+# full model -- looks wonky. relationships flip and change a lot!
+m <- gls(scale(I(vlog(cost))) ~ scale(I(vlog(tas_breadth))) + scale(tas_position) + scale(pcp_breadth) + scale(pcp_position) + 
+           scale(I(vlog(mtn_mass))) + scale(I(vlog(dispersal_ability))) + scale(I(vlog(pair_age))) + scale(I(vlog(cost/distance))) + scale(I(vlog(boundary_length))),
+         correlation = corPagel(0.99, phy = tree, fixed = F), data = mydata, method = "REML"); summary(m); car::vif(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$cost))))))
+```
+
+
+
+
+
+
+
