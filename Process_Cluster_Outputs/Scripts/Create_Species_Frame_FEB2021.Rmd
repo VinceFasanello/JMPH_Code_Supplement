@@ -220,6 +220,7 @@ for(i in 1:nrow(m_aB_MAT_mcosts)){
 
 mydata$centroid_lon_sp1_MAT_c25 <- NA
 mydata$centroid_lat_sp1_MAT_c25 <- NA
+mydata$boundary_length_sp1_MAT_c25 <- NA
 # mydata$centroid_lon_sp1_MAT_c12.5 <- NA
 # mydata$centroid_lat_sp1_MAT_c12.5 <- NA
 mydata$centroid_lon_sp1_MAT_c0 <- NA
@@ -232,7 +233,12 @@ for(i in 1:nrow(mydata)){
   centroid1 <- rgeos::gCentroid(coords1)
   mydata$centroid_lon_sp1_MAT_c25[i] <- centroid1@coords[1]
   mydata$centroid_lat_sp1_MAT_c25[i] <- centroid1@coords[2]  
- 
+   
+  # new new new ------------------------
+  mydata$boundary_length_sp1_MAT_c25[i] <- mean(raster::pointDistance(coords1, coords1, lonlat = T, allpairs = T))
+  print(i)
+  # ------------------------------------
+
   # # c12.5
   # coords1 <- data.frame(cbind(lon=MAT_lon12.5[i,], lat = MAT_lat12.5[i,])); coords1 <- coords1[complete.cases(coords1),]
   # coordinates(coords1) <- c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster)

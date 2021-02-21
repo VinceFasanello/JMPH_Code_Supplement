@@ -214,7 +214,7 @@ mydata <- mydata[mydata$realm1 == mydata$realm2,]
 
 hist(mydata$pair_age, breaks = 100)
 abline(v=8)
-mydata <- mydata[which(mydata$pair_age < 7),]
+mydata <- mydata[which(mydata$pair_age < 8),]
 ```
 
 

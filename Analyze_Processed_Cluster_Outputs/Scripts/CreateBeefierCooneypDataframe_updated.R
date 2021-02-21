@@ -57,9 +57,9 @@ load(file = "pcp_rasters_VJF.rdata")
 load(file = "pcpmin_rasters_VJF.rdata")
 load(file = "pcpmax_rasters_VJF.rdata")
 load(file = "pcprng_rasters_VJF.rdata")
-load(file = "PCP_raster_VJF.rdata")
-load(file = "PCPr_raster_VJF.rdata")
-load(file = "VarP_raster_VJF.rdata")
+load(file = "PCP_raster_VJF_BASIC.rdata")
+load(file = "PCPr_raster_VJF_BASIC.rdata")
+load(file = "VarP_raster_VJF_BASIC.rdata")
 
 # Load Pair Data (COONEY) ------------------------------------------------------
 setwd(wdSpeciesNames); load("cooney.rdata")
@@ -180,8 +180,8 @@ for (i in 1:nrow(cooney)) {
   cooney$med_ele_sp2[i] <- median(elev_2$elev, na.rm = T)
   cooney$min_ele_sp1[i] <- min(elev_1$elev, na.rm = T); cooney$max_ele_sp1[i] <- max(elev_1$elev, na.rm = T) # max and min -----
   cooney$min_ele_sp2[i] <- min(elev_2$elev, na.rm = T); cooney$max_ele_sp2[i] <- max(elev_2$elev, na.rm = T)
-  cooney$ele_range_sp1[i] <- abs(cooney$min_ele_sp1[i] - cooney$max_ele_sp1[i]) # range -----
-  cooney$ele_range_sp2[i] <- abs(cooney$min_ele_sp2[i] - cooney$max_ele_sp2[i])
+  cooney$ele_range_sp1[i] <- abs(cooney$min_ele_sp1[i] - cooney$max_ele_sp1[i]) + 1E-24 # range ----- # 1e-12 added to fix calcs for sp with a single occurance point.
+  cooney$ele_range_sp2[i] <- abs(cooney$min_ele_sp2[i] - cooney$max_ele_sp2[i]) + 1E-24
   cooney$ele_maxofmins[i] <- max(cooney$min_ele_sp1[i], cooney$min_ele_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
   cooney$ele_minofmaxs[i] <- min(cooney$max_ele_sp1[i], cooney$max_ele_sp2[i], na.rm = T)
   cooney$ele_ov_range[i] <- cooney$ele_minofmaxs[i] - cooney$ele_maxofmins[i]
@@ -196,8 +196,8 @@ for (i in 1:nrow(cooney)) {
   cooney$med_MAT_sp2[i] <- median(MAT_2$MAT, na.rm = T)
   cooney$min_MAT_sp1[i] <- min(MAT_1$MAT, na.rm = T); cooney$max_MAT_sp1[i] <- max(MAT_1$MAT, na.rm = T) # max and min -----
   cooney$min_MAT_sp2[i] <- min(MAT_2$MAT, na.rm = T); cooney$max_MAT_sp2[i] <- max(MAT_2$MAT, na.rm = T)
-  cooney$MAT_range_sp1[i] <- abs(cooney$min_MAT_sp1[i] - cooney$max_MAT_sp1[i]) # range -----
-  cooney$MAT_range_sp2[i] <- abs(cooney$min_MAT_sp2[i] - cooney$max_MAT_sp2[i])
+  cooney$MAT_range_sp1[i] <- abs(cooney$min_MAT_sp1[i] - cooney$max_MAT_sp1[i]) + 1E-24 # range -----
+  cooney$MAT_range_sp2[i] <- abs(cooney$min_MAT_sp2[i] - cooney$max_MAT_sp2[i]) + 1E-24
   cooney$MAT_maxofmins[i] <- max(cooney$min_MAT_sp1[i], cooney$min_MAT_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
   cooney$MAT_minofmaxs[i] <- min(cooney$max_MAT_sp1[i], cooney$max_MAT_sp2[i], na.rm = T)
   cooney$MAT_ov_range[i] <- cooney$MAT_minofmaxs[i] - cooney$MAT_maxofmins[i]
@@ -212,8 +212,8 @@ for (i in 1:nrow(cooney)) {
   cooney$med_MATr_sp2[i] <- median(MATr_2$MATr, na.rm = T)
   cooney$min_MATr_sp1[i] <- min(MATr_1$MATr, na.rm = T); cooney$max_MATr_sp1[i] <- max(MATr_1$MATr, na.rm = T) # max and min -----
   cooney$min_MATr_sp2[i] <- min(MATr_2$MATr, na.rm = T); cooney$max_MATr_sp2[i] <- max(MATr_2$MATr, na.rm = T)
-  cooney$MATr_range_sp1[i] <- abs(cooney$min_MATr_sp1[i] - cooney$max_MATr_sp1[i]) # range -----
-  cooney$MATr_range_sp2[i] <- abs(cooney$min_MATr_sp2[i] - cooney$max_MATr_sp2[i])
+  cooney$MATr_range_sp1[i] <- abs(cooney$min_MATr_sp1[i] - cooney$max_MATr_sp1[i]) + 1E-24 # range -----
+  cooney$MATr_range_sp2[i] <- abs(cooney$min_MATr_sp2[i] - cooney$max_MATr_sp2[i]) + 1E-24
   cooney$MATr_maxofmins[i] <- max(cooney$min_MATr_sp1[i], cooney$min_MATr_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
   cooney$MATr_minofmaxs[i] <- min(cooney$max_MATr_sp1[i], cooney$max_MATr_sp2[i], na.rm = T)
   cooney$MATr_ov_range[i] <- cooney$MATr_minofmaxs[i] - cooney$MATr_maxofmins[i]
@@ -228,8 +228,8 @@ for (i in 1:nrow(cooney)) {
   cooney$med_VarT_sp2[i] <- median(VarT_2$VarT, na.rm = T)
   cooney$min_VarT_sp1[i] <- min(VarT_1$VarT, na.rm = T); cooney$max_VarT_sp1[i] <- max(VarT_1$VarT, na.rm = T) # max and min -----
   cooney$min_VarT_sp2[i] <- min(VarT_2$VarT, na.rm = T); cooney$max_VarT_sp2[i] <- max(VarT_2$VarT, na.rm = T)
-  cooney$VarT_range_sp1[i] <- abs(cooney$min_VarT_sp1[i] - cooney$max_VarT_sp1[i]) # range -----
-  cooney$VarT_range_sp2[i] <- abs(cooney$min_VarT_sp2[i] - cooney$max_VarT_sp2[i])
+  cooney$VarT_range_sp1[i] <- abs(cooney$min_VarT_sp1[i] - cooney$max_VarT_sp1[i]) + 1E-24 # range -----
+  cooney$VarT_range_sp2[i] <- abs(cooney$min_VarT_sp2[i] - cooney$max_VarT_sp2[i]) + 1E-24
   cooney$VarT_maxofmins[i] <- max(cooney$min_VarT_sp1[i], cooney$min_VarT_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
   cooney$VarT_minofmaxs[i] <- min(cooney$max_VarT_sp1[i], cooney$max_VarT_sp2[i], na.rm = T)
   cooney$VarT_ov_range[i] <- cooney$VarT_minofmaxs[i] - cooney$VarT_maxofmins[i]
@@ -244,8 +244,8 @@ for (i in 1:nrow(cooney)) {
   cooney$med_pcp_sp2[i] <- median(pcp_2$pcp, na.rm = T)
   cooney$min_pcp_sp1[i] <- min(pcp_1$pcp, na.rm = T); cooney$max_pcp_sp1[i] <- max(pcp_1$pcp, na.rm = T) # max and min -----
   cooney$min_pcp_sp2[i] <- min(pcp_2$pcp, na.rm = T); cooney$max_pcp_sp2[i] <- max(pcp_2$pcp, na.rm = T)
-  cooney$pcp_range_sp1[i] <- abs(cooney$min_pcp_sp1[i] - cooney$max_pcp_sp1[i]) # range -----
-  cooney$pcp_range_sp2[i] <- abs(cooney$min_pcp_sp2[i] - cooney$max_pcp_sp2[i])
+  cooney$pcp_range_sp1[i] <- abs(cooney$min_pcp_sp1[i] - cooney$max_pcp_sp1[i]) + 1E-24 # range -----
+  cooney$pcp_range_sp2[i] <- abs(cooney$min_pcp_sp2[i] - cooney$max_pcp_sp2[i]) + 1E-24
   cooney$pcp_maxofmins[i] <- max(cooney$min_pcp_sp1[i], cooney$min_pcp_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
   cooney$pcp_minofmaxs[i] <- min(cooney$max_pcp_sp1[i], cooney$max_pcp_sp2[i], na.rm = T)
   cooney$pcp_ov_range[i] <- cooney$pcp_minofmaxs[i] - cooney$pcp_maxofmins[i]
@@ -260,8 +260,8 @@ for (i in 1:nrow(cooney)) {
   cooney$med_pcpr_sp2[i] <- median(pcpr_2$pcpr, na.rm = T)
   cooney$min_pcpr_sp1[i] <- min(pcpr_1$pcpr, na.rm = T); cooney$max_pcpr_sp1[i] <- max(pcpr_1$pcpr, na.rm = T) # max and min -----
   cooney$min_pcpr_sp2[i] <- min(pcpr_2$pcpr, na.rm = T); cooney$max_pcpr_sp2[i] <- max(pcpr_2$pcpr, na.rm = T)
-  cooney$pcpr_range_sp1[i] <- abs(cooney$min_pcpr_sp1[i] - cooney$max_pcpr_sp1[i]) # range -----
-  cooney$pcpr_range_sp2[i] <- abs(cooney$min_pcpr_sp2[i] - cooney$max_pcpr_sp2[i])
+  cooney$pcpr_range_sp1[i] <- abs(cooney$min_pcpr_sp1[i] - cooney$max_pcpr_sp1[i]) + 1E-24  # range -----
+  cooney$pcpr_range_sp2[i] <- abs(cooney$min_pcpr_sp2[i] - cooney$max_pcpr_sp2[i]) + 1E-24
   cooney$pcpr_maxofmins[i] <- max(cooney$min_pcpr_sp1[i], cooney$min_pcpr_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
   cooney$pcpr_minofmaxs[i] <- min(cooney$max_pcpr_sp1[i], cooney$max_pcpr_sp2[i], na.rm = T)
   cooney$pcpr_ov_range[i] <- cooney$pcpr_minofmaxs[i] - cooney$pcpr_maxofmins[i]
@@ -276,8 +276,8 @@ for (i in 1:nrow(cooney)) {
   cooney$med_VarP_sp2[i] <- median(VarP_2$VarP, na.rm = T)
   cooney$min_VarP_sp1[i] <- min(VarP_1$VarP, na.rm = T); cooney$max_VarP_sp1[i] <- max(VarP_1$VarP, na.rm = T) # max and min -----
   cooney$min_VarP_sp2[i] <- min(VarP_2$VarP, na.rm = T); cooney$max_VarP_sp2[i] <- max(VarP_2$VarP, na.rm = T)
-  cooney$VarP_range_sp1[i] <- abs(cooney$min_VarP_sp1[i] - cooney$max_VarP_sp1[i]) # range -----
-  cooney$VarP_range_sp2[i] <- abs(cooney$min_VarP_sp2[i] - cooney$max_VarP_sp2[i])
+  cooney$VarP_range_sp1[i] <- abs(cooney$min_VarP_sp1[i] - cooney$max_VarP_sp1[i]) + 1E-24 # range -----
+  cooney$VarP_range_sp2[i] <- abs(cooney$min_VarP_sp2[i] - cooney$max_VarP_sp2[i]) + 1E-24
   cooney$VarP_maxofmins[i] <- max(cooney$min_VarP_sp1[i], cooney$min_VarP_sp2[i], na.rm = T) # overlap % = Union range  / smaller range -----
   cooney$VarP_minofmaxs[i] <- min(cooney$max_VarP_sp1[i], cooney$max_VarP_sp2[i], na.rm = T)
   cooney$VarP_ov_range[i] <- cooney$VarP_minofmaxs[i] - cooney$VarP_maxofmins[i]

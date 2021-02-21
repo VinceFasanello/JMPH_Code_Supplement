@@ -1,0 +1,568 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+Prepare the Workspace
+```{r, Prepare the Workspace}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, error = FALSE) # rmd options
+rm(list = ls()); invisible(gc()) # cleaning
+```
+<br><br><br><br><br>
+
+Control Block
+```{r, Control Block} 
+# f, f, 0.25 looks nice.
+allowmigrants <- F # OPTIONS: T, F 
+allowsympatry <- F # OPTIONS: T, F
+minoverperc <- 0 # remove pairs that do not have thermal overlap (anagenesis)
+costvar <- "ele"
+```
+<br><br><br><br><br>
+
+Packages & Prefs
+```{r, Packages & Prefs}
+options(scipen = 999) # turn off scientific notation
+'%notin%' <- Negate('%in%')
+require(ggplot2) # load packages
+require(GGally)
+require(viridis)
+require(caper)
+library(dplyr)
+library(stringr)
+library(maps)
+library(ape)
+library(EnvStats)
+library(forecast)
+require(nlme)
+require(geodist)
+require(letsR)
+require(spdep)
+require(spatialreg)
+require(rnaturalearth)
+require(rnaturalearthdata)
+require(rgeos)
+require(sf)
+require(rgdal)
+require(raster)
+world <- ne_coastline(scale = "medium", returnclass = "sf")
+vlog <- function(x){
+   log( x + abs(min( x , na.rm = T)) + 1)
+}
+
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+exclusion <- read.csv(file = "exclusion_nonsimpatric_nonmigrant.csv")
+exclusion$realm1red[is.na(exclusion$realm1red)] <- "NA" # NA is north america not R's NA value. fix.
+exclusion$realm2green[is.na(exclusion$realm2green)] <- "NA"
+```
+<br><br><br><br><br>
+
+Load Main Data
+```{r, Load Main Data}
+# main dataframe ---------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+load(file =  "Pair_Barrier_Data_FEB2021.rdata")
+mydata <- mypairdata; rm(mypairdata)
+rownames(mydata) <- mydata$Species.1
+mydatahold <- mydata
+```
+<br><br><br><br><br>
+
+initial masks
+```{r}
+# migration ---
+if(allowmigrants == F){
+  mydata <- mydata[which(mydata$Migration == 1.0),]
+}
+
+# patry
+if(allowsympatry == F){
+  mydata <- mydata[which(mydata[,paste0(costvar, "_c0")] > 0 ),] # doesnt matter if you use ele, mat, vart paths here, will be same answer
+}
+
+# # old -------------
+# mydata2 <- mydata[mydata$Species.1 %in% mydata_exclusion$Species.1,]
+# sum(rownames(mydata2) != rownames(mydata_exclusion))
+# 
+# mydata3 <- mydata[mydata$Species.1 %notin% mydata_exclusion$Species.1,]
+# 
+# mydata <- rbind(rbind(mydata2, mydata3))
+# rownames(mydata) %in% rownames(mydata_exclusion)
+```
+
+sort
+```{r}
+mydata$uniquePairId == exclusion$mydata.uniquePairId
+x <- mydata[which(mydata$Species.1 == "Apteryx_owenii"),]
+mydata <- mydata[order(match(mydata$uniquePairId,exclusion$mydata.uniquePairId)), ]
+y <- mydata[which(mydata$Species.1 == "Apteryx_owenii"),]
+# sum(y!=x, na.rm = T) # checks.
+# head(mydata)
+mydata$uniquePairId == exclusion$mydata.uniquePairId
+rm(x,y)
+```
+
+
+
+```{r}
+# # Basic range maps for all pairs (no paths)
+# wdPAM <- "/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data"
+# setwd(wdPAM); load("cbPAM.rdata")
+# setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+# pdf("pairmaps2.pdf", width = 19, height = 9.25)
+# for (i in 1:nrow(mydata)){
+# x <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+# x <- as.data.frame(x[x[,3] == 1,])
+# if(ncol(x) == 1) {
+#   x <- t(x)
+#   colnames(x) <- c("lon", "lat", "pres")
+#   x <- as.data.frame(x)
+# } else {
+#   colnames(x) <- c("lon", "lat", "pres")
+# }
+# 
+# y <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.2bl[i])]
+# y <- as.data.frame(y[y[,3] == 1,])
+# if(ncol(y) == 1) {
+#   y <- t(y)
+#   colnames(y) <- c("lon", "lat", "pres")
+#   y <- as.data.frame(y)
+# 
+# } else {
+#   colnames(y) <- c("lon", "lat", "pres")
+# }
+# z <- ggplot(world)+
+#     geom_sf() +
+#     geom_point(data = x, aes(y=lat, x=lon), color = "red") +
+#     geom_point(data = y, aes(y=lat, x=lon), color = "green") +
+#     theme_bw() +
+#     ggtitle(i)
+# print(z)
+# }
+# print(i)
+# dev.off()
+```
+
+```{r}
+mydata_exclusion <- cbind(mydata, exclusion)
+save(mydata_exclusion, file = "mydata_exclusion.rdata")
+mydata$realm1 <- exclusion$realm1red
+mydata$realm2 <- exclusion$realm2green
+mydata$landgap <- exclusion$island
+mydata$cosmopolitan <- exclusion$cosmopolitan
+mydata$new.old <- exclusion$new.old
+mydata <- mydata[which(mydata$cosmopolitan == 0 & mydata$new.old == 0),]
+rm(exclusion, mydata_exclusion)
+```
+
+
+
+Impose masks & do calcuations
+```{r, Impose masks & do calcuations}
+
+# dependent variable: elevational barrier size ---
+mydata$cost <- mydata[, paste0(costvar, "_c25")] 
+
+# data filtering -----------------------
+#  thermal overlap ---
+mydata$MAT_overlap <- mydata[,paste0("MAT", "_ov_perc_smrnge")]
+mydata <- mydata[mydata$MAT_overlap > minoverperc,]
+
+# update sort order --------------------
+mydata$sortorder <- seq(1:nrow(mydata))
+
+# longitude ----------------------------
+mydata$lon <- mydata[,paste0("lon_mean_pair_", costvar, "_c25")]
+
+# latitude ----------------------------
+mydata$lat <- mydata[,paste0("lat_mean_pair_", costvar, "_c25")]
+
+# temperature breadth -----------------
+mydata$tas_breadth <- mydata$tas_range # mean(mean(sp1 annual tas range -- one value per cell), mean(sp2 annual tas range -- one value per cell))
+
+# mean annual temperature --------------
+mydata$tas_position <- mydata$tas_mean # mean(mean(sp1 annual tas mean  -- one value per cell), mean(sp2 annual tas mean  -- one value per cell))
+
+# precipitation breadth --------------- 
+mydata$pcp_breadth <- mydata$pcp_range # mean(mean(sp1 annual pcp range  -- one value per cell), mean(sp2 annual pcp range  -- one value per cell))
+
+# precipitation breadth --------------- 
+mydata$pcp_position <- mydata$pcp_mean # mean(mean(sp1 annual pcp mean  -- one value per cell), mean(sp2 annual pcp mean  -- one value per cell))
+
+# distance -----------------------------
+mydata$distance <- mydata[,paste0("centroid_distance_",costvar,"_c25")]
+
+# mountain mass ------------------------
+mtns <- readOGR(dsn="~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/GMBA", layer="GMBA Mountain Inventory_v1.2-World", verbose = FALSE)
+wdPAM <- "/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data"
+setwd(wdPAM); load("LonLat_BirdPAM_raster.rdata")
+mtns <- rasterize(mtns, LonLat_BirdPAM_raster)
+mtns@data@values[!is.na(mtns@data@values)] <- 1 # replace mountain IDs with simple coding. 1 for mountain...
+mtns@data@values[is.na(mtns@data@values)] <- 0 # ...0 for no mountain
+
+mydata$mtn_mass <- NA
+for (i in 1:nrow(mydata)) {
+  coords1<-data.frame(lon=mydata$lon[i], lat=mydata$lat[i]); coordinates(coords1)<-c("lon","lat"); crs(coords1)<-crs(LonLat_BirdPAM_raster) # get coordinates
+  z <- extract(mtns, coords1, buffer = raster::pointDistance(c(0,0), c(0,8), lonlat = T))
+  mydata$mtn_mass[i] <- sum(z[[1]]) / length(z[[1]])
+}
+
+raster::pointDistance(c(0,0), c(0,8), lonlat = T) # corresponds to a radius of just about 8 degrees.
+raster::pointDistance(c(75,75), c(75,(75+8)), lonlat = T) # polar circles are bigger, but not that much bigger. so should be OK.
+raster::plot(mtns)
+raster::plot(world$geometry, add = T)
+plotrix::draw.circle(70, 40, 8, nv = 1000, border = "hotpink", lty = 1, lwd = 1)
+plotrix::draw.circle(140, -5, 8, nv = 1000, border = "hotpink", lty = 1, lwd = 1)
+plotrix::draw.circle(-80, 10, 8, nv = 1000, border = "hotpink", lty = 1, lwd = 1)
+plotrix::draw.circle(-70, -50, 8, nv = 1000, border = "hotpink",lty = 1, lwd = 1)
+
+x <- ggplot(world)+
+  geom_sf() +
+  geom_point(data = mydata[order(mydata[, "mtn_mass"], decreasing = F),], aes(y=lat, x=lon, color = mtn_mass), alpha = 0.9) +
+  ggtitle(i)+scale_color_viridis()
+print(x)
+
+# water buffering ----------------------
+mydata$water_buffering <- NA
+
+# dispersal ability --------------------
+dispab <- read.csv("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/Bird Hand-Wing Index/Dataset HWI 2020-04-10.csv")
+mydata$dispersal_ability <- NA
+for (i in 1:nrow(mydata)){
+  dispab_sp1 <- dispab$HWI[dispab$IUCN.name == mydata$Species.1bl[i]]
+  dispab_sp2 <- dispab$HWI[dispab$IUCN.name == mydata$Species.2bl[i]]
+  dispab_pair <- mean(c(dispab_sp1, dispab_sp2), na.rm = T)
+  mydata$dispersal_ability[i] <- dispab_pair
+  rm(dispab_sp1, dispab_sp2, dispab_pair)
+}
+mydata <- mydata[!is.nan(mydata$dispersal_ability),]
+
+# pair age -----------------------------
+mydata$pair_age <- mydata$Pair.age..MY.
+
+# length of boundary -------------------
+mydata$boundary_length <- mydata$boundary_length_ele_c25
+
+# retain cols of interest only.
+mydata <- mydata[,c("uniquePairId", "Species.1", "Species.2", "Species.1bl", "Species.2bl", "cost", "lat", "lon",
+                    "tas_breadth","tas_position", "pcp_breadth","pcp_position", "mtn_mass", "water_buffering", 
+                    "dispersal_ability", "pair_age", "distance", "boundary_length", "MAT_overlap", "realm1", "realm2",
+                    "landgap")]
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+save(mydata, file = "ele_data_for_CB.rdata")
+write.csv(mydata, file = "ele_data_for_CB.csv")
+```
+
+load phylo and prune
+```{r, load phylo and prune}
+# phylo ------------------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees")
+load(file = "BirdTrees.Rdata")
+tree <- trees[[1]]; rm(trees) # pick tree (VF GET TREES FROM COONEY!!! and use MCC tree.)
+tree <- drop.tip(tree, tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)]) # initial name matching.
+mydata <- mydata[which(mydata$Species.1 %in% tree$tip.label),]
+mydata <- mydata[match(tree$tip.label, mydata$Species.1),]
+sum(mydata$Species.1 != tree$tip.label) # sorted (but still specify form below for safety)
+```
+
+
+Neighbors for sptial analysis. 
+```{r}
+distm <- mydata[,c("lon", "lat")]
+distm <- geodist(distm, measure = "geodesic")
+rownames(distm) <- rownames(mydata)
+colnames(distm) <- rownames(mydata)
+basecols <- ncol(mydata)
+
+# neightbors
+coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+k1 <- knn2nb(knearneigh(coords, longlat = T))
+nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=max(unlist(nbdists(k1, coords, longlat = T))),longlat=T)
+```
+
+
+plots for transformations
+```{r}
+for (i in c("cost", "lat", "lon","tas_breadth","tas_position","pcp_breadth","pcp_position", "mtn_mass", "dispersal_ability", "pair_age", "distance", "boundary_length", "MAT_overlap")) {
+hist(mydata[, i], breaks = 50, main = i)
+}
+```
+
+world plots
+```{r, world plots}
+for (i in c("cost", "lat", "lon","tas_breadth","tas_position","pcp_breadth","pcp_position", "mtn_mass", "dispersal_ability", "pair_age", "distance", "boundary_length", "MAT_overlap", "realm1", "realm2", "landgap")) {
+  if(i %in% c("cost")){
+    myc <- mydata[, i]; myc <- vlog(myc)
+    x <- ggplot(world)+
+      geom_sf() +
+      geom_point(data = mydata[order(mydata[, i], decreasing = F),], aes(y=lat, x=lon, color = myc), alpha = 0.75) +
+      ggtitle(i)+
+      scale_color_viridis()
+    print(x)
+  } else if (i %in% c("realm1", "realm2")){
+    x <- ggplot(world)+
+      geom_sf() + 
+      geom_point(data = mydata[order(mydata[, "cost"], decreasing = F),], aes(y=lat, x=lon, color = get(i)), alpha = 0.75) +
+      ggtitle(paste0("ln ", i))+
+      scale_color_viridis(discrete = T)
+    print(x) 
+  } else {
+    x <- ggplot(world)+
+      geom_sf() + 
+      geom_point(data = mydata[order(mydata[, "cost"], decreasing = F),], aes(y=lat, x=lon, color = get(i)), alpha = 0.75) +
+      ggtitle(i)+
+      scale_color_viridis()
+    print(x) 
+  }
+}
+```
+
+
+```{r}
+mydata <- mydata[, 1:basecols]
+# no spatial filtering ---------------------------------------------------------
+m <- gls(scale(I(vlog(cost))) ~ scale(I(vlog(tas_breadth))), correlation = corPagel(0.99, phy = tree, fixed = F, form = ~Species.1), data = mydata, method = "REML");summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$cost))))))
+hist(resid(m))
+plot(m, resid(., type = "p") ~ fitted(.), abline = 0)
+plot(m, scale(I(vlog(cost))) ~ fitted(.), abline = c(0,1))
+qqnorm(m)
+
+# plot ---------------------------------
+plot(scale(I(vlog(mydata$tas_breadth))), scale(I(vlog(mydata$cost))), pch = 16,
+     xlab = "thermal niche breadth", ylab = paste0("log ", costvar, " cost" ), main = "Global model")
+myx <- seq(min(scale(vlog(mydata$tas_breadth))), max(scale(vlog(mydata$tas_breadth))), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+m <- gls(scale(I(vlog(cost))) ~ scale(I(log(tas_breadth))), data = mydata, method = "REML")
+myx <- seq(min(scale(vlog(mydata$tas_breadth))), max(scale(vlog(mydata$tas_breadth))), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lty=2)
+
+
+
+
+# with spatial filtering -------------------------------------------------------
+m <- gls(scale(I(vlog(cost))) ~ scale(I(vlog(tas_breadth))), correlation = corPagel(0.99, phy = tree, fixed = F, form = ~Species.1), data = mydata, method = "REML")
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # no evidence of spatial component.. 
+
+# spatial filtering --------------------
+rm(sarcol)
+sarcol <- SpatialFiltering(formula = scale(I(vlog(cost))) ~ scale(I(vlog(tas_breadth))),
+                           data = mydata,nb=nb, style="W", ExactEV = TRUE)
+mydata[,c((basecols+1):(basecols+1+ dim(fitted(sarcol))[2]-1))]<-fitted(sarcol)
+colnames(mydata) # 4 vectors created.
+
+# vector 1 added ---
+m <- gls(scale(I(vlog(cost))) ~ scale(I(vlog(tas_breadth))) + V23 + V24 + V25 + V26 + V27 + V28 + V29 + V30 + V31, correlation = corPagel(0.99, phy = tree,fixed = F, form = ~Species.1), data = mydata, method = "REML"); summary(m); cor(predict(m),scale(I(vlog(mydata$cost))))
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # too much.
+hist(resid(m))
+plot(m, resid(., type = "p") ~ fitted(.), abline = 0)
+plot(m, scale(I(vlog(cost))) ~ fitted(.), abline = c(0,1))
+qqnorm(m)
+
+for(i in c("V23", "V24", "V25", "V26", "V27", "V28", "V29", "V30", "V31")){
+  x <- ggplot(world)+
+  geom_sf() +
+  geom_point(data = mydata[order(mydata[,i]),], aes(y=lat, x=lon, color = mydata[,i]), alpha = 0.9) +
+  scale_color_viridis()
+  print(x)
+}
+```
+
+
+Is thermal niche breadth predicted by latitude plus latitude2? 
+```{r, Is thermal niche breadth predicted by latitude plus latitude2}
+mydata <- mydata[, 1:basecols]
+m <- gls(scale(I(vlog(tas_breadth))) ~ scale(lat) + scale(I(lat^2)), correlation = corPagel(0.99, phy = tree, fixed = F, form = ~Species.1), data = mydata, method = "REML"); summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$tas_breadth))))))
+hist(resid(m))
+plot(m, resid(., type = "p") ~ fitted(.), abline = 0)
+plot(m, scale(I(vlog(cost))) ~ fitted(.), abline = c(0,1))
+qqnorm(m)
+
+# plot ---------------------------------
+plot(scale(mydata$lat), scale(I(vlog(mydata$tas_breadth))), pch = 16,
+     xlab = "latitude", ylab = "thermal niche breadth", main = "Global model")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+m <- gls(scale(I(vlog(tas_breadth))) ~ scale(lat) + scale(I(lat^2)), data = mydata, method = "REML")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lty=2)
+
+
+
+
+
+
+# with spatial filtering -------------------------------------------------------
+m <- gls(scale(I(vlog(tas_breadth))) ~ scale(lat) + scale(I(lat^2)), correlation = corPagel(0.99, phy = tree, fixed = F, form = ~Species.1), data = mydata, method = "REML")
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # no evidence of spatial component.. 
+
+# spatial filtering --------------------
+rm(sarcol)
+sarcol <- SpatialFiltering(formula = scale(I(vlog(tas_breadth))) ~ scale(lat) + scale(I(lat^2)),
+                           data = mydata,nb=nb, style="W", ExactEV = TRUE)
+mydata[,c((basecols+1):(basecols+1+ dim(fitted(sarcol))[2]-1))]<-fitted(sarcol)
+colnames(mydata) # 4 vectors created.
+
+# vector 1 added ---
+m <- gls(scale(I(vlog(tas_breadth))) ~ scale(lat) + scale(I(lat^2)) + V23 + V24 + V25 + V26 + V27 + V28 + V29 + V30 + V31 + V32 + V33 + V34 + V35 + V36 + V37 + V38, correlation = corPagel(0.99, phy = tree,fixed = F, form = ~Species.1), data = mydata, method = "REML"); summary(m); cor(predict(m),scale(I(vlog(mydata$cost))))
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # too much.
+hist(resid(m))
+plot(m, resid(., type = "p") ~ fitted(.), abline = 0)
+plot(m, scale(I(vlog(cost))) ~ fitted(.), abline = c(0,1))
+qqnorm(m)
+
+for(i in c("V23", "V24", "V25", "V26", "V27", "V28", "V29", "V30", "V31", "V32", "V33", "V34", "V35", "V36", "V37", "V38")){
+  x <- ggplot(world)+
+  geom_sf() +
+  geom_point(data = mydata[order(mydata[,i]),], aes(y=lat, x=lon, color = mydata[,i]), alpha = 0.9) +
+  scale_color_viridis()
+  print(x)
+}
+```
+
+Is thermal niche breadth predicted by latitude plus latitude2? 
+```{r, Is ele cost predicted by latitude plus latitude2}
+mydata <- mydata[, 1:basecols]
+m <- gls(scale(I(vlog(cost))) ~ scale(lat) + scale(I(lat^2)), correlation = corPagel(0.99, phy = tree, fixed = F, form = ~Species.1), data = mydata, method = "REML"); summary(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$cost))))))
+hist(resid(m))
+plot(m, resid(., type = "p") ~ fitted(.), abline = 0)
+plot(m, scale(I(vlog(cost))) ~ fitted(.), abline = c(0,1))
+qqnorm(m)
+
+# plot ---------------------------------
+plot(scale(mydata$lat), scale(I(vlog(mydata$cost))), pch = 16,
+     xlab = "latitude", ylab = "thermal niche breadth", main = "Global model")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red')
+m <- gls(scale(I(vlog(cost))) ~ scale(lat) + scale(I(lat^2)), data = mydata, method = "REML")
+myx <- seq(min(scale(mydata$lat)), max(scale(mydata$lat)), length.out=100) # plot fit
+mycoefs<-coef(m)
+myy <- mycoefs[1] + mycoefs[2]*myx + mycoefs[3]*myx^2
+lines(c(0,0), c(-10,100), lty=2)
+lines(myx,myy,col = 'red', lty=2)
+
+
+
+
+
+
+# with spatial filtering -------------------------------------------------------
+m <- gls(scale(I(vlog(cost))) ~ scale(lat) + scale(I(lat^2)), correlation = corPagel(0.99, phy = tree, fixed = F, form = ~Species.1), data = mydata, method = "REML")
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # no evidence of spatial component.. 
+
+# spatial filtering --------------------
+rm(sarcol)
+sarcol <- SpatialFiltering(formula = scale(I(vlog(cost))) ~ scale(lat) + scale(I(lat^2)),
+                           data = mydata,nb=nb, style="W", ExactEV = TRUE)
+mydata[,c((basecols+1):(basecols+1+ dim(fitted(sarcol))[2]-1))]<-fitted(sarcol)
+colnames(mydata) # 4 vectors created.
+
+# vector 1 added ---
+m <- gls(scale(I(vlog(cost))) ~ scale(lat) + scale(I(lat^2)) + V23 + V24 + V25 + V26, correlation = corPagel(0.99, phy = tree,fixed = F, form = ~Species.1), data = mydata, method = "REML"); summary(m); cor(predict(m),scale(I(vlog(mydata$cost))))
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # too much.
+hist(resid(m))
+plot(m, resid(., type = "p") ~ fitted(.), abline = 0)
+plot(m, scale(I(vlog(cost))) ~ fitted(.), abline = c(0,1))
+qqnorm(m)
+
+for(i in c("V23", "V24", "V25", "V26")){
+  x <- ggplot(world)+
+  geom_sf() +
+  geom_point(data = mydata[order(mydata[,i]),], aes(y=lat, x=lon, color = mydata[,i]), alpha = 0.9) +
+  scale_color_viridis()
+  print(x)
+}
+```
+
+
+```{r}
+mydata <- mydata[, 1:basecols]
+m <- gls(scale(I(vlog(cost))) ~ scale(I((tas_breadth))) + scale(I((tas_position))) + scale(I((pcp_breadth))) + scale(I((pcp_position))) + 
+           scale(I((mtn_mass))) + scale(I((dispersal_ability))) + scale(I((pair_age))) + scale(I((distance))) + scale(I((boundary_length))) + 
+           scale(I((MAT_overlap))) + landgap + realm2,
+         correlation = corPagel(0.99, phy = tree, fixed = F, form = ~Species.1), data = mydata, method = "REML"); summary(m); car::vif(m)
+print(paste("Correlation between data and prediction:  ", cor(predict(m),scale(I(vlog(mydata$cost))))))
+hist(resid(m))
+plot(m, resid(., type = "p") ~ fitted(.), abline = 0)
+plot(m, scale(I(vlog(cost))) ~ fitted(.), abline = c(0,1))
+qqnorm(m)
+
+
+# spatial autocorr ---------------------
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # no evidence of spatial component.. 
+
+# spatial filtering --------------------
+rm(sarcol)
+sarcol <- SpatialFiltering(scale(I(vlog(cost))) ~ scale(I((tas_breadth))) + scale(I((tas_position))) + scale(I((pcp_breadth))) + scale(I((pcp_position))) + 
+           scale(I((mtn_mass))) + scale(I((dispersal_ability))) + scale(I((pair_age))) + scale(I((distance))) + scale(I((boundary_length))) + 
+           scale(I((MAT_overlap))) + landgap + realm2,
+                           data = mydata,nb=nb, style="W", ExactEV = TRUE)
+mydata[,c((basecols+1):(basecols+1+ dim(fitted(sarcol))[2]-1))]<-fitted(sarcol)
+colnames(mydata) 
+
+# vector 1 added ---
+mydata$realm2 <- as.factor(mydata$realm2); mydata$realm2 <- relevel(mydata$realm2, ref = "NT")
+m <- gls(scale(I(vlog(cost))) ~ scale(I((tas_breadth))) + scale(I((tas_position))) + scale(I((pcp_breadth))) + scale(I((pcp_position))) + 
+           scale(I((mtn_mass))) + scale(I((dispersal_ability))) + scale(I((pair_age))) + scale(I((distance))) + scale(I((boundary_length))) + 
+           scale(I((MAT_overlap))) + landgap + realm2 + V23 + V24 + V25 + V26 + V27 + V28, correlation = corPagel(0.99, phy = tree, fixed = F, form = ~Species.1), data = mydata, method = "REML"); summary(m); cor(predict(m),scale(I(vlog(mydata$cost))))
+matx <- as.matrix(m$residuals); rownames(matx) <- rownames(mydata)
+spac <- lets.correl(x=matx, y=distm, z=12, equidistant = T, plot = T)
+moran.test(residuals(m), nb2listw(nb))$p.value # too much.
+hist(resid(m))
+plot(m, resid(., type = "p") ~ fitted(.), abline = 0)
+plot(m, scale(I(vlog(cost))) ~ fitted(.), abline = c(0,1))
+qqnorm(m)
+
+
+for(i in c("V23", "V24", "V25", "V26", "V27", "V28")){
+  x <- ggplot(world)+
+  geom_sf() +
+  geom_point(data = mydata[order(mydata[,i]),], aes(y=lat, x=lon, color = mydata[,i]), alpha = 0.9) +
+  scale_color_viridis()
+  print(x)
+}
+```
+
+
+Sensitivity Analyses
+```{r}
+# 1 Pair age (all v. < 8mya (end of uplift of Andes))
+# 2 Distance (all v. < 1500*1000) (1500 / 110 = ~ 22 degrees)
+# 3 MAT_overlap (> 0% v. > 75% (more restrictive == more conservative for this measure.))
+# 4 landgap (all v. nogap) *ALL GAPS ARE < 110km (two water grid cells marked as land for having >50% land @ 0.5 degree resolution.)
+```
