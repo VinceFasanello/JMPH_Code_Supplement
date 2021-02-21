@@ -44,8 +44,7 @@ mydata <- mydata[, c("uniquePair", "uniquePairId", "sortcol", "sortorder", "Spec
                      "min_VarT_sp1", "min_VarT_sp2", "max_VarT_sp1", "max_VarT_sp2", "VarT_range_sp1", "VarT_range_sp2", "VarT_ov_range", "VarT_ov_perc_smrnge", "mean_VarT_sp1", "mean_VarT_sp2",  "med_VarT_sp1", "med_VarT_sp2",
                      "min_pcp_sp1", "min_pcp_sp2", "max_pcp_sp1", "max_pcp_sp2", "pcp_range_sp1", "pcp_range_sp2", "pcp_ov_range", "pcp_ov_perc_smrnge", "mean_pcp_sp1", "mean_pcp_sp2",  "med_pcp_sp1", "med_pcp_sp2",
                      "min_pcpr_sp1", "min_pcpr_sp2", "max_pcpr_sp1", "max_pcpr_sp2", "pcpr_range_sp1", "pcpr_range_sp2", "pcpr_ov_range", "pcpr_ov_perc_smrnge", "mean_pcpr_sp1", "mean_pcpr_sp2",  "med_pcpr_sp1", "med_pcpr_sp2",
-                     "min_VarP_sp1", "min_VarP_sp2", "max_VarP_sp1", "max_VarP_sp2", "VarP_range_sp1", "VarP_range_sp2", "VarP_ov_range", "VarP_ov_perc_smrnge", "mean_VarP_sp1", "mean_VarP_sp2",  "med_VarP_sp1", "med_VarP_sp2",
-
+                     "min_VarP_sp1", "min_VarP_sp2", "max_VarP_sp1", "max_VarP_sp2", "VarP_range_sp1", "VarP_range_sp2", "VarP_ov_range", "VarP_ov_perc_smrnge", "mean_VarP_sp1", "mean_VarP_sp2",  "med_VarP_sp1", "med_VarP_sp2"
                      )]
 ```
 
