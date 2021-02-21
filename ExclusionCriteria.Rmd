@@ -5,5 +5,136 @@ output: html_notebook
 
 
 ```{r}
+load("cooneyp.rdata")
 
+cooneyp$ROV <- NA
+for (i in 1:nrow(cooneyp)) {
+  print(paste0("starting species ", i, " out of ", nrow(cooneyp)))
+  mytemp <- cbPAM[,c("Longitude(x)", "Latitude(y)" ,paste0(cooneyp[i,"Species.1bl"]), paste0(cooneyp[i,"Species.2bl"]))] # subset pam
+  range1<-subset(mytemp, mytemp[,3]==1) # get species ranges
+  range2<-subset(mytemp, mytemp[,4]==1); rm(mytemp)
+  
+  coords1<-data.frame(lon=range1[,1], lat=range1[,2]); coordinates(coords1)<-c("lon","lat"); crs(coords1)<-crs(cbPAM) # get coordinates
+  coords2<-data.frame(lon=range2[,1], lat=range2[,2]); coordinates(coords2)<-c("lon","lat"); crs(coords2)<-crs(cbPAM)
+  
+  coords1 <- coords1@coords
+  coords2 <- coords2@coords
+  coords <- data.frame(rbind(coords1, coords2))
+  coords$coord <- paste0(coords[,1], coords[,2])
+  cooneyp$ROV[i] <- (nrow(coords) - length(unique(coords$coord)))/min(nrow(coords1), nrow(coords2))
+  }
+
+
+
+# THIS IS UNRELIABLE RECALCULATE RECALCULATE RECALCULATE!!!!
+plot(cooneyp$Range.overlap, cooneyp$ROV)
+sum(cooneyp$ROV <= 0) # 898
+
+
+plot(cooneyp$lat_ov_range)
+cooneyp$lat_range_smaller <- apply(cooneyp[,c("lat_range_sp1", "lat_range_sp2")], MARGIN = 1, FUN = min, na.rm = T)
+cooneyp$lat_range_smaller <- cooneyp$lat_range_smaller + 1 # species that occur in a single grid cell should have a value or 1, not 0 for this calc!
+cooneyp$lat_ov_perc_smrnge <- cooneyp$lat_ov_range / cooneyp$lat_range_smaller
+summary(cooneyp$lat_ov_perc_smrnge)
+plot(sort(cooneyp$lat_ov_perc_smrnge[cooneyp$lat_ov_perc_smrnge >= 0])); abline(h=0.75, col = "red")
+sum(cooneyp$lat_ov_perc_smrnge >= 0.75) # 934
+
+sum(cooneyp$ROV <= 0 & cooneyp$lat_ov_perc_smrnge >= 0.75) # 148
+
+
+
+plot(cooneyp$ele_ov_range)
+cooneyp$ele_range_smaller <- apply(cooneyp[,c("ele_range_sp1", "ele_range_sp2")], MARGIN = 1, FUN = min, na.rm = T)
+cooneyp$ele_range_smaller <- cooneyp$ele_range_smaller + 1 # species that occur in a single grid cell should have a value or 1, not 0 for this calc!
+cooneyp$ele_ov_perc_smrnge <- cooneyp$ele_ov_range / cooneyp$ele_range_smaller
+summary(cooneyp$ele_ov_perc_smrnge)
+plot(sort(cooneyp$ele_ov_perc_smrnge[cooneyp$ele_ov_perc_smrnge >= 0])); abline(h=0.75, col = "red")
+sum(cooneyp$ele_ov_perc_smrnge >= 0.75) # 2026
+
+
+sum(cooneyp$ROV <= 0 & cooneyp$lat_ov_perc_smrnge >= 0.75 & cooneyp$ele_ov_perc_smrnge >= 0.75) # 146
+
+cooneyp <- cooneyp[cooneyp$ROV <= 0 & cooneyp$lat_ov_perc_smrnge >= 0.75 & cooneyp$ele_ov_perc_smrnge >= 0.75,]
 ```
+
+
+```{r}
+
+require(rgdal)
+require(sf)
+require(raster)
+require(rgeos)
+require(rnaturalearth)
+require(rnaturalearthdata)
+require(ggplot2)
+load("Elev_raster.rdata")
+
+bb <- extent(-180, 180, -60, 90)
+Elev_raster <- crop(Elev_raster, bb, keepres=T)
+
+load("cbPAM.rdata")
+# mtns <- readOGR(dsn=paste0(getwd(),"/GMBA"), layer = "GMBA Mountain Inventory_v1.2-World", verbose = FALSE)
+# amzn <- readOGR(dsn=paste0(getwd(),"/AmazonBasinLimits-master"), layer = "amazon_sensulatissimo_gmm_v1", verbose = FALSE)
+world <- ne_coastline(scale = "medium", returnclass = "sf")
+
+# load("87_ELEVATION_LCP_Paths_for_Cinnyricinclus leucogaster_Hartlaubius auratus_origin_1_to_5000.rdata")
+load("19_ELEVATION_LCP_Paths_for_Neomorphus geoffroyi_Neomorphus radiolosus_origin_1_to_5000.rdata")
+pg <- savelist_full_paths_ele
+
+# load("87_ELEVATION_LCP_Paths_for_Hartlaubius auratus_Cinnyricinclus leucogaster_origin_1_to_5000.rdata")
+load("19_ELEVATION_LCP_Paths_for_Neomorphus radiolosus_Neomorphus geoffroyi_origin_1_to_5000.rdata")
+
+gp <- savelist_full_paths_ele
+```
+
+```{r}
+i <- 51
+x <- cbPAM[,c("Longitude(x)","Latitude(y)",cooneyp$Species.1bl[i])]
+x <- x[x[,3] == 1,]
+
+y <- cbPAM[,c("Longitude(x)","Latitude(y)",cooneyp$Species.1bl[i+1])]
+y <- y[y[,3] == 1,]
+
+pdf("test.pdf", width = 19, height = 9.25)
+
+plot(Elev_raster, col="white",legend = FALSE, ylim = c(-60,90))
+plot(mtns, col = rgb(142/255,94/255,47/255,0.35), border = NA, lwd = 0.0001, add = T)
+plot(world, add = T, lwd = 0.01, col = "black")
+plot(amzn, add = T, lwd = 0.01, col = rgb(224/255,190/255,10/255, 0.25), border = NA)
+points(x, col = rgb(119/255,21/255,133/255,0.75), cex = 0.2, pch = 2, lwd = 0.01)
+points(y, col = rgb(107/255,142/255,35/255,0.75), cex = 0.2, pch = 6, lwd = 0.01)
+text(-170,-40, paste0(" Latitudinal Overlap = ", round(cooneyp$lat_ov_perc_smrnge[i]*100, 2), "%"), pos=4)
+text(-170,-48, paste0("Elevational Overlap = ", round(cooneyp$ele_ov_perc_smrnge[i]*100, 2), "%"), pos=4)
+text(-170,-56, paste0("       Range Overlap = ", round(cooneyp$ROV[i]*100,2), "%"), pos=4)
+rect(-180,-70,-110,-32.5)
+# for (j in 1:length(pg)) {
+#   lines(pg[[j]], col = rgb(223/255,49/255,202/255, 1/(length(pg)/100)))
+# }
+# lines(pg[[2408]], col = rgb(223/255,49/255,202/255))
+# lines(pg[[3609]], col = rgb(223/255,49/255,202/255))
+lines(pg[[50]], col = rgb(223/255,49/255,202/255))
+lines(pg[[1158]], col = rgb(223/255,49/255,202/255))
+
+# for (k in 1:length(gp)) {
+#   lines(gp[[k]], col = rgb(161/255,208/255,65/255))
+# }
+# lines(gp[[85]], col = rgb(161/255,208/255,65/255))
+lines(gp[[12]], col = rgb(161/255,208/255,65/255))
+
+dev.off()
+
+
+
+lens <- c()
+for (i in 1:length(pg)) {
+  lens <- c(lens, nrow(pg[[i]]@lines[[1]]@Lines[[1]]@coords))
+}
+which(lens == min(lens))
+
+lens <- c()
+for (i in 1:length(gp)) {
+  lens <- c(lens, nrow(gp[[i]]@lines[[1]]@Lines[[1]]@coords))
+}
+which(lens == min(lens))
+```
+

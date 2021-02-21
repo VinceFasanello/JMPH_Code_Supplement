@@ -1,0 +1,117 @@
+---
+  title: "JMPH_path_maps"
+output:
+  html_document: default
+---
+
+```{r}
+require(rgdal)
+require(sf)
+require(raster)
+require(rgeos)
+require(rnaturalearth)
+require(rnaturalearthdata)
+require(ggplot2)
+wdtopo <- "/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/Topo/Data"
+setwd(wdtopo); load("Elev_raster.rdata")
+
+bb <- extent(-180, 180, -60, 90)
+Elev_raster <- crop(Elev_raster, bb, keepres=T)
+
+wdPAM <- "/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data"
+setwd(wdPAM); load("cbPAM.rdata")
+
+# mtns <- readOGR(dsn=paste0(getwd(),"/GMBA"), layer = "GMBA Mountain Inventory_v1.2-World", verbose = FALSE)
+# amzn <- readOGR(dsn=paste0(getwd(),"/AmazonBasinLimits-master"), layer = "amazon_sensulatissimo_gmm_v1", verbose = FALSE)
+world <- ne_coastline(scale = "medium", returnclass = "sf")
+
+
+```
+
+Basic range maps for all pairs (no paths)
+```{r}
+pdf("pairmaps.pdf", width = 19, height = 9.25)
+for (i in 1:nrow(mydata)){
+  x <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+x <- as.data.frame(x[x[,3] == 1,]); colnames(x) <- c("lon", "lat", "pres")
+
+y <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.2bl[i])]
+y <- as.data.frame(y[y[,3] == 1,]); colnames(y) <- c("lon", "lat", "pres")
+
+z <- ggplot(world)+
+    geom_sf() + 
+    geom_point(data = x, aes(y=lat, x=lon), color = "red") + 
+    geom_point(data = y, aes(y=lat, x=lon), color = "green") +
+    theme_bw()
+print(z)
+}
+dev.off()
+
+```
+
+
+
+
+
+```{r}
+# load("87_ELEVATION_LCP_Paths_for_Cinnyricinclus leucogaster_Hartlaubius auratus_origin_1_to_5000.rdata")
+load("19_ELEVATION_LCP_Paths_for_Neomorphus geoffroyi_Neomorphus radiolosus_origin_1_to_5000.rdata")
+pg <- savelist_full_paths_ele
+
+# load("87_ELEVATION_LCP_Paths_for_Hartlaubius auratus_Cinnyricinclus leucogaster_origin_1_to_5000.rdata")
+load("19_ELEVATION_LCP_Paths_for_Neomorphus radiolosus_Neomorphus geoffroyi_origin_1_to_5000.rdata")
+
+gp <- savelist_full_paths_ele
+```
+
+```{r}
+i <- 51
+x <- cbPAM[,c("Longitude(x)","Latitude(y)",cooneyp$Species.1bl[i])]
+x <- x[x[,3] == 1,]
+
+y <- cbPAM[,c("Longitude(x)","Latitude(y)",cooneyp$Species.1bl[i+1])]
+y <- y[y[,3] == 1,]
+
+pdf("test.pdf", width = 19, height = 9.25)
+
+plot(Elev_raster, col="white",legend = FALSE, ylim = c(-60,90))
+plot(mtns, col = rgb(142/255,94/255,47/255,0.35), border = NA, lwd = 0.0001, add = T)
+plot(world, add = T, lwd = 0.01, col = "black")
+plot(amzn, add = T, lwd = 0.01, col = rgb(224/255,190/255,10/255, 0.25), border = NA)
+points(x, col = rgb(119/255,21/255,133/255,0.75), cex = 0.2, pch = 2, lwd = 0.01)
+points(y, col = rgb(107/255,142/255,35/255,0.75), cex = 0.2, pch = 6, lwd = 0.01)
+text(-170,-40, paste0(" Latitudinal Overlap = ", round(cooneyp$lat_ov_perc_smrnge[i]*100, 2), "%"), pos=4)
+text(-170,-48, paste0("Elevational Overlap = ", round(cooneyp$ele_ov_perc_smrnge[i]*100, 2), "%"), pos=4)
+text(-170,-56, paste0("       Range Overlap = ", round(cooneyp$ROV[i]*100,2), "%"), pos=4)
+rect(-180,-70,-110,-32.5)
+# for (j in 1:length(pg)) {
+#   lines(pg[[j]], col = rgb(223/255,49/255,202/255, 1/(length(pg)/100)))
+# }
+# lines(pg[[2408]], col = rgb(223/255,49/255,202/255))
+# lines(pg[[3609]], col = rgb(223/255,49/255,202/255))
+lines(pg[[50]], col = rgb(223/255,49/255,202/255))
+lines(pg[[1158]], col = rgb(223/255,49/255,202/255))
+
+# for (k in 1:length(gp)) {
+#   lines(gp[[k]], col = rgb(161/255,208/255,65/255))
+# }
+# lines(gp[[85]], col = rgb(161/255,208/255,65/255))
+lines(gp[[12]], col = rgb(161/255,208/255,65/255))
+
+dev.off()
+
+
+
+lens <- c()
+for (i in 1:length(pg)) {
+  lens <- c(lens, nrow(pg[[i]]@lines[[1]]@Lines[[1]]@coords))
+}
+which(lens == min(lens))
+
+lens <- c()
+for (i in 1:length(gp)) {
+  lens <- c(lens, nrow(gp[[i]]@lines[[1]]@Lines[[1]]@coords))
+}
+which(lens == min(lens))
+```
+
