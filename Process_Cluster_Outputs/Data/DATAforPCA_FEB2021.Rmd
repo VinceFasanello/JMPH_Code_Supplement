@@ -46,6 +46,7 @@ require(rgeos)
 require(sf)
 require(rgdal)
 require(raster)
+require(lwgeom)
 world <- ne_coastline(scale = "medium", returnclass = "sf")
 vlog <- function(x){
    log( x + abs(min( x , na.rm = T)) + 1)
@@ -300,6 +301,116 @@ setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_O
 save(mydata, file = "ele_data_for_CB.rdata")
 write.csv(mydata, file = "ele_data_for_CB.csv")
 ```
+
+
+
+
+UPDATED CALCS FOR MTN MASS 
+```{r}
+lonlat2UTM = function(lonlat) {
+  utm = (floor((lonlat[1] + 180) / 6) %% 60) + 1
+  if(lonlat[2] > 0) {
+    utm + 32600
+  } else{
+    utm + 32700
+  }
+}
+
+mtns <- readOGR(dsn="~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/GMBA", layer="GMBA Mountain Inventory_v1.2-World", verbose = FALSE)
+mtns <- st_as_sf(mtns)
+buffer_ranges<-c(seq(from = 0, to = 200, by  = 50)[-1], seq(from=0, to = 3000, by = 250)[-1]) * 1000
+bufferdata <- matrix(nrow = nrow(mydata), ncol = length(buffer_ranges))
+for(i in 1:nrow(mydata)){
+  my_centroid <- st_geometry(st_sfc(st_point(c(mydata$lon[i],mydata$lat[i]))))
+  st_crs(my_centroid) <- crs(LonLat_BirdPAM_raster)
+  EPSG_2_UTM <- as.numeric(lonlat2UTM(my_centroid[[1]]))
+  # To see the UTM #st_crs(EPSG_2_UTM)$proj4string
+  my_centroid_proj = st_transform(st_as_sf(my_centroid), EPSG_2_UTM)
+  for(j in 1:length(buffer_ranges)){
+    my_centroid_with_b_km_buffer <- st_buffer(my_centroid_proj,dist=buffer_ranges[j])
+    mtns_in_buffer_b_km <- st_intersection(st_make_valid(sf::st_transform(my_centroid_with_b_km_buffer, crs=st_crs(mtns))), st_make_valid(mtns))
+    area_in_buffer_b_km <- sum(as.numeric(st_area(mtns_in_buffer_b_km)))
+    bufferdata[i, j] <- area_in_buffer_b_km
+  }
+  print(i)
+}
+bufferdatahold <- bufferdata
+for(i in 1:nrow(bufferdata)) {
+  bufferdata[i,] <- bufferdata[i,] / buffer_ranges
+}
+mydata$mtn_mass_new <- rowMeans(bufferdata)
+plot(scale(mydata$mtn_mass_new)~scale(mydata$mtn_mass))
+abline(0,1)
+
+x <- ggplot(world)+
+  geom_sf() +
+  geom_point(data = mydata[order(mydata[, "mtn_mass_new"], decreasing = F),], aes(y=lat, x=lon, color = mtn_mass_new), alpha = 0.9) +
+  ggtitle(i)+scale_color_viridis()
+print(x)
+
+# for troubleshooting and checks. 
+# plot(mtns$geometry)
+# plot(my_centroid, add =T)
+# plot(st_make_valid((sf::st_transform(my_centroid_with_b_km_buffer, crs=st_crs(mtns)))), add = T)
+# probcoords <- st_geometry(st_sfc(st_point(c(8.80132870725873,18.1810491982364))))
+# plot(probcoords, add = T, col = "red")
+```
+
+
+UPDATED CALCS FOR WATER BUFFERING
+```{r}
+wtr <- read_sf("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/ne_50m_ocean/ne_50m_ocean.shp")
+buffer_ranges<-c(seq(from = 0, to = 200, by  = 50)[-1], seq(from=0, to = 3000, by = 250)[-1]) * 1000
+bufferdataw <- matrix(nrow = nrow(mydata), ncol = length(buffer_ranges))
+for(i in 1:nrow(mydata)){
+  my_centroid <- st_geometry(st_sfc(st_point(c(mydata$lon[i],mydata$lat[i]))))
+  st_crs(my_centroid) <- crs(LonLat_BirdPAM_raster)
+  EPSG_2_UTM <- as.numeric(lonlat2UTM(my_centroid[[1]]))
+  # To see the UTM #st_crs(EPSG_2_UTM)$proj4string
+  my_centroid_proj = st_transform(st_as_sf(my_centroid), EPSG_2_UTM)
+  for(j in 1:length(buffer_ranges)){
+    my_centroid_with_b_km_buffer <- st_buffer(my_centroid_proj,dist=buffer_ranges[j])
+    wtr_in_buffer_b_km <- st_intersection(st_make_valid(sf::st_transform(my_centroid_with_b_km_buffer, crs=st_crs(wtr))), st_make_valid(wtr))
+    area_in_buffer_b_km <- sum(as.numeric(st_area(wtr_in_buffer_b_km)))
+    bufferdataw[i, j] <- area_in_buffer_b_km
+  }
+  print(i)
+}
+bufferdatawhold <- bufferdataw
+for(i in 1:nrow(bufferdataw)) {
+  bufferdataw[i,] <- bufferdataw[i,] / buffer_ranges
+}
+mydata$wtr_mass_new <- rowMeans(bufferdataw)
+plot(scale(mydata$wtr_mass_new)~scale(mydata$water_buffering))
+abline(0,1)
+
+
+plotdata <- mydata[order(mydata[, "wtr_mass_new"], decreasing = F),]
+x <- ggplot(world)+
+  geom_sf() +
+  geom_point(data = plotdata[which(plotdata$wtr_mass_new < 20000000),], aes(y=lat, x=lon, color = wtr_mass_new), alpha = 0.9) +
+  ggtitle(i)+scale_color_viridis()
+print(x)
+
+
+plot(sort(mydata$wtr_mass_new))
+head(mydata[order(mydata$wtr_mass_new, decreasing = T),])
+
+ggplot(mydata[mydata$wtr_mass_new < 20000000,],aes(x=wtr_mass_new, y = mtn_mass_new, color =realm))+
+  geom_point()
+ggplot(mydata[mydata$wtr_mass_new < 20000000,],aes(x=wtr_mass_new, y = mtn_mass_new, color = vlog(cost)))+
+  geom_point()+
+  scale_color_viridis()
+```
+
+```{r}
+mydata[mydata$wtr_mass_new == max(mydata$wtr_mass_new),]
+```
+
+
+
+
+
 
 
 
