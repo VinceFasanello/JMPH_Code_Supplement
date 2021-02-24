@@ -124,6 +124,8 @@ save(mydata, file = "Species_Barrier_Data_BONES_beefier.rdata")
 
 Prune matrices and calculate summaries.
 ```{r}
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/Topo/Data/Elev_raster.rdata")
+crs(Elev_raster) <- crs(LonLat_BirdPAM_raster)
 # ele -----------------------------------------------------------------------
 ele_c25 <- m_aB_ele_mcosts
 # ele_c12.5 <- m_aB_ele_mcosts
@@ -161,6 +163,7 @@ mydata$boundary_length_sp1_ele_c25 <- NA
 # mydata$centroid_lat_sp1_ele_c12.5 <- NA
 mydata$centroid_lon_sp1_ele_c0 <- NA
 mydata$centroid_lat_sp1_ele_c0 <- NA
+mydata$meanElev_ele_sp1_c25 <- NA
 for(i in 1:nrow(mydata)){
   
   # c25
@@ -169,8 +172,9 @@ for(i in 1:nrow(mydata)){
   centroid1 <- rgeos::gCentroid(coords1)
   mydata$centroid_lon_sp1_ele_c25[i] <- centroid1@coords[1]
   mydata$centroid_lat_sp1_ele_c25[i] <- centroid1@coords[2]  
- 
+  
   # new new new ------------------------
+  mydata$meanElev_ele_sp1_c25[i] <- mean(extract(Elev_raster, coords1), na.rm =T)
   mydata$boundary_length_sp1_ele_c25[i] <- mean(raster::pointDistance(coords1, coords1, lonlat = T, allpairs = T))
   print(i)
   # ------------------------------------
@@ -225,6 +229,7 @@ mydata$boundary_length_sp1_MAT_c25 <- NA
 # mydata$centroid_lat_sp1_MAT_c12.5 <- NA
 mydata$centroid_lon_sp1_MAT_c0 <- NA
 mydata$centroid_lat_sp1_MAT_c0 <- NA
+mydata$meanElev_MAT_sp1_c25 <- NA
 for(i in 1:nrow(mydata)){
   
   # c25
@@ -235,6 +240,7 @@ for(i in 1:nrow(mydata)){
   mydata$centroid_lat_sp1_MAT_c25[i] <- centroid1@coords[2]  
    
   # new new new ------------------------
+  mydata$meanElev_MAT_sp1_c25[i] <- mean(extract(Elev_raster, coords1), na.rm =T)
   mydata$boundary_length_sp1_MAT_c25[i] <- mean(raster::pointDistance(coords1, coords1, lonlat = T, allpairs = T))
   print(i)
   # ------------------------------------
@@ -348,6 +354,8 @@ newdata$lat_mean_pair <- mean(pairdata$centroid_lat_sp1, na.rm = T)
 newdata$lon_mean_pair <- mean(pairdata$centroid_lon_sp1, na.rm = T)
 
 # elevation
+newdata$ele_mean_pair_ele_c25 <- mean(pairdata$meanElev_ele_sp1_c25, na.rm = T)
+newdata$ele_mean_pair_MAT_c25 <- mean(pairdata$meanElev_MAT_sp1_c25, na.rm = T)
 newdata$ele_range_pair_mean <- mean(pairdata$ele_range_sp1, na.rm = T)
 newdata$lat_mean_pair_ele_c25 <- mean(pairdata$centroid_lat_sp1_ele_c25, na.rm = T)
 newdata$lat_mean_pair_ele_c0 <- mean(pairdata$centroid_lat_sp1_ele_c0, na.rm = T)
@@ -388,6 +396,7 @@ newdata$centroid_distance_VarT_c0 <- raster::pointDistance(c(pairdata$centroid_l
 
 # boundary length
 newdata$boundary_length_ele_c25 <- mean(pairdata$boundary_length_sp1_ele_c25, na.rm = T)
+newdata$boundary_length_MAT_c25 <- mean(pairdata$boundary_length_sp1_MAT_c25, na.rm = T)
   
 # add lon lat for sp2
 newdata$centroid_lon_sp2_ele_c25 <-  newdata$centroid_lon_sp1_ele_c25[2]
@@ -404,6 +413,8 @@ for (i in 2:max(d)) {
   newdata$lon_mean_pair <- mean(pairdata$centroid_lon_sp1, na.rm = T)
   
   # elevation
+  newdata$ele_mean_pair_ele_c25 <- mean(pairdata$meanElev_ele_sp1_c25, na.rm = T)
+  newdata$ele_mean_pair_MAT_c25 <- mean(pairdata$meanElev_MAT_sp1_c25, na.rm = T)
   newdata$ele_range_pair_mean <- mean(pairdata$ele_range_sp1, na.rm = T)
   newdata$lat_mean_pair_ele_c25 <- mean(pairdata$centroid_lat_sp1_ele_c25, na.rm = T)
   newdata$lat_mean_pair_ele_c0 <- mean(pairdata$centroid_lat_sp1_ele_c0, na.rm = T)
@@ -444,7 +455,8 @@ for (i in 2:max(d)) {
   
   # boundary length
   newdata$boundary_length_ele_c25 <- mean(pairdata$boundary_length_sp1_ele_c25, na.rm = T)
-  
+  newdata$boundary_length_MAT_c25 <- mean(pairdata$boundary_length_sp1_MAT_c25, na.rm = T)
+
   # add lon lat for sp2
   newdata$centroid_lon_sp2_ele_c25 <-  newdata$centroid_lon_sp1_ele_c25[2]
   newdata$centroid_lat_sp2_ele_c25 <-  newdata$centroid_lat_sp1_ele_c25[2]

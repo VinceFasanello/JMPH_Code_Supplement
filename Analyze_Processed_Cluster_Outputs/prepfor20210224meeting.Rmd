@@ -1,0 +1,630 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+
+Prepare the Workspace
+```{r}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE, error = FALSE) # rmd options
+rm(list = ls()); invisible(gc()) # cleaning
+```
+<br><br><br><br><br>
+
+Control Block
+```{r} 
+# f, f, 0.25 looks nice.
+allowmigrants <- F # OPTIONS: T, F 
+allowsympatry <- F # OPTIONS: T, F
+minoverperc <- 0 # remove pairs that do not have thermal overlap (anagenesis)
+costvar <- "ele"
+```
+<br><br><br><br><br>
+
+Packages & Prefs
+```{r}
+options(scipen = 999) # turn off scientific notation
+'%notin%' <- Negate('%in%')
+require(ggplot2) # load packages
+require(GGally)
+require(viridis)
+require(caper)
+library(dplyr)
+library(stringr)
+library(maps)
+library(ape)
+library(EnvStats)
+library(forecast)
+require(nlme)
+require(geodist)
+require(letsR)
+require(spdep)
+require(spatialreg)
+require(rnaturalearth)
+require(rnaturalearthdata)
+require(rgeos)
+require(sf)
+require(rgdal)
+require(raster)
+require(lwgeom)
+require(EnvStats)
+require(psych)
+require(phylolm)
+
+world <- ne_coastline(scale = "medium", returnclass = "sf")
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/LonLat_BirdPAM_raster.rdata")
+
+
+vlog <- function(x){
+   log( x + abs(min( x , na.rm = T)) + 1)
+}
+
+lonlat2UTM = function(lonlat) {
+  utm = (floor((lonlat[1] + 180) / 6) %% 60) + 1
+  if(lonlat[2] > 0) {
+    utm + 32600
+  } else{
+    utm + 32700
+  }
+}
+
+# BoxCox function
+myBCtransform <- function(myvector) {
+  # shift scale to positive numbers and identify optimal lambda for box-cox transformation
+  mylambda <- boxcox(as.numeric(myvector)-min(as.numeric(myvector))+1, optimize = T)$lambda
+  
+  # transform
+  myvector <- scale(boxcoxTransform(as.numeric(myvector)-min(as.numeric(myvector))+1, mylambda))
+  return (scale(myvector))
+}
+
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data")
+exclusion <- read.csv(file = "exclusion_nonsimpatric_nonmigrant.csv")
+exclusion$realm1red[is.na(exclusion$realm1red)] <- "NA" # NA is north america not R's NA value. fix.
+exclusion$realm2green[is.na(exclusion$realm2green)] <- "NA"
+```
+<br><br><br><br><br>
+
+Load Main Data
+```{r}
+# main dataframe ---------------------------------
+setwd("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Process_Cluster_Outputs/Data")
+load(file =  "Pair_Barrier_Data_FEB2021.rdata")
+mydata <- mypairdata; rm(mypairdata)
+rownames(mydata) <- mydata$Species.1
+mydata <- mydata[order(match(mydata$uniquePairId,exclusion$mydata.uniquePairId)), ] # order to match exclusion frame above.
+```
+<br><br><br><br><br>
+
+initial masks
+```{r}
+# migration ---
+if(allowmigrants == F){
+  mydata <- mydata[which(mydata$Migration == 1.0),]
+}
+
+# patry
+if(allowsympatry == F){
+  mydata <- mydata[which(mydata[,paste0(costvar, "_c0")] > 0 ),] # doesnt matter if you use ele, mat, vart paths here, will be same answer
+}
+```
+
+```{r}
+mydata$realm1 <- exclusion$realm1red
+mydata$realm2 <- exclusion$realm2green
+mydata$realm <- paste0(mydata$realm1, mydata$realm2)
+table(mydata$realm)
+mydata$realm[mydata$realm == "AAIM"]; mydata$realm[mydata$realm == "IMAA"] <-  "AAIM"
+mydata$realm[mydata$realm == "ATIM"]; mydata$realm[mydata$realm == "IMAT"] <-  "ATIM"
+mydata$realm[mydata$realm == "ATPA"]; mydata$realm[mydata$realm == "PAAT"] <-  "ATPA"
+mydata$realm[mydata$realm == "IMNT"]; mydata$realm[mydata$realm == "NTIM"] <-  "IMNT"
+mydata$realm[mydata$realm == "NTAA"]; mydata$realm[mydata$realm == "AANT"] <-  "NTAA"
+mydata$realm[mydata$realm == "NTNA"]; mydata$realm[mydata$realm == "NANT"] <-  "NTNA"
+mydata$realm[mydata$realm == "PANA"]; mydata$realm[mydata$realm == "NAPA"] <-  "PANA"
+mydata$realm <- as.factor(mydata$realm); mydata$realm <- relevel(mydata$realm, "NTNT")
+
+mydata$landgap <- as.logical(exclusion$island)
+
+mydata$cosmopolitan <- as.logical(exclusion$cosmopolitan)
+
+mydata$new.old <- as.logical(exclusion$new.old)
+
+rm(exclusion)
+mydatahold <- mydata
+```
+
+Impose masks & do calcuations -- ELEVATION
+```{r, warning=FALSE, message=FALSE}
+# filter cosmopolitan and new/old world species (there are relatively few after imposing previous masks.)
+mydata <- mydata[which(mydata$cosmopolitan == FALSE & mydata$new.old == FALSE),]
+
+# dependent variable: elevational barrier size ---
+mydata$cost <- mydata[, paste0(costvar, "_c25")] 
+
+# mean elevation ---
+mydata$meanEle <- mydata$ele_mean_pair_ele_c25
+
+#  thermal overlap ---
+mydata$MAT_overlap <- mydata[,paste0("MAT", "_ov_perc_smrnge")]
+mydata <- mydata[mydata$MAT_overlap > minoverperc,]
+
+# update sort order --------------------
+mydata$sortorder <- seq(1:nrow(mydata))
+
+# longitude ----------------------------
+mydata$lon <- mydata[,paste0("lon_mean_pair_", costvar, "_c25")]
+
+# latitude ----------------------------
+mydata$lat <- mydata[,paste0("lat_mean_pair_", costvar, "_c25")]
+
+# temperature breadth -----------------
+mydata$tas_breadth <- mydata$tas_range # mean(mean(sp1 annual tas range -- one value per cell), mean(sp2 annual tas range -- one value per cell))
+
+# mean annual temperature --------------
+mydata$tas_position <- mydata$tas_mean # mean(mean(sp1 annual tas mean  -- one value per cell), mean(sp2 annual tas mean  -- one value per cell))
+
+# precipitation breadth --------------- 
+mydata$pcp_breadth <- mydata$pcp_range # mean(mean(sp1 annual pcp range  -- one value per cell), mean(sp2 annual pcp range  -- one value per cell))
+
+# precipitation breadth --------------- 
+mydata$pcp_position <- mydata$pcp_mean # mean(mean(sp1 annual pcp mean  -- one value per cell), mean(sp2 annual pcp mean  -- one value per cell))
+
+# distance -----------------------------
+mydata$distance <- mydata[,paste0("centroid_distance_",costvar,"_c25")]
+
+# mountain mass ------------------------
+mtns <- readOGR(dsn="~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/GMBA", layer="GMBA Mountain Inventory_v1.2-World", verbose = FALSE)
+mtns <- st_as_sf(mtns)
+buffer_ranges<-c(seq(from = 0, to = 200, by  = 50)[-1], seq(from=0, to = 3000, by = 250)[-1]) * 1000
+bufferdata <- matrix(nrow = nrow(mydata), ncol = length(buffer_ranges))
+for(i in 1:nrow(mydata)){
+  my_centroid <- st_geometry(st_sfc(st_point(c(mydata$lon[i],mydata$lat[i]))))
+  st_crs(my_centroid) <- crs(LonLat_BirdPAM_raster)
+  EPSG_2_UTM <- as.numeric(lonlat2UTM(my_centroid[[1]]))
+  # To see the UTM #st_crs(EPSG_2_UTM)$proj4string
+  my_centroid_proj = st_transform(st_as_sf(my_centroid), EPSG_2_UTM)
+  for(j in 1:length(buffer_ranges)){
+    my_centroid_with_b_km_buffer <- st_buffer(my_centroid_proj,dist=buffer_ranges[j])
+    mtns_in_buffer_b_km <- st_intersection(st_make_valid(sf::st_transform(my_centroid_with_b_km_buffer, crs=st_crs(mtns))), st_make_valid(mtns))
+    area_in_buffer_b_km <- sum(as.numeric(st_area(mtns_in_buffer_b_km)))
+    bufferdata[i, j] <- area_in_buffer_b_km
+  }
+  print(i)
+}
+bufferdatahold <- bufferdata
+for(i in 1:nrow(bufferdata)) {
+  bufferdata[i,] <- bufferdata[i,] / buffer_ranges
+}
+mydata$mtn_mass <- rowSums(bufferdata)
+plot(sort(mydata$mtn_mass))
+
+x <- ggplot(world)+
+  geom_sf() +
+  geom_point(data = mydata[order(mydata[, "mtn_mass"], decreasing = F),], aes(y=lat, x=lon, color = mtn_mass), alpha = 0.9) +
+  ggtitle(i)+scale_color_viridis()
+print(x)
+
+# for troubleshooting and checks. 
+# plot(mtns$geometry)
+# plot(my_centroid, add =T)
+# plot(st_make_valid((sf::st_transform(my_centroid_with_b_km_buffer, crs=st_crs(mtns)))), add = T)
+# probcoords <- st_geometry(st_sfc(st_point(c(8.80132870725873,18.1810491982364))))
+# plot(probcoords, add = T, col = "red")
+
+# water buffering ----------------------
+wtr <- read_sf("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/ne_50m_ocean/ne_50m_ocean.shp")
+buffer_ranges<-c(seq(from = 0, to = 200, by  = 50)[-1], seq(from=0, to = 3000, by = 250)[-1]) * 1000
+bufferdataw <- matrix(nrow = nrow(mydata), ncol = length(buffer_ranges))
+for(i in 1:nrow(mydata)){
+  my_centroid <- st_geometry(st_sfc(st_point(c(mydata$lon[i],mydata$lat[i]))))
+  st_crs(my_centroid) <- crs(LonLat_BirdPAM_raster)
+  EPSG_2_UTM <- as.numeric(lonlat2UTM(my_centroid[[1]]))
+  # To see the UTM #st_crs(EPSG_2_UTM)$proj4string
+  my_centroid_proj = st_transform(st_as_sf(my_centroid), EPSG_2_UTM)
+  for(j in 1:length(buffer_ranges)){
+    my_centroid_with_b_km_buffer <- st_buffer(my_centroid_proj,dist=buffer_ranges[j])
+    wtr_in_buffer_b_km <- st_intersection(st_make_valid(sf::st_transform(my_centroid_with_b_km_buffer, crs=st_crs(wtr))), st_make_valid(wtr))
+    area_in_buffer_b_km <- sum(as.numeric(st_area(wtr_in_buffer_b_km)))
+    bufferdataw[i, j] <- area_in_buffer_b_km
+  }
+  print(i)
+}
+bufferdatawhold <- bufferdataw
+for(i in 1:nrow(bufferdataw)) {
+  bufferdataw[i,] <- bufferdataw[i,] / buffer_ranges
+}
+mydata$wtr_mass <- rowSums(bufferdataw)
+plot(sort(mydata$wtr_mass))
+
+plotdata <- mydata[order(mydata[, "wtr_mass"], decreasing = F),]
+x <- ggplot(world)+
+  geom_sf() +
+  geom_point(data = plotdata[which(plotdata$wtr_mass_new < 370000000),], aes(y=lat, x=lon, color = wtr_mass), alpha = 0.9) +
+  ggtitle(i)+scale_color_viridis()
+print(x)
+
+ggplot(mydata[mydata$wtr_mass < 370000000,],aes(x=wtr_mass, y = mtn_mass, color =realm))+
+  geom_point()
+
+
+# dispersal ability --------------------
+dispab <- read.csv("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/Bird Hand-Wing Index/Dataset HWI 2020-04-10.csv")
+mydata$dispersal_ability <- NA
+for (i in 1:nrow(mydata)){
+  dispab_sp1 <- dispab$HWI[dispab$IUCN.name == mydata$Species.1bl[i]]
+  dispab_sp2 <- dispab$HWI[dispab$IUCN.name == mydata$Species.2bl[i]]
+  dispab_pair <- mean(c(dispab_sp1, dispab_sp2), na.rm = T)
+  mydata$dispersal_ability[i] <- dispab_pair
+  rm(dispab_sp1, dispab_sp2, dispab_pair)
+}
+mydata <- mydata[!is.nan(mydata$dispersal_ability),]
+
+# pair age -----------------------------
+mydata$pair_age <- mydata$Pair.age..MY.
+
+# length of boundary -------------------
+mydata$boundary_length <- mydata$boundary_length_ele_c25
+
+# retain cols of interest only.
+mydata_e <- mydata[,c("uniquePairId", "Species.1", "Species.2", "Species.1bl", "Species.2bl", "cost", "lat", "lon",
+                    "tas_breadth","tas_position", "pcp_breadth","pcp_position", "mtn_mass", "wtr_mass", 
+                    "dispersal_ability", "pair_age", "distance", "boundary_length", "MAT_overlap", "realm",
+                    "landgap", "meanEle")]
+rm(mydata);gc()
+```
+
+
+```{r}
+getwd()
+save(mydata_e, file = "dataforpca.Rdata")
+```
+
+
+```{r}
+# mydata <- mydatahold
+# costvar <- "MAT"
+```
+
+Impose masks & do calcuations -- MAT
+```{r, warning=FALSE, message=FALSE}
+# # filter cosmopolitan and new/old world species (there are relatively few after imposing previous masks.)
+# mydata <- mydata[which(mydata$cosmopolitan == FALSE & mydata$new.old == FALSE),]
+# 
+# # dependent variable: elevational barrier size ---
+# mydata$cost <- mydata[, paste0(costvar, "_c25")] 
+# 
+# # data filtering -----------------------
+# #  thermal overlap ---
+# mydata$MAT_overlap <- mydata[,paste0("MAT", "_ov_perc_smrnge")]
+# mydata <- mydata[mydata$MAT_overlap > minoverperc,]
+# 
+# # update sort order --------------------
+# mydata$sortorder <- seq(1:nrow(mydata))
+# 
+# # longitude ----------------------------
+# mydata$lon <- mydata[,paste0("lon_mean_pair_", costvar, "_c25")]
+# 
+# # latitude ----------------------------
+# mydata$lat <- mydata[,paste0("lat_mean_pair_", costvar, "_c25")]
+# 
+# # temperature breadth -----------------
+# mydata$tas_breadth <- mydata$tas_range # mean(mean(sp1 annual tas range -- one value per cell), mean(sp2 annual tas range -- one value per cell))
+# 
+# # mean annual temperature --------------
+# mydata$tas_position <- mydata$tas_mean # mean(mean(sp1 annual tas mean  -- one value per cell), mean(sp2 annual tas mean  -- one value per cell))
+# 
+# # precipitation breadth --------------- 
+# mydata$pcp_breadth <- mydata$pcp_range # mean(mean(sp1 annual pcp range  -- one value per cell), mean(sp2 annual pcp range  -- one value per cell))
+# 
+# # precipitation breadth --------------- 
+# mydata$pcp_position <- mydata$pcp_mean # mean(mean(sp1 annual pcp mean  -- one value per cell), mean(sp2 annual pcp mean  -- one value per cell))
+# 
+# # distance -----------------------------
+# mydata$distance <- mydata[,paste0("centroid_distance_",costvar,"_c25")]
+# 
+# # mountain mass ------------------------
+# mtns <- readOGR(dsn="~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/GMBA", layer="GMBA Mountain Inventory_v1.2-World", verbose = FALSE)
+# mtns <- st_as_sf(mtns)
+# buffer_ranges<-c(seq(from = 0, to = 200, by  = 50)[-1], seq(from=0, to = 3000, by = 250)[-1]) * 1000
+# bufferdata <- matrix(nrow = nrow(mydata), ncol = length(buffer_ranges))
+# for(i in 1:nrow(mydata)){
+#   my_centroid <- st_geometry(st_sfc(st_point(c(mydata$lon[i],mydata$lat[i]))))
+#   st_crs(my_centroid) <- crs(LonLat_BirdPAM_raster)
+#   EPSG_2_UTM <- as.numeric(lonlat2UTM(my_centroid[[1]]))
+#   # To see the UTM #st_crs(EPSG_2_UTM)$proj4string
+#   my_centroid_proj = st_transform(st_as_sf(my_centroid), EPSG_2_UTM)
+#   for(j in 1:length(buffer_ranges)){
+#     my_centroid_with_b_km_buffer <- st_buffer(my_centroid_proj,dist=buffer_ranges[j])
+#     mtns_in_buffer_b_km <- st_intersection(st_make_valid(sf::st_transform(my_centroid_with_b_km_buffer, crs=st_crs(mtns))), st_make_valid(mtns))
+#     area_in_buffer_b_km <- sum(as.numeric(st_area(mtns_in_buffer_b_km)))
+#     bufferdata[i, j] <- area_in_buffer_b_km
+#   }
+#   print(i)
+# }
+# bufferdatahold <- bufferdata
+# for(i in 1:nrow(bufferdata)) {
+#   bufferdata[i,] <- bufferdata[i,] / buffer_ranges
+# }
+# mydata$mtn_mass <- rowSums(bufferdata)
+# plot(sort(mydata$mtn_mass))
+# 
+# x <- ggplot(world)+
+#   geom_sf() +
+#   geom_point(data = mydata[order(mydata[, "mtn_mass"], decreasing = F),], aes(y=lat, x=lon, color = mtn_mass), alpha = 0.9) +
+#   ggtitle(i)+scale_color_viridis()
+# print(x)
+# 
+# # for troubleshooting and checks. 
+# # plot(mtns$geometry)
+# # plot(my_centroid, add =T)
+# # plot(st_make_valid((sf::st_transform(my_centroid_with_b_km_buffer, crs=st_crs(mtns)))), add = T)
+# # probcoords <- st_geometry(st_sfc(st_point(c(8.80132870725873,18.1810491982364))))
+# # plot(probcoords, add = T, col = "red")
+# 
+# # water buffering ----------------------
+# wtr <- read_sf("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/ne_50m_ocean/ne_50m_ocean.shp")
+# buffer_ranges<-c(seq(from = 0, to = 200, by  = 50)[-1], seq(from=0, to = 3000, by = 250)[-1]) * 1000
+# bufferdataw <- matrix(nrow = nrow(mydata), ncol = length(buffer_ranges))
+# for(i in 1:nrow(mydata)){
+#   my_centroid <- st_geometry(st_sfc(st_point(c(mydata$lon[i],mydata$lat[i]))))
+#   st_crs(my_centroid) <- crs(LonLat_BirdPAM_raster)
+#   EPSG_2_UTM <- as.numeric(lonlat2UTM(my_centroid[[1]]))
+#   # To see the UTM #st_crs(EPSG_2_UTM)$proj4string
+#   my_centroid_proj = st_transform(st_as_sf(my_centroid), EPSG_2_UTM)
+#   for(j in 1:length(buffer_ranges)){
+#     my_centroid_with_b_km_buffer <- st_buffer(my_centroid_proj,dist=buffer_ranges[j])
+#     wtr_in_buffer_b_km <- st_intersection(st_make_valid(sf::st_transform(my_centroid_with_b_km_buffer, crs=st_crs(wtr))), st_make_valid(wtr))
+#     area_in_buffer_b_km <- sum(as.numeric(st_area(wtr_in_buffer_b_km)))
+#     bufferdataw[i, j] <- area_in_buffer_b_km
+#   }
+#   print(i)
+# }
+# bufferdatawhold <- bufferdataw
+# for(i in 1:nrow(bufferdataw)) {
+#   bufferdataw[i,] <- bufferdataw[i,] / buffer_ranges
+# }
+# mydata$wtr_mass <- rowSums(bufferdataw)
+# plot(sort(mydata$wtr_mass))
+# 
+# plotdata <- mydata[order(mydata[, "wtr_mass"], decreasing = F),]
+# x <- ggplot(world)+
+#   geom_sf() +
+#   geom_point(data = plotdata[which(plotdata$wtr_mass_new < 370000000),], aes(y=lat, x=lon, color = wtr_mass), alpha = 0.9) +
+#   ggtitle(i)+scale_color_viridis()
+# print(x)
+# 
+# ggplot(mydata[mydata$wtr_mass < 370000000,],aes(x=wtr_mass, y = mtn_mass, color =realm))+
+#   geom_point()
+# 
+# 
+# # dispersal ability --------------------
+# dispab <- read.csv("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/Bird Hand-Wing Index/Dataset HWI 2020-04-10.csv")
+# mydata$dispersal_ability <- NA
+# for (i in 1:nrow(mydata)){
+#   dispab_sp1 <- dispab$HWI[dispab$IUCN.name == mydata$Species.1bl[i]]
+#   dispab_sp2 <- dispab$HWI[dispab$IUCN.name == mydata$Species.2bl[i]]
+#   dispab_pair <- mean(c(dispab_sp1, dispab_sp2), na.rm = T)
+#   mydata$dispersal_ability[i] <- dispab_pair
+#   rm(dispab_sp1, dispab_sp2, dispab_pair)
+# }
+# mydata <- mydata[!is.nan(mydata$dispersal_ability),]
+# 
+# # pair age -----------------------------
+# mydata$pair_age <- mydata$Pair.age..MY.
+# 
+# # length of boundary -------------------
+# mydata$boundary_length <- mydata$boundary_length_MAT_c25
+# 
+# # retain cols of interest only.
+# mydata_m <- mydata[,c("uniquePairId", "Species.1", "Species.2", "Species.1bl", "Species.2bl", "cost", "lat", "lon",
+#                     "tas_breadth","tas_position", "pcp_breadth","pcp_position", "mtn_mass", "wtr_mass", 
+#                     "dispersal_ability", "pair_age", "distance", "boundary_length", "MAT_overlap", "realm",
+#                     "landgap")]
+# rm(mydata);gc()
+```
+
+```{r}
+save(mydata_e, mydata_m, file = "dataforpca.Rdata")
+```
+
+
+
+PREP FOR PCA - e
+```{r}
+mydata <- mydata_e
+######################################
+# prepare raw predictors for PCA
+hist(mydata$tas_breadth)
+mydata$tas_breadth <- scale(myBCtransform(mydata$tas_breadth))
+hist(mydata$tas_breadth)
+
+hist(mydata$tas_position)
+mydata$tas_position <- scale(myBCtransform(mydata$tas_position))
+hist(mydata$tas_position)
+
+hist(mydata$pcp_breadth)
+mydata$pcp_breadth <- scale(mydata$pcp_breadth)
+
+hist(mydata$pcp_position)
+mydata$pcp_position <- scale(mydata$pcp_position)
+
+hist(mydata$mtn_mass)
+mydata$mtn_mass <- scale(myBCtransform(mydata$mtn_mass))
+hist(mydata$mtn_mass)
+
+hist(mydata$wtr_mass)
+mydata$wtr_mass <- scale(myBCtransform(mydata$wtr_mass))
+hist(mydata$wtr_mass)
+
+hist(mydata$dispersal_ability)
+mydata$dispersal_ability <- scale(myBCtransform(mydata$dispersal_ability))
+hist(mydata$dispersal_ability)
+
+hist(mydata$pair_age)
+mydata$pair_age <- scale(myBCtransform(mydata$pair_age))
+hist(mydata$pair_age)
+
+hist(mydata$distance)
+mydata$distance <- scale(myBCtransform(mydata$distance))
+hist(mydata$distance)
+
+hist(mydata$boundary_length)
+mydata$boundary_length <- scale(myBCtransform(mydata$boundary_length))
+hist(mydata$boundary_length)
+
+######################################
+# Now run PCA of raw predictors
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass', 'wtr_mass',
+                             'dispersal_ability', 'pair_age','distance', 
+                             'boundary_length')], nfactors = 9, rotate = "none")
+myPCA$loadings
+
+# looks like the first four components properly load all the variables in the set 
+# at least once (I label them for now simply using the highest loaded variable)
+
+mydata$PC1 <- myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+
+
+```
+
+
+
+```{r}
+######################################
+# now we can run the pGLS
+# load phylogenetic hypotheses
+load("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees/BirdTrees.Rdata")
+# first we deal with phylogenetic non-independence by using the tip of one of the
+# species in each pair as the placement of the pair in the tree
+CHK <- geiger::name.check(trees[[1]], mydata, data.names = mydata$Species.1)
+
+# change the 'size' to iterate through different topology options
+All.mods <- list()
+counter <- 1
+for (i in sample(x = 1:length(trees), size = 1)) {
+  i <- 1
+  mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
+  
+  mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+                   phy = mytree, model = 'lambda', data = mydata)
+  
+  All.mods[[counter]] <- mymod
+  counter <- counter+1
+}
+
+# still need to figure out how to summarize across trees (talk to Angela about it
+# as she and I have already discussed how to do this). For now...
+
+summary (All.mods[[1]])
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+PREP FOR PCA - m
+```{r}
+mydata <- mydata_m
+######################################
+# prepare raw predictors for PCA
+hist(mydata$tas_breadth)
+mydata$tas_breadth <- scale(myBCtransform(mydata$tas_breadth))
+hist(mydata$tas_breadth)
+
+hist(mydata$tas_position)
+mydata$tas_position <- scale(myBCtransform(mydata$tas_position))
+hist(mydata$tas_position)
+
+hist(mydata$pcp_breadth)
+mydata$pcp_breadth <- scale(mydata$pcp_breadth)
+
+hist(mydata$pcp_position)
+mydata$pcp_position <- scale(mydata$pcp_position)
+
+hist(mydata$mtn_mass)
+mydata$mtn_mass <- scale(myBCtransform(mydata$mtn_mass))
+hist(mydata$mtn_mass)
+
+hist(mydata$wtr_mass)
+mydata$wtr_mass <- scale(myBCtransform(mydata$wtr_mass))
+hist(mydata$wtr_mass)
+
+hist(mydata$dispersal_ability)
+mydata$dispersal_ability <- scale(myBCtransform(mydata$dispersal_ability))
+hist(mydata$dispersal_ability)
+
+hist(mydata$pair_age)
+mydata$pair_age <- scale(myBCtransform(mydata$pair_age))
+hist(mydata$pair_age)
+
+hist(mydata$distance)
+mydata$distance <- scale(myBCtransform(mydata$distance))
+hist(mydata$distance)
+
+hist(mydata$boundary_length)
+mydata$boundary_length <- scale(myBCtransform(mydata$boundary_length))
+hist(mydata$boundary_length)
+
+######################################
+# Now run PCA of raw predictors
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass', 'wtr_mass',
+                             'dispersal_ability', 'pair_age','distance', 
+                             'boundary_length')], nfactors = 9, rotate = "none")
+myPCA$loadings
+
+# looks like the first four components properly load all the variables in the set 
+# at least once (I label them for now simply using the highest loaded variable)
+
+mydata$PC1 <- myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+
+
+```
+
+
+
+```{r}
+######################################
+# now we can run the pGLS
+# load phylogenetic hypotheses
+load("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees/BirdTrees.Rdata")
+# first we deal with phylogenetic non-independence by using the tip of one of the
+# species in each pair as the placement of the pair in the tree
+CHK <- geiger::name.check(trees[[1]], mydata, data.names = mydata$Species.1)
+
+# change the 'size' to iterate through different topology options
+All.mods <- list()
+counter <- 1
+for (i in sample(x = 1:length(trees), size = 1)) {
+  i <- 1
+  mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
+  
+  mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+                   phy = mytree, model = 'lambda', data = mydata)
+  
+  All.mods[[counter]] <- mymod
+  counter <- counter+1
+}
+
+# still need to figure out how to summarize across trees (talk to Angela about it
+# as she and I have already discussed how to do this). For now...
+
+summary (All.mods[[1]])
+```
