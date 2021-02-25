@@ -1,10 +1,14 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
 ---
 
+```{r, include=F}
 # top matter
-```{r}
+
 rm(list = ls()); gc()
 require(ggplot2) # load packages
 require(EnvStats)
@@ -16,6 +20,7 @@ require(rnaturalearth)
 require(rnaturalearthdata)
 require(viridis)
 require(tidyr)
+require(raster)
 
 vlog <- function(x){
   log( x + abs(min( x , na.rm = T)) + 1)
@@ -30,148 +35,237 @@ myBCtransform <- function(myvector) {
   return (scale(myvector))
 }
 
-load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/dataforpca.Rdata")
-mydata <- mydata_e
-rm(mydata_e)
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/newdataforpca.Rdata")
 ```
 
+```{r, include=F}
+# add another metric for range size (use only this or boundary length OR neither. NOT BOTH).
 
-PCA predictor Prep
-```{r}
-######################################
-# prepare raw predictors for PCA
-hist(mydata$tas_breadth)
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/cbPAM.rdata")
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/LonLat_BirdPAM_raster.rdata")
+mydata$npamcells <- NA
+for(i in 1:nrow(mydata)){
+  sp1 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp1 <- as.data.frame(sp1[sp1[,3] == 1,]); colnames(sp1) <- c("lon", "lat", "pres")
+sp1 <- data.frame(cbind(lon=sp1$lon, lat = sp1$lat)); sp1 <- sp1[complete.cases(sp1),]
+temp1 <- nrow(sp1)
+
+sp2 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp2 <- as.data.frame(sp2[sp2[,3] == 1,]); colnames(sp2) <- c("lon", "lat", "pres")
+sp2 <- data.frame(cbind(lon=sp2$lon, lat = sp2$lat)); sp2 <- sp2[complete.cases(sp2),]
+temp2 <- nrow(sp2)
+mydata$npamcells[i] <- mean(c(temp1, temp2), na.rm = T)
+}
+
+# hist(mydata$npamcells)
+mydata$npamcells <- scale(myBCtransform(mydata$npamcells))
+# hist(mydata$npamcells)
+```
+
+```{r, include=F}
+# PCA predictor Prep
+
+# hist(mydata$tas_breadth)
 mydata$tas_breadth <- scale(myBCtransform(mydata$tas_breadth))
-hist(mydata$tas_breadth)
+# hist(mydata$tas_breadth)
 
-hist(mydata$tas_position)
+# hist(mydata$tas_position)
 mydata$tas_position <- scale(myBCtransform(mydata$tas_position))
-hist(mydata$tas_position)
+# hist(mydata$tas_position)
 
-hist(mydata$pcp_breadth)
+# hist(mydata$pcp_breadth)
 mydata$pcp_breadth <- scale(mydata$pcp_breadth)
+# hist(mydata$pcp_breadth)
 
-hist(mydata$pcp_position)
+# hist(mydata$pcp_position)
 mydata$pcp_position <- scale(mydata$pcp_position)
+# hist(mydata$pcp_position)
 
-hist(mydata$mtn_mass)
-mydata$mtn_mass <- scale(myBCtransform(mydata$mtn_mass))
-hist(mydata$mtn_mass)
+# hist(mydata$mtn_mass2)
+mydata$mtn_mass2 <- scale(myBCtransform(mydata$mtn_mass2))
+# hist(mydata$mtn_mass2)
 
-hist(mydata$wtr_mass)
-mydata$wtr_mass <- scale(myBCtransform(mydata$wtr_mass))
-hist(mydata$wtr_mass)
+# hist(mydata$wtr_mass2)
+mydata$wtr_mass2 <- scale(myBCtransform(mydata$wtr_mass2))
+# hist(mydata$wtr_mass2)
 
-hist(mydata$dispersal_ability)
+# hist(mydata$dispersal_ability)
 mydata$dispersal_ability <- scale(myBCtransform(mydata$dispersal_ability))
-hist(mydata$dispersal_ability)
+# hist(mydata$dispersal_ability)
 
-hist(mydata$pair_age)
+# hist(mydata$pair_age)
 mydata$pair_age <- scale(myBCtransform(mydata$pair_age))
-hist(mydata$pair_age)
+# hist(mydata$pair_age)
 
-hist(mydata$distance)
-mydata$distance <- scale(myBCtransform(mydata$distance))
-hist(mydata$distance)
+# hist(mydata$pd0)
+mydata$pd0 <- scale(myBCtransform(mydata$pd0))
+# hist(mydata$pd0)
 
-hist(mydata$boundary_length)
+# hist(mydata$pd25)
+mydata$pd25 <- scale(myBCtransform(mydata$pd25))
+# hist(mydata$pd25)
+
+# hist(mydata$boundary_length)
 mydata$boundary_length <- scale(myBCtransform(mydata$boundary_length))
-hist(mydata$boundary_length)
+# hist(mydata$boundary_length)
 
-hist(mydata$meanEle)
+# hist(mydata$meanEle)
 mydata$meanEle <- scale(myBCtransform(mydata$meanEle))
-hist(mydata$meanEle)
+# hist(mydata$meanEle)
 ```
 
-PCA
-```{r}
-
-
-######################################
-# Now run PCA of raw predictors
-myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
-                             'pcp_position', 'mtn_mass', 'wtr_mass',
-                             'dispersal_ability', 'pair_age','distance', 
-                             'boundary_length', 'meanEle')], nfactors = 10, rotate = "none") # mean elevation added as discussed. 
-myPCA$loadings
-
-myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
-                             'pcp_position', 'mtn_mass', 'wtr_mass',
-                             'dispersal_ability', 'pair_age','distance', 'meanEle')], nfactors = 9, rotate = "none") # mean elevation added as discussed. 
-myPCA$loadings
-
-# looks like the first four components properly load all the variables in the set 
-# at least once (I label them for now simply using the highest loaded variable)
-
-mydata$PC1 <- myPCA$scores[,'PC1']
-mydata$PC2 <- myPCA$scores[,'PC2']
-mydata$PC3 <- myPCA$scores[,'PC3']
-mydata$PC4 <- myPCA$scores[,'PC4']
-```
-
-Visualize PCA
-```{r}
-
-
-# global plots of PCs for interpretation aid. 
-world <- ne_coastline(scale = "medium", returnclass = "sf")
-size = 2
-alpha = 0.7
-# PC1 decreases with latitude (relationship is weakest in Afrotropics)
-x1 <- ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata$PC1, decreasing = F),], aes(y=lat, x=lon, color = PC1), alpha = alpha, size = size)+ 
-  ggtitle("PC1")+scale_color_viridis()
-print(x1)
-
-
-# PC2 is high near mountains
-x2 <- ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata$PC2, decreasing = F),], aes(y=lat, x=lon, color = PC2), alpha = alpha, size = size)+
-  ggtitle("PC2")+scale_color_viridis()
-print(x2)
-mtns <- ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata$mtn_mass, decreasing = F),], aes(y=lat, x=lon, color = mtn_mass), alpha = alpha, size = size)+
-  ggtitle("mtns") + scale_color_viridis()
-print(mtns)
-
-# PC3 decreases with latitude.
-x3 <- ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata$PC3, decreasing = F),], aes(y=lat, x=lon, color = PC3), alpha = alpha, size = size)+
-  ggtitle("PC3")+scale_color_viridis()
-print(x3)
-
-# # PC4 is non-significant and does not have a strong global pattern. 
-# x4 <- ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata$PC4, decreasing = F),], aes(y=lat, x=lon, color = PC4), alpha = 0.8) + 
-#   ggtitle("PC4") + scale_color_viridis()
-# print(x4)
-```
- 
- 
- 
-```{r}
-######################################
-# now we can run the pGLS
-# load phylogenetic hypotheses
+```{r, include=F}
 load("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees/BirdTrees.Rdata")
 # first we deal with phylogenetic non-independence by using the tip of one of the
 # species in each pair as the placement of the pair in the tree
 CHK <- geiger::name.check(trees[[1]], mydata, data.names = mydata$Species.1)
-# change the 'size' to iterate through different topology options
-All.mods <- list()
-counter <- 1
-for (i in sample(x = 1:length(trees), size = 1)) {
-  i <- 1 # always run on tree one for now.
-  mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
-  mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
-                   phy = mytree, model = 'lambda', data = mydata)
-  All.mods[[counter]] <- mymod
-  counter <- counter+1
-}
 
-# still need to figure out how to summarize across trees (talk to Angela about it
-# as she and I have already discussed how to do this). For now...
-
-summary (All.mods[[1]])
+world <- ne_coastline(scale = "medium", returnclass = "sf")
+size = 0.9
+alpha = 0.66
 ```
 
-for running across many trees. not finished. 
-```{r}
+# PCA 1
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2', "npamcells",
+                             'dispersal_ability', 'pair_age', "pd0","pd25", 'meanEle')], nfactors = 11, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
+mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+<br><br><br><br><br>
+
+# PCA 2
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2', "npamcells",
+                             'dispersal_ability', 'pair_age', "pd25", 'meanEle')], nfactors = 10, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- -myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
+mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+<br><br><br><br><br>
+
+# PCA 4
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2', "boundary_length",
+                             'dispersal_ability', 'pair_age', "pd25", 'meanEle')], nfactors = 10, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
+mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+<br><br><br><br><br>
+
+# PCA 5
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2', "boundary_length",
+                             'dispersal_ability', 'pair_age', "pd0", 'meanEle')], nfactors = 10, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- -myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
+mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+<br><br><br><br><br>
+
+# PCA 7
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2',
+                             'dispersal_ability', 'pair_age', "pd0", "pd25")], nfactors = 9, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- -myPCA$scores[,'PC1']
+mydata$PC2 <- -myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
+mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+<br><br><br><br><br>
+
+# PCA 8
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2',
+                             'dispersal_ability', 'pair_age', "pd25")], nfactors = 8, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- -myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
+mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+<br><br><br><br><br>
+
+# PCA 9
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2',
+                             'dispersal_ability', 'pair_age', "pd0")], nfactors = 8, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- -myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+mytree <- drop.tip(trees[[i]], CHK$tree_not_data)
+mymod <- phylolm(I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+<br><br><br><br><br>
+
+
+
+```{r, include=F}
+# Visualize
+
+# ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata$PC1, decreasing = F),], aes(y=lat, x=lon, color = PC1), alpha = alpha, size = size)+ 
+#   ggtitle("PC1")+scale_color_viridis()
+# ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata$PC2, decreasing = F),], aes(y=lat, x=lon, color = PC2), alpha = alpha, size = size)+
+#   ggtitle("PC2")+scale_color_viridis()
+# ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata$PC3, decreasing = F),], aes(y=lat, x=lon, color = PC3), alpha = alpha, size = size)+
+#   ggtitle("PC3")+scale_color_viridis()
+# ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata$PC3, decreasing = F),], aes(y=lat, x=lon, color = PC3), alpha = alpha, size = size)+
+#   ggtitle("PC4")+scale_color_viridis()
+```
+ <br><br><br><br><br>
+
+ 
+ 
+
+```{r, include=F}
+#for running across many trees. not finished. 
+
 # sensimod <- my_tree_phylm(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
 #               data = mydata,
 #               phy = trees,
@@ -182,4 +276,5 @@ for running across many trees. not finished.
 # summary(sensimod)
 # my_sensimod(sensimod)
 ```
+<br><br><br><br><br>
 
