@@ -120,15 +120,15 @@ mydata$meanEle <- scale(myBCtransform(mydata$meanEle))
 ```
 
 ```{r, include=F}
-load("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees/BirdTrees.Rdata")
-names(trees) <- paste0("tree_", 1:1000)
-tree_sample <- sample(x=1000, size = 1000)
-trees <- trees[tree_sample]
-for (i in 1:length(trees)){
-  tree <- trees[[i]]
-  trees[[i]] <- drop.tip(trees[[i]], tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)])
-}
-save(trees, tree_sample, file = "tree_sample.Rdata")
+# load("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees/BirdTrees.Rdata")
+# names(trees) <- paste0("tree_", 1:1000)
+# tree_sample <- sample(x=1000, size = 1000)
+# trees <- trees[tree_sample]
+# for (i in 1:length(trees)){
+#   tree <- trees[[i]]
+#   trees[[i]] <- drop.tip(trees[[i]], tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)])
+# }
+# save(trees, tree_sample, file = "tree_sample.Rdata")
 load("tree_sample.Rdata")
 
 world <- ne_coastline(scale = "medium", returnclass = "sf")
@@ -161,15 +161,15 @@ summary(mymod)
 
 ```{r, message=F, warning=F}
 #for running across many trees. not finished. 
-sensimod <- my_tree_phylm(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
-              data = mydata,
-              phy = trees,
-              n.tree = 1000,
-              model = "lambda",
-              track = TRUE,
-              add_median_residuals = TRUE)
-summary(sensimod)
-my_sensimod(sensimod)
+# sensimod <- my_tree_phylm(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+#               data = mydata,
+#               phy = trees,
+#               n.tree = 1000,
+#               model = "lambda",
+#               track = TRUE,
+#               add_median_residuals = TRUE)
+# summary(sensimod)
+# my_sensimod(sensimod)
 ```
 
 ```{r}
@@ -366,15 +366,15 @@ my_tree_phylm_new<-function (formula, data, phy, n.tree = 2, model = "lambda", n
 ```{r, message=F, warning=F}
 coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
 k1 <- knn2nb(knearneigh(coords, longlat = T))
-# all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
-all.linked <- 1500
+all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
+# all.linked <- 1500
 nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
 
 #for running across many trees. not finished. 
 sensimod <- my_tree_phylm_new(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
               data = mydata,
               phy = trees,
-              n.tree = 100,
+              n.tree = 1000,
               model = "lambda",
               nb = nb,
               basecols = ncol(mydata),
@@ -384,7 +384,7 @@ sensimod <- my_tree_phylm_new(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
 summary(sensimod)
 my_sensimod(sensimod)
 
-# save(sensimod, file = "sensimod_1ktrees_1500d_moranp0.05.rdata")
+save(sensimod, file = "PCA1_sensimod_1ktrees_1852_moranp0.99.rdata")
 # save(sensimod, file = "PCA1_sensimod_100trees_1500d_moranp0.99.rdata")
 ```
 
