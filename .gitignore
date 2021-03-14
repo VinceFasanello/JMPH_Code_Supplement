@@ -5,6 +5,7 @@
 .nc
 .gdbtable
 .shp
+.zip
 *.nc
 *.Rproj.user
 *.Rhistory
@@ -12,3 +13,4 @@
 *.Ruserdata
 *.gdbtable
 *.shp
+*.zip
