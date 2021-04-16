@@ -8,8 +8,9 @@
 # my_sensimod(sensimod)
 
 
-my_tree_phylm_new<-function (formula, data, phy, n.tree = 2, model = "lambda", nb, basecols, moran_p = 0.05,
-                             track = TRUE, add_median_residuals=T,...) {
+my_tree_phylm<-function (formula, data, phy, n.tree = 2, model = "lambda", 
+                         track = TRUE, add_median_residuals=T,...) 
+{
   if (!inherits(formula, "formula")) 
     stop("formula must be class 'formula'")
   if (!inherits(data, "data.frame")) 
@@ -44,7 +45,7 @@ my_tree_phylm_new<-function (formula, data, phy, n.tree = 2, model = "lambda", n
   if (track == TRUE) 
     pb <- utils::txtProgressBar(min = 0, max = n.tree, style = 3)
   
-  
+ 
   for (j in seq(from=1,to=n.tree)) {
     full.data <- full.data[phy[[j]]$tip.label, ]
     
@@ -58,46 +59,13 @@ my_tree_phylm_new<-function (formula, data, phy, n.tree = 2, model = "lambda", n
     }
     else {
       
-      
       # HERE WE SHOULD ADD SPATIAL TESTING
-      # ie check Moran's I
-      mor <- moran.test(residuals(mod), nb2listw(nb, zero.policy = TRUE), zero.policy = TRUE) 
-      # if there is no evidence for AC --> continue below
-      # if there is - run sarcol() and re-run mod by adding fitted(sarcol) in the model
-      if (mor$p.value <= moran_p){
-        sarcol <- SpatialFiltering(formula = formula, data = full.data, nb=nb, style="W", ExactEV = TRUE, zero.policy = TRUE)
-        full.data[,c((basecols+1):(basecols+1+ dim(fitted(sarcol))[2]-1))]<-fitted(sarcol)
-        colnames(full.data)[(basecols+1):ncol(full.data)] <- c(paste0("V", 1:length((basecols+1):ncol(full.data))))
-        nspace_terms <- ncol(full.data) - basecols
-        if(nspace_terms == 0){formula_space <- formula; vadded <- 0}
-        if(nspace_terms == 1){formula_space <- merge(formula, ~V1); vadded <- 1}
-        if(nspace_terms == 2){formula_space <- merge(formula, ~V1+V2); vadded <- 2}
-        if(nspace_terms == 3){formula_space <- merge(formula, ~V1+V2+V3); vadded <- 3}
-        if(nspace_terms == 4){formula_space <- merge(formula, ~V1+V2+V3+V4); vadded <- 4}
-        if(nspace_terms == 5){formula_space <- merge(formula, ~V1+V2+V3+V4+V5); vadded <- 5}
-        if(nspace_terms == 6){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6); vadded <- 6}
-        if(nspace_terms == 7){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7); vadded <- 7}
-        if(nspace_terms == 8){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7+V8); vadded <- 8}
-        if(nspace_terms == 9){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7+V8+V9); vadded <- 9}
-        if(nspace_terms == 10){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7+V8+V9+V10); vadded <- 10}
-        if(nspace_terms == 11){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7+V8+V9+V10+V11); vadded <- 11}
-        if(nspace_terms == 12){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7+V8+V9+V10+V11+V12); vadded <- 12}
-        if(nspace_terms == 13){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7+V8+V9+V10+V11+V12+V13); vadded <- 13}
-        if(nspace_terms == 14){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7+V8+V9+V10+V11+V12+V13+V14); vadded <- 14}
-        if(nspace_terms == 15){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7+V8+V9+V10+V11+V12+V13+V14+V15); vadded <- 15}
-        if(nspace_terms >= 16){formula_space <- merge(formula, ~V1+V2+V3+V4+V5+V6+V7+V8+V9+V10+V11+V12+V13+V14+V15+V16); vadded <- 16}
-        print(paste0("spatial filtering applied to tree#: ", j, ": ", nspace_terms, " spatial terms added"))
-        # formula2 = merge(formula)
-        mod = try(phylolm::phylolm(formula_space, data = full.data, model = model, phy = phy[[j]]), FALSE)
-        full.data <- full.data[,1:basecols]
-        rm(sarcol, nspace_terms, formula_space)
-      } else {
-        vadded <- 0
-      }
-      # I would then prune the dataframe below to exclude the spatial vectors, because these might be different depending on the tree --> and you want to focus anyway only on the actual predictors (PCs)
+        # ie check Moran's I
+        # if there is no evidence for AC --> continue below
+          # if there is - run sarcol() and re-run mod by adding fitted(sarcol) in the model
+          # I would then prune the dataframe below to exclude the spatial vectors, because these might be different depending on the tree --> and you want to focus anyway only on the actual predictors (PCs)
       
       Beta<-data.frame(phylolm::summary.phylolm(mod)$coefficients[,c(1,2,4)])
-      Beta<-Beta[1:(nrow(Beta) - vadded),]
       Beta<-cbind(rownames(Beta), Beta)
       names(Beta)<-c("var", "_", ".se", ".pval")
       rownames(Beta)<-NULL
@@ -137,7 +105,7 @@ my_tree_phylm_new<-function (formula, data, phy, n.tree = 2, model = "lambda", n
       
       # estim.simu <- Beta_df %>% mutate(j=j, aic.mod=aic.mod, optpar=optpar) %>%
       #   select(c(j, names(Beta_df), aic.mod, optpar))
-      # for some reason this errors - replace with below
+        # for some reason this errors - replace with below
       estim.simu<-as.data.frame(t(as.matrix(c(j,as.numeric(as.matrix(Beta_df[1,])),aic.mod,optpar))))
       colnames(estim.simu)<c(j, colnames(Beta_df),"aic.mod","optpar")
       
