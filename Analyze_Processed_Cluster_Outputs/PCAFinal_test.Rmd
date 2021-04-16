@@ -1,0 +1,525 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r, include=F}
+# top matter
+
+rm(list = ls()); gc()
+require(ggplot2) # load packages
+require(EnvStats)
+require(psych)
+require(geiger)
+require(phylolm)
+require(sensiPhy)
+require(rnaturalearth)
+require(rnaturalearthdata)
+require(viridis)
+require(tidyr)
+require(raster)
+require(dplyr)
+require(spdep)
+require(spatialreg)
+require(lasso2)
+source("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/sensiphy_SOURCE.R")
+vlog <- function(x){
+  log( x + abs(min( x , na.rm = T)) + 1)
+}
+'%notin%' <- Negate('%in%')
+
+myBCtransform <- function(myvector) {
+  # shift scale to positive numbers and identify optimal lambda for box-cox transformation
+  mylambda <- boxcox(as.numeric(myvector)-min(as.numeric(myvector))+1, optimize = T)$lambda
+  
+  # transform
+  myvector <- scale(boxcoxTransform(as.numeric(myvector)-min(as.numeric(myvector))+1, mylambda))
+  return (scale(myvector))
+}
+
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/newdataforpca.Rdata")
+```
+
+```{r, include=F}
+# add another metric for range size (use only this or boundary length OR neither. NOT BOTH).
+
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/cbPAM.rdata")
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/LonLat_BirdPAM_raster.rdata")
+mydata$npamcells <- NA
+for(i in 1:nrow(mydata)){
+  sp1 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp1 <- as.data.frame(sp1[sp1[,3] == 1,]); colnames(sp1) <- c("lon", "lat", "pres")
+sp1 <- data.frame(cbind(lon=sp1$lon, lat = sp1$lat)); sp1 <- sp1[complete.cases(sp1),]
+temp1 <- nrow(sp1)
+
+sp2 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp2 <- as.data.frame(sp2[sp2[,3] == 1,]); colnames(sp2) <- c("lon", "lat", "pres")
+sp2 <- data.frame(cbind(lon=sp2$lon, lat = sp2$lat)); sp2 <- sp2[complete.cases(sp2),]
+temp2 <- nrow(sp2)
+mydata$npamcells[i] <- mean(c(temp1, temp2), na.rm = T)
+}
+
+# hist(mydata$npamcells)
+mydata$npamcells <- scale(myBCtransform(mydata$npamcells))
+# hist(mydata$npamcells)
+```
+
+```{r, include=F}
+# PCA predictor Prep
+
+# hist(mydata$tas_breadth)
+mydata$tas_breadth <- scale(myBCtransform(mydata$tas_breadth))
+# hist(mydata$tas_breadth)
+
+# hist(mydata$tas_position)
+mydata$tas_position <- scale(myBCtransform(mydata$tas_position))
+# hist(mydata$tas_position)
+
+# hist(mydata$pcp_breadth)
+mydata$pcp_breadth <- scale(mydata$pcp_breadth)
+# hist(mydata$pcp_breadth)
+
+# hist(mydata$pcp_position)
+mydata$pcp_position <- scale(mydata$pcp_position)
+# hist(mydata$pcp_position)
+
+# hist(mydata$mtn_mass2)
+mydata$mtn_mass2 <- scale(myBCtransform(mydata$mtn_mass2))
+# hist(mydata$mtn_mass2)
+
+# hist(mydata$wtr_mass2)
+mydata$wtr_mass2 <- scale(myBCtransform(mydata$wtr_mass2))
+# hist(mydata$wtr_mass2)
+
+# hist(mydata$dispersal_ability)
+mydata$dispersal_ability <- scale(myBCtransform(mydata$dispersal_ability))
+# hist(mydata$dispersal_ability)
+
+# hist(mydata$pair_age)
+mydata$pair_age <- scale(myBCtransform(mydata$pair_age))
+# hist(mydata$pair_age)
+
+# hist(mydata$pd25)
+mydata$pd25 <- scale(myBCtransform(mydata$pd25))
+# hist(mydata$pd25)
+
+# hist(mydata$boundary_length)
+mydata$boundary_length <- scale(myBCtransform(mydata$boundary_length))
+# hist(mydata$boundary_length)
+
+# hist(mydata$meanEle)
+mydata$meanEle <- scale(myBCtransform(mydata$meanEle))
+# hist(mydata$meanEle)
+# 
+```
+
+```{r, include=F}
+# load("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees/BirdTrees.Rdata")
+# names(trees) <- paste0("tree_", 1:1000)
+# tree_sample <- sample(x=1000, size = 1000)
+# trees <- trees[tree_sample]
+# for (i in 1:length(trees)){
+#   tree <- trees[[i]]
+#   trees[[i]] <- drop.tip(trees[[i]], tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)])
+# }
+# save(trees, tree_sample, file = "tree_sample.Rdata")
+load("tree_sample.Rdata")
+rm(cbPAM);gc()
+```
+
+# PCA
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2', "npamcells",
+                             'dispersal_ability', 'pair_age',"pd25", 'meanEle')], nfactors = 10, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- -myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+
+mytree <- trees[[1]]
+mymod <- phylolm(I(scale(vlog(cost))) ~ scale(PC1) + scale(PC2) + scale(PC3) + scale(PC4),
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+
+
+```{r, message=F, warning=F}
+coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+k1 <- knn2nb(knearneigh(coords, longlat = T))
+all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
+nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
+
+#for running across many trees. not finished.
+sensimod <- my_tree_phylm_new(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+              data = mydata,
+              phy = trees,
+              n.tree = 10,
+              model = "lambda",
+              nb = nb,
+              basecols = ncol(mydata),
+              track = TRUE,
+              add_median_residuals = TRUE,
+              moran_p = 0.99)
+my_sensimod(sensimod)
+```
+<br><br><br><br><br>
+
+
+
+
+
+```{r, include=F}
+# add another metric for range size (use only this or boundary length OR neither. NOT BOTH).
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/newdataforpca.Rdata")
+mydata <- mydata[which(mydata$pair_age < 8),]
+
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/cbPAM.rdata")
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/LonLat_BirdPAM_raster.rdata")
+mydata$npamcells <- NA
+for(i in 1:nrow(mydata)){
+  sp1 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp1 <- as.data.frame(sp1[sp1[,3] == 1,]); colnames(sp1) <- c("lon", "lat", "pres")
+sp1 <- data.frame(cbind(lon=sp1$lon, lat = sp1$lat)); sp1 <- sp1[complete.cases(sp1),]
+temp1 <- nrow(sp1)
+
+sp2 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp2 <- as.data.frame(sp2[sp2[,3] == 1,]); colnames(sp2) <- c("lon", "lat", "pres")
+sp2 <- data.frame(cbind(lon=sp2$lon, lat = sp2$lat)); sp2 <- sp2[complete.cases(sp2),]
+temp2 <- nrow(sp2)
+mydata$npamcells[i] <- mean(c(temp1, temp2), na.rm = T)
+}
+
+mydata$npamcells <- scale(myBCtransform(mydata$npamcells))
+mydata$tas_breadth <- scale(myBCtransform(mydata$tas_breadth))
+mydata$tas_position <- scale(myBCtransform(mydata$tas_position))
+mydata$pcp_breadth <- scale(mydata$pcp_breadth)
+mydata$pcp_position <- scale(mydata$pcp_position)
+mydata$mtn_mass2 <- scale(myBCtransform(mydata$mtn_mass2))
+mydata$wtr_mass2 <- scale(myBCtransform(mydata$wtr_mass2))
+mydata$dispersal_ability <- scale(myBCtransform(mydata$dispersal_ability))
+mydata$pair_age <- scale(myBCtransform(mydata$pair_age))
+mydata$pd25 <- scale(myBCtransform(mydata$pd25))
+mydata$boundary_length <- scale(myBCtransform(mydata$boundary_length))
+mydata$meanEle <- scale(myBCtransform(mydata$meanEle))
+```
+
+
+# PCA -- sensitivity for age.
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2', "npamcells",
+                             'dispersal_ability', 'pair_age',"pd25", 'meanEle')], nfactors = 10, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- -myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+
+mytree <- trees[[1]]
+mymod <- phylolm(I(scale(vlog(cost))) ~ scale(PC1) + scale(PC2) + scale(PC3) + scale(PC4),
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+
+```{r, message=F, warning=F}
+coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+k1 <- knn2nb(knearneigh(coords, longlat = T))
+all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
+nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
+
+#for running across many trees. not finished.
+sensimod <- my_tree_phylm_new(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+              data = mydata,
+              phy = trees,
+              n.tree = 10,
+              model = "lambda",
+              nb = nb,
+              basecols = ncol(mydata),
+              track = TRUE,
+              add_median_residuals = TRUE,
+              moran_p = 0.99)
+my_sensimod(sensimod)
+```
+
+
+
+
+
+
+
+
+
+```{r, include=F}
+# add another metric for range size (use only this or boundary length OR neither. NOT BOTH).
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/newdataforpca.Rdata")
+mydata <- mydata[which(mydata$MAT_overlap > 0.50),]
+mydata <- mydata[which(mydata$MAT_overlap > 0.75),]
+mydata <- mydata[which(mydata$MAT_overlap > 0.9),]
+
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/cbPAM.rdata")
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/LonLat_BirdPAM_raster.rdata")
+mydata$npamcells <- NA
+for(i in 1:nrow(mydata)){
+  sp1 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp1 <- as.data.frame(sp1[sp1[,3] == 1,]); colnames(sp1) <- c("lon", "lat", "pres")
+sp1 <- data.frame(cbind(lon=sp1$lon, lat = sp1$lat)); sp1 <- sp1[complete.cases(sp1),]
+temp1 <- nrow(sp1)
+
+sp2 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp2 <- as.data.frame(sp2[sp2[,3] == 1,]); colnames(sp2) <- c("lon", "lat", "pres")
+sp2 <- data.frame(cbind(lon=sp2$lon, lat = sp2$lat)); sp2 <- sp2[complete.cases(sp2),]
+temp2 <- nrow(sp2)
+mydata$npamcells[i] <- mean(c(temp1, temp2), na.rm = T)
+}
+
+mydata$npamcells <- scale(myBCtransform(mydata$npamcells))
+mydata$tas_breadth <- scale(myBCtransform(mydata$tas_breadth))
+mydata$tas_position <- scale(myBCtransform(mydata$tas_position))
+mydata$pcp_breadth <- scale(mydata$pcp_breadth)
+mydata$pcp_position <- scale(mydata$pcp_position)
+mydata$mtn_mass2 <- scale(myBCtransform(mydata$mtn_mass2))
+mydata$wtr_mass2 <- scale(myBCtransform(mydata$wtr_mass2))
+mydata$dispersal_ability <- scale(myBCtransform(mydata$dispersal_ability))
+mydata$pair_age <- scale(myBCtransform(mydata$pair_age))
+mydata$pd25 <- scale(myBCtransform(mydata$pd25))
+mydata$boundary_length <- scale(myBCtransform(mydata$boundary_length))
+mydata$meanEle <- scale(myBCtransform(mydata$meanEle))
+```
+
+
+# PCA -- sensitivity for age.
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2', "npamcells",
+                             'dispersal_ability', 'pair_age',"pd25", 'meanEle')], nfactors = 10, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+
+mytree <- trees[[1]]
+mymod <- phylolm(I(scale(vlog(cost))) ~ scale(PC1) + scale(PC2) + scale(PC3) + scale(PC4),
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+
+```{r, message=F, warning=F}
+coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+k1 <- knn2nb(knearneigh(coords, longlat = T))
+all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
+nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
+
+#for running across many trees. not finished.
+sensimod <- my_tree_phylm_new(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+              data = mydata,
+              phy = trees,
+              n.tree = 10,
+              model = "lambda",
+              nb = nb,
+              basecols = ncol(mydata),
+              track = TRUE,
+              add_median_residuals = TRUE,
+              moran_p = 0.99)
+my_sensimod(sensimod)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, include=F}
+# add another metric for range size (use only this or boundary length OR neither. NOT BOTH).
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/newdataforpca.Rdata")
+mydata <- mydata[which(mydata$MAT_overlap > 0.9),]
+mydata <- mydata[which(mydata$pair_age < 8),]
+mydata <- mydata[which(mydata$landgap == F),]
+mydata <- mydata[which(mydata$realm %in% c("IMIM", "ATAT", "PAPA", "NANA", "AAAA", "NTNT")),]
+
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/cbPAM.rdata")
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/LonLat_BirdPAM_raster.rdata")
+mydata$npamcells <- NA
+for(i in 1:nrow(mydata)){
+  sp1 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp1 <- as.data.frame(sp1[sp1[,3] == 1,]); colnames(sp1) <- c("lon", "lat", "pres")
+sp1 <- data.frame(cbind(lon=sp1$lon, lat = sp1$lat)); sp1 <- sp1[complete.cases(sp1),]
+temp1 <- nrow(sp1)
+
+sp2 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
+sp2 <- as.data.frame(sp2[sp2[,3] == 1,]); colnames(sp2) <- c("lon", "lat", "pres")
+sp2 <- data.frame(cbind(lon=sp2$lon, lat = sp2$lat)); sp2 <- sp2[complete.cases(sp2),]
+temp2 <- nrow(sp2)
+mydata$npamcells[i] <- mean(c(temp1, temp2), na.rm = T)
+}
+
+mydata$npamcells <- scale(myBCtransform(mydata$npamcells))
+mydata$tas_breadth <- scale(myBCtransform(mydata$tas_breadth))
+mydata$tas_position <- scale(myBCtransform(mydata$tas_position))
+mydata$pcp_breadth <- scale(mydata$pcp_breadth)
+mydata$pcp_position <- scale(mydata$pcp_position)
+mydata$mtn_mass2 <- scale(myBCtransform(mydata$mtn_mass2))
+mydata$wtr_mass2 <- scale(myBCtransform(mydata$wtr_mass2))
+mydata$dispersal_ability <- scale(myBCtransform(mydata$dispersal_ability))
+mydata$pair_age <- scale(myBCtransform(mydata$pair_age))
+mydata$pd25 <- scale(myBCtransform(mydata$pd25))
+mydata$boundary_length <- scale(myBCtransform(mydata$boundary_length))
+mydata$meanEle <- scale(myBCtransform(mydata$meanEle))
+```
+
+
+# PCA -- sensitivity for age.
+```{r, message=F, warning=F}
+myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
+                             'pcp_position', 'mtn_mass2', 'wtr_mass2', "npamcells",
+                             'dispersal_ability', 'pair_age',"pd25", 'meanEle')], nfactors = 10, rotate = "none")
+myPCA$loadings
+mydata$PC1 <- -myPCA$scores[,'PC1']
+mydata$PC2 <- myPCA$scores[,'PC2']
+mydata$PC3 <- myPCA$scores[,'PC3']
+mydata$PC4 <- myPCA$scores[,'PC4']
+
+mytree <- trees[[1]]
+mymod <- phylolm(I(scale(vlog(cost))) ~ scale(PC1) + scale(PC2) + scale(PC3) + scale(PC4),
+                 phy = mytree, model = 'lambda', data = mydata)
+summary(mymod)
+```
+
+```{r, message=F, warning=F}
+coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+k1 <- knn2nb(knearneigh(coords, longlat = T))
+all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
+nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
+
+#for running across many trees. not finished.
+sensimod <- my_tree_phylm_new(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+              data = mydata,
+              phy = trees,
+              n.tree = 1000,
+              model = "lambda",
+              nb = nb,
+              basecols = ncol(mydata),
+              track = TRUE,
+              add_median_residuals = TRUE,
+              moran_p = 0.99)
+my_sensimod(sensimod)
+```
+
+
+
+
+
+
+
+```{r}
+world <- ne_coastline(scale = "medium", returnclass = "sf")
+size = 3
+alpha = 0.25
+# Visualize
+for(i in c("PC1", "PC2", "PC3", "PC4")){
+  p <- ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata[, i], decreasing = F),],
+                                             aes(y=lat, x=lon, color = scale(myBCtransform(mydata[, i]))), alpha = alpha, size = size, pch = 20)+
+    ggtitle(i)+
+    scale_color_viridis()
+  print(p)
+}
+```
+ <br><br><br><br><br>
+
+```{r, message=F, warning=F}
+# coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+# k1 <- knn2nb(knearneigh(coords, longlat = T))
+# all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
+# # all.linked <- 1500
+# nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
+# 
+# #for running across many trees. not finished. 
+# sensimod <- my_tree_phylm_new(formula = I(log(cost)) ~ PC1 + PC2 + PC3 + PC4,
+#               data = mydata,
+#               phy = trees,
+#               n.tree = 1000,
+#               model = "lambda",
+#               nb = nb,
+#               basecols = ncol(mydata),
+#               track = TRUE,
+#               add_median_residuals = TRUE, 
+#               moran_p = 0.99)
+# summary(sensimod)
+# my_sensimod(sensimod)
+# 
+# save(sensimod, file = "PCA2_sensimod_1ktrees_1852d_moranp0.99.rdata")
+
+```
+
+
+
+plot code to mine.
+```{r}
+
+ggplot(data = mydata, aes(x = scale(PC1), y = scale(vlog(cost)), color = myBCtransform(abs(lat))))+
+  geom_point()+
+  geom_abline(intercept = mymod$coefficients[1], slope = mymod$coefficients[2])+
+  scale_color_viridis(option = "B")
+ggplot(data = mydata, aes(x = scale(PC2), y = scale(vlog(cost)), color = myBCtransform(abs(lat))))+
+  geom_point()+
+  geom_abline(intercept = mymod$coefficients[1], slope = mymod$coefficients[3])+
+  scale_color_viridis(option = "B")
+ggplot(data = mydata, aes(x = scale(PC3), y = scale(vlog(cost)), color = myBCtransform(abs(lat))))+
+  geom_point()+
+  geom_abline(intercept = mymod$coefficients[1], slope = mymod$coefficients[4])+
+  scale_color_viridis(option = "B")
+ggplot(data = mydata, aes(x = scale(PC4), y = scale(vlog(cost)), color = myBCtransform(abs(lat))))+
+  geom_point()+
+  geom_abline(intercept = mymod$coefficients[1], slope = mymod$coefficients[5])+
+  scale_color_viridis(option = "B")
+
+
+plot(vlog(cost)~realm, mydata[which(mydata$realm %in% c("IMIM", "NANA", "PAPA", "AAAA", "ATAT")),])
+
+# pc1 loaders (>0.575)
+plot(pcp_position~tas_breadth, mydata)
+plot(pcp_breadth~tas_breadth, mydata)
+plot(pcp_position~pcp_breadth, mydata)
+
+plot(pcp_position~PC1, mydata)
+plot(pcp_breadth~PC1, mydata)
+plot(tas_breadth~PC1, mydata)
+
+
+
+# pc2 loaders (>0.575)
+plot(meanEle~mtn_mass2, mydata)
+plot(tas_position~mtn_mass2, mydata)
+plot(meanEle ~ tas_position, mydata)
+
+plot(meanEle~PC2, mydata)
+plot(mtn_mass2~PC2, mydata)
+plot(meanEle~PC2, mydata)
+
+
+
+# pc 3 loaders (>0.575)
+plot(npamcells~pd25, mydata)
+plot(npamcells~PC3, mydata)
+plot(pd25~PC3, mydata)
+
+
+# PC 4 loaders (> 0.575)
+plot(dispersal_ability~pair_age, mydata)
+plot(dispersal_ability~PC4, mydata)
+plot(pair_age~PC4, mydata)
+
+```
+
