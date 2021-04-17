@@ -6,10 +6,13 @@ output:
   pdf_document: default
 ---
 
-```{r, include=F}
-# top matter
-
+```{R Setup, include=F}
+# Clean workspace --------------------------------------------------------------
 rm(list = ls()); gc()
+
+
+
+# Load Packages ----------------------------------------------------------------
 require(ggplot2) # load packages
 require(EnvStats)
 require(psych)
@@ -26,115 +29,159 @@ require(spdep)
 require(spatialreg)
 require(lasso2)
 require(gridExtra)
-source("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/sensiphy_SOURCE.R")
+
+
+
+# source and write helper funcitons --------------------------------------------
+# Phylogenetic and spatial model from source ---
+source("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Scripts/sensiphy_SOURCE.R")
+
+
+# safe log function --------------------
 vlog <- function(x){
   log( x + abs(min( x , na.rm = T)) + 1)
 }
+
+
+# negate %in% --------------------------
 '%notin%' <- Negate('%in%')
 
+
+# boxcox transform for normalit --------
 myBCtransform <- function(myvector) {
   # shift scale to positive numbers and identify optimal lambda for box-cox transformation
   mylambda <- boxcox(as.numeric(myvector)-min(as.numeric(myvector))+1, optimize = T)$lambda
-  
   # transform
   myvector <- scale(boxcoxTransform(as.numeric(myvector)-min(as.numeric(myvector))+1, mylambda))
   return (scale(myvector))
 }
 
+# custom plotting theme ----------------
 theme_VJF <- function(){
   theme_classic()+
   theme(
-    # adjust axis title, text, ticks -----------------------
+    # adjust axis title, text, ticks ---
     axis.title = element_text(size = 10, face = "bold", color = "black"),
     axis.text = element_text(size = 8, face = "bold", color = "black"),
     axis.ticks = element_line(color = "black"),
-    
+    # adjust legend --------------------
     legend.background = element_rect(colour = 'black', fill = 'grey95', size = 1, linetype='solid'),
     legend.key.size = unit(10,"pt"),
-    
+    # format plot tag ------------------
     plot.tag = element_text(size = 20, face = "bold", color = "black")
   )
 }
 
 
-load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/newdataforpca.Rdata")
+
+# load main dataframe ----------------------------------------------------------
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data/newdataforpca.Rdata")
 ```
+<br/><br/>
 
-```{r, include=F}
-# add another metric for range size (use only this or boundary length OR neither. NOT BOTH).
 
+
+```{R Update Range Size Calculation, include=F}
+# Replace range size metric with updated calculation. --------------------------
+# load ranges --------------------------
 load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/cbPAM.rdata")
 load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/LonLat_BirdPAM_raster.rdata")
+
+# calculate range size for pairs -------
 mydata$npamcells <- NA
 for(i in 1:nrow(mydata)){
+  # sp1
   sp1 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
-sp1 <- as.data.frame(sp1[sp1[,3] == 1,]); colnames(sp1) <- c("lon", "lat", "pres")
-sp1 <- data.frame(cbind(lon=sp1$lon, lat = sp1$lat)); sp1 <- sp1[complete.cases(sp1),]
-temp1 <- nrow(sp1)
-
-sp2 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.2bl[i])]
-sp2 <- as.data.frame(sp2[sp2[,3] == 1,]); colnames(sp2) <- c("lon", "lat", "pres")
-sp2 <- data.frame(cbind(lon=sp2$lon, lat = sp2$lat)); sp2 <- sp2[complete.cases(sp2),]
-temp2 <- nrow(sp2)
-mydata$npamcells[i] <- mean(c(temp1, temp2), na.rm = T)
+  sp1 <- as.data.frame(sp1[sp1[,3] == 1,]); colnames(sp1) <- c("lon", "lat", "pres")
+  sp1 <- data.frame(cbind(lon=sp1$lon, lat = sp1$lat)); sp1 <- sp1[complete.cases(sp1),]
+  # sp2
+  sp2 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.2bl[i])]
+  sp2 <- as.data.frame(sp2[sp2[,3] == 1,]); colnames(sp2) <- c("lon", "lat", "pres")
+  sp2 <- data.frame(cbind(lon=sp2$lon, lat = sp2$lat)); sp2 <- sp2[complete.cases(sp2),]
+  # pair average
+  mydata$npamcells[i] <- mean(c(nrow(sp1), nrow(sp2)), na.rm = T)
 }
+rm(sp1, sp2, cbPAM, LonLat_BirdPAM_raster)
+```
+<br/><br/>
 
+
+
+```{R PCA Predictor Prep, include=F}
+# prepare PCA predictors by applying boxcox transformation [view before/after hists if desired. ]
+
+# range size ---------------------------
 # hist(mydata$npamcells)
 mydata$npamcells <- scale(myBCtransform(mydata$npamcells))
 # hist(mydata$npamcells)
-```
 
-```{r, include=F}
-# PCA predictor Prep
 
+# thermal niche breadth ----------------
 # hist(mydata$tas_breadth)
 mydata$tas_breadth <- scale(myBCtransform(mydata$tas_breadth))
 # hist(mydata$tas_breadth)
 
+
+# Mean temperature ---------------------
 # hist(mydata$tas_position)
 mydata$tas_position <- scale(myBCtransform(mydata$tas_position))
 # hist(mydata$tas_position)
 
+
+# precipitation niche breadth ----------
 # hist(mydata$pcp_breadth)
 mydata$pcp_breadth <- scale(mydata$pcp_breadth)
 # hist(mydata$pcp_breadth)
 
+
+# mean precipitation -------------------
 # hist(mydata$pcp_position)
 mydata$pcp_position <- scale(mydata$pcp_position)
 # hist(mydata$pcp_position)
 
+
+# mountain mass ------------------------
 # hist(mydata$mtn_mass2)
 mydata$mtn_mass2 <- scale(myBCtransform(mydata$mtn_mass2))
 # hist(mydata$mtn_mass2)
 
+
+# water mass =--------------------------
 # hist(mydata$wtr_mass2)
 mydata$wtr_mass2 <- scale(myBCtransform(mydata$wtr_mass2))
 # hist(mydata$wtr_mass2)
 
+
+# dispersal ability --------------------
 # hist(mydata$dispersal_ability)
 mydata$dispersal_ability <- scale(myBCtransform(mydata$dispersal_ability))
 # hist(mydata$dispersal_ability)
 
+
+# pair age -----------------------------
 # hist(mydata$pair_age)
 mydata$pair_age_nt <- mydata$pair_age
 mydata$pair_age <- scale(myBCtransform(mydata$pair_age))
 # hist(mydata$pair_age)
 
+
+# pair distance ------------------------
 # hist(mydata$pd25)
 mydata$pd25 <- scale(myBCtransform(mydata$pd25))
 # hist(mydata$pd25)
 
-# hist(mydata$boundary_length)
-mydata$boundary_length <- scale(myBCtransform(mydata$boundary_length))
-# hist(mydata$boundary_length)
 
+# mean elevation -----------------------
 # hist(mydata$meanEle)
 mydata$meanEle <- scale(myBCtransform(mydata$meanEle))
 # hist(mydata$meanEle)
-# 
 ```
+<br/><br/>
 
-```{r, include=F}
+
+
+```{R sample trees from phylo hypotheses, include=F}
+# sample 1000 trees with hackett backbone --------------------------------------
 # load("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Other_Input_Data/BirdTrees/BirdTrees.Rdata")
 # names(trees) <- paste0("tree_", 1:1000)
 # tree_sample <- sample(x=1000, size = 1000)
@@ -144,50 +191,50 @@ mydata$meanEle <- scale(myBCtransform(mydata$meanEle))
 #   trees[[i]] <- drop.tip(trees[[i]], tree$tip.label[which(tree$tip.label %notin% mydata$Species.1)])
 # }
 # save(trees, tree_sample, file = "tree_sample.Rdata")
-load("tree_sample.Rdata")
-rm(cbPAM);gc()
+
+# load sampled trees -----------------------------------------------------------
+load("~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data/tree_sample.Rdata")
+rm(tree_sample)
 ```
+<br/><br/>
 
 
-# PCA
-```{r, message=F, warning=F}
+
+```{R PCA for main model, message=F, warning=F}
+# PCA --------------------------------------------------------------------------
 myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
                              'pcp_position', 'mtn_mass2', 'wtr_mass2', "npamcells",
                              'dispersal_ability', 'pair_age',"pd25", 'meanEle')], nfactors = 10, rotate = "none")
-write.csv(myPCA$loadings, file = "test.csv")
+write.csv(myPCA$loadings, file = "test.csv") # save
+
+# view and assign loadings -------------
 myPCA$loadings
 mydata$PC1 <- myPCA$scores[,'PC1']
 mydata$PC2 <- myPCA$scores[,'PC2']
 mydata$PC3 <- myPCA$scores[,'PC3']
 mydata$PC4 <- myPCA$scores[,'PC4']
 
-plot(mydata$PC1 ~ I(scale(mydata$PC1)))
-mydata$PC1[1:100]
-I(scale(mydata$PC1))[1:100]
-hist(mydata$PC1)
-hist(mydata$PC2)
-hist(mydata$PC3)
-hist(mydata$PC4)
-
-hist(scale(mydata$PC1))
-hist(scale(mydata$PC2))
-hist(scale(mydata$PC3))
-hist(scale(mydata$PC4))
-
-mytree <- trees[[1]]
-mymod <- phylolm(I(vlog(cost)) ~ PC1 + PC2 + PC3 + PC4,
-                 phy = mytree, model = 'lambda', data = mydata)
-summary(mymod)
+# test mod -----------------------------
+# mytree <- trees[[1]]
+# mymod <- phylolm(I(vlog(cost)) ~ PC1 + PC2 + PC3 + PC4,
+#                  phy = mytree, model = 'lambda', data = mydata)
+# summary(mymod)
+rm(myPCA)
 ```
+<br/><br/>
 
-This block takes a while, don't rerun. Load from save.
-```{r, message=F, warning=F}
+
+
+```{R main model on 1k trees, message=F, warning=F}
+# DO NOT RERUN, LOAD FROM FILE -- takes several hours to complete. 
+
+# Distance for autocorrelation correction --------------------------------------
 # coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
 # k1 <- knn2nb(knearneigh(coords, longlat = T))
 # all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
 # nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
-# 
-# #for running across many trees. not finished.
+
+# Run model --------------------------------------------------------------------
 # sensimod <- my_tree_phylm_new(formula = I(vlog(cost)) ~ PC1 + PC2 + PC3 + PC4,
 #               data = mydata,
 #               phy = trees,
@@ -199,13 +246,23 @@ This block takes a while, don't rerun. Load from save.
 #               add_median_residuals = TRUE,
 #               moran_p = 0.99)
 # my_sensimod(sensimod)
-# 
+
 # save(sensimod, file = "fullmodel_results.rdata")
 ```
-<br><br><br><br><br>
+<br/><br/>
 
-```{r}
-load(file = "fullmodel_results.rdata")
+
+```{R Visualize full model results}
+# load data ----------------------------
+load(file = "~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data/fullmodel_results.rdata")
+
+
+# review results -----------------------
+my_sensimod(sensimod)
+summary(sensimod)
+
+# viz --------------------------------------------------------------------------
+# PC1, Panel A -------------------------
 pA <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC1))+
   geom_point()+
   geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[2]), intercept = 18.59079, color = "red")+
@@ -213,7 +270,8 @@ pA <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC1))+
   ylab("Log Elevational Cost")+
   xlab("Thermal Niche Breadth (PC1)")+
   labs(tag = "A")
-pA
+
+# PC2, Panel B -------------------------
 pB <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC2))+
   geom_point()+
   geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[3]), intercept = 18.59079, color = "red")+
@@ -221,6 +279,8 @@ pB <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC2))+
   ylab("Log Elevational Cost")+
   xlab("Mountain Mass & Elevation (PC2)")+
   labs(tag = "B")
+
+# PC3, Panel C -------------------------
 pC <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC3))+
   geom_point()+
   geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[4]), intercept = 18.59079, color = "red")+
@@ -228,6 +288,9 @@ pC <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC3))+
   ylab("Log Elevational Cost")+
   xlab("Range Separation & Size (PC3)")+
   labs(tag = "C")
+
+# PC4, Panel D -------------------------
+#   PC4 nonsignificant, so no fit line here. 
 pD <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC4))+
   geom_point()+
   theme_VJF() +
@@ -235,6 +298,8 @@ pD <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC4))+
   xlab("Dispersal Ability (PC4)")+
   labs(tag = "D")
 
+
+# output viz ---------------------------
 pdf("Main_Model.pdf", width = 8.5, height = 8.5)
 grid.arrange(pA, pB, pC, pD)
 dev.off()
@@ -242,72 +307,25 @@ dev.off()
 png("Main_Model.png", width = 8.5, height = 8.5, units = "in", res = 300)
 grid.arrange(pA, pB, pC, pD)
 dev.off()
-
-my_sensimod(sensimod)
-summary(sensimod)
+rm(pA, pB, pC, pD)
 ```
+<br/><br/>
 
 
-```{r}
 
-coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
-k1 <- knn2nb(knearneigh(coords, longlat = T))
-all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
-nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
+```{R Supplemental Figure latitudinal dist of data}
 
-#for running across many trees. not finished.
-mod1 <- my_tree_phylm_new(formula = PC1 ~ lat + I(lat^2),
-              data = mydata,
-              phy = trees,
-              n.tree = 100,
-              model = "lambda",
-              nb = nb,
-              basecols = ncol(mydata),
-              track = TRUE,
-              add_median_residuals = TRUE,
-              moran_p = 0.99)
-my_sensimod(mod1)
-save(mod1, file = "Smod1.rdata")
-
-pA <- ggplot(data = mydata, aes(y = PC1, x = lat))+
-  geom_point()+
-  # geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[2]), intercept = 18.59079, color = "red")+
-  theme_VJF() +
-  ylab("Log Elevational Cost")+
-  xlab("Latitude")+
-  labs(tag = "A")
-pA
-
-#for running across many trees. not finished.
-mod2 <- my_tree_phylm_new(formula = I((vlog(cost))) ~ lat + I(lat^2),
-              data = mydata,
-              phy = trees,
-              n.tree = 100,
-              model = "lambda",
-              nb = nb,
-              basecols = ncol(mydata),
-              track = TRUE,
-              add_median_residuals = TRUE,
-              moran_p = 0.99)
-my_sensimod(mod2)
-save(mod2, file = "Smod2.rdata")
-
-pB <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = lat))+
-  geom_point()+
-  # geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[2]), intercept = 18.59079, color = "red")+
-  theme_VJF() +
-  ylab("Log Elevational Cost")+
-  xlab("Latitude")+
-  labs(tag = "A")
-pB
-```
-
-```{r}
+# get world data -----------------------
 world <- ne_coastline(scale = "medium", returnclass = "sf")
+
+# set plotting parameters --------------
 size = 3
 alpha = 0.25
 i <- "lat"
-# Visualize
+
+
+# Visualize --------------------------------------------------------------------
+# Panel A - World Plot -----------------
 pA <- ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata[, i], decreasing = F),],
                                            aes(y=lat, x=lon),
                                            color = rgb(1,0,0,0.5), alpha = alpha, size = size, pch = 20)+
@@ -316,8 +334,8 @@ pA <- ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata[, i], dec
     scale_y_continuous(breaks = seq(-100, 100, by = 20)) + 
     scale_x_continuous(breaks = seq(-200, 200, by = 50)) +
     theme_VJF()
-pA
 
+# Panel B - hist/dens ------------------
 pB <- ggplot(data = mydata, aes(x = lat))+
   geom_histogram(aes(y=..density..),binwidth = 1)+
   geom_density(color = "red", fill = rgb(1,0,0,0.1), trim = T)+
@@ -328,8 +346,8 @@ pB <- ggplot(data = mydata, aes(x = lat))+
   xlab("") +
   coord_flip()+
   labs(tag = "B")
-pB
 
+# output viz ---------------------------
 pdf("Latpts.pdf", width = 7*1.5, height = 2.4*1.5)
 lay <- matrix(data = c(1,1,2), nrow = 1)
 grid.arrange(pA, pB, layout_matrix = lay)
@@ -339,10 +357,13 @@ png("Latpts.png", width = 7*1.5, height = 2.4*1.5, units = "in", res = 300)
 lay <- matrix(data = c(1,1,2), nrow = 1)
 grid.arrange(pA, pB, layout_matrix = lay)
 dev.off()
+rm(pA, pB, i, size, alpha, world, lay)
 ```
+<br/><br/>
 
-```{r}
 
+```{R Supplemental Figure for Pair Age}
+# Panel A - all data -------------------
 pA <- ggplot(data = mydata, aes(x = pair_age_nt))+
   geom_histogram(aes(y=..density..), binwidth = 1)+
   geom_density(color = "red", fill = rgb(1,0,0,0.1), trim = T)+
@@ -351,8 +372,8 @@ pA <- ggplot(data = mydata, aes(x = pair_age_nt))+
   theme_VJF() +
   xlab("Pair Age (Million Years)") +
   labs(tag = "A")
-pA
 
+# Panel B - <8mya ----------------------
 pB <- ggplot(data = mydata[mydata$pair_age_nt < 8,], aes(x = pair_age_nt))+
   geom_histogram(aes(y=..density..), binwidth = 0.1)+
   geom_density(color = "red", fill = rgb(1,0,0,0.1), trim = T)+
@@ -361,8 +382,8 @@ pB <- ggplot(data = mydata[mydata$pair_age_nt < 8,], aes(x = pair_age_nt))+
   theme_VJF() +
   xlab("Pair Age (Million Years)") +
   labs(tag = "B")
-pB
 
+# output viz ---------------------------
 pdf("pairage.pdf", width = 5, height = 5)
 grid.arrange(pA, pB, nrow = 2)
 dev.off()
@@ -370,37 +391,35 @@ dev.off()
 png("pairage.png", width = 5, height = 5, units = "in", res = 300)
 grid.arrange(pA, pB,  nrow = 2)
 dev.off()
+rm(pA, pB)
 ```
+<br/><br/>
 
-
-
-
-
-
-```{r, include=F}
-# add another metric for range size (use only this or boundary length OR neither. NOT BOTH).
-load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/newdataforpca.Rdata")
+Sensitivity Analysis Blocks
+```{R Prep sensitivity data, include=F}
+#  Load data and subset --------------------------------------------------------
+load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data/newdataforpca.Rdata")
 mydata <- mydata[which(mydata$MAT_overlap >= 0.9),]
 mydata <- mydata[which(mydata$pair_age < 8),]
 mydata <- mydata[which(mydata$landgap == F),]
 mydata <- mydata[mydata$pd0 <= 1500*1000,]
 
+# recalculate range size -------------------------------------------------------
 load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/cbPAM.rdata")
 load("/Users/boterolab1/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/PREP/PAM/Data/LonLat_BirdPAM_raster.rdata")
 mydata$npamcells <- NA
 for(i in 1:nrow(mydata)){
   sp1 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.1bl[i])]
-sp1 <- as.data.frame(sp1[sp1[,3] == 1,]); colnames(sp1) <- c("lon", "lat", "pres")
-sp1 <- data.frame(cbind(lon=sp1$lon, lat = sp1$lat)); sp1 <- sp1[complete.cases(sp1),]
-temp1 <- nrow(sp1)
-
-sp2 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.2bl[i])]
-sp2 <- as.data.frame(sp2[sp2[,3] == 1,]); colnames(sp2) <- c("lon", "lat", "pres")
-sp2 <- data.frame(cbind(lon=sp2$lon, lat = sp2$lat)); sp2 <- sp2[complete.cases(sp2),]
-temp2 <- nrow(sp2)
-mydata$npamcells[i] <- mean(c(temp1, temp2), na.rm = T)
+  sp1 <- as.data.frame(sp1[sp1[,3] == 1,]); colnames(sp1) <- c("lon", "lat", "pres")
+  sp1 <- data.frame(cbind(lon=sp1$lon, lat = sp1$lat)); sp1 <- sp1[complete.cases(sp1),]
+  sp2 <- cbPAM[,c("Longitude(x)","Latitude(y)",mydata$Species.2bl[i])]
+  sp2 <- as.data.frame(sp2[sp2[,3] == 1,]); colnames(sp2) <- c("lon", "lat", "pres")
+  sp2 <- data.frame(cbind(lon=sp2$lon, lat = sp2$lat)); sp2 <- sp2[complete.cases(sp2),]
+  mydata$npamcells[i] <- mean(c(nrow(sp1), nrow(sp2)), na.rm = T)
 }
+rm(cbPAM, LonLat_BirdPAM_raster, sp1, sp2, i)
 
+# transform variables for PCA --------------------------------------------------
 mydata$npamcells <- scale(myBCtransform(mydata$npamcells))
 mydata$tas_breadth <- scale(myBCtransform(mydata$tas_breadth))
 mydata$tas_position <- scale(myBCtransform(mydata$tas_position))
@@ -414,32 +433,40 @@ mydata$pd25 <- scale(myBCtransform(mydata$pd25))
 mydata$boundary_length <- scale(myBCtransform(mydata$boundary_length))
 mydata$meanEle <- scale(myBCtransform(mydata$meanEle))
 ```
+<br/><br/>
 
-```{r, message=F, warning=F}
+
+```{R Sensitivity PCA, message=F, warning=F}
+# Run PCA ------------------------------
 myPCA <- principal(mydata[,c('tas_breadth', 'tas_position', 'pcp_breadth',
                              'pcp_position', 'mtn_mass2', 'wtr_mass2', "npamcells",
                              'dispersal_ability', 'pair_age',"pd25", 'meanEle')], nfactors = 10, rotate = "none")
-write.csv(myPCA$loadings, file = "test.csv")
+
+# View and assign loadings -------------
 myPCA$loadings
 mydata$PC1 <- myPCA$scores[,'PC1']
 mydata$PC2 <- myPCA$scores[,'PC2']
 mydata$PC3 <- myPCA$scores[,'PC3']
 mydata$PC4 <- myPCA$scores[,'PC4']
 
-mytree <- trees[[1]]
-mymod <- phylolm(I(vlog(cost)) ~ PC1 + PC2 + PC3 + PC4,
-                 phy = mytree, model = 'lambda', data = mydata)
-summary(mymod)
+# view results for one tree ------------
+# mytree <- trees[[1]]
+# mymod <- phylolm(I(vlog(cost)) ~ PC1 + PC2 + PC3 + PC4,
+#                  phy = mytree, model = 'lambda', data = mydata)
+# summary(mymod)
 ```
+<br/><br/>
 
-This block takes a while, don't rerun. Load from save.
-```{r, message=F, warning=F}
+```{R Sensitivity Model, message=F, warning=F}
+# DO NOT RERUN, LOAD FROM FILE -- takes several hours to complete. 
+
+# Distance for autocorrelation correction --------------------------------------
 # coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
 # k1 <- knn2nb(knearneigh(coords, longlat = T))
 # all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
 # nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
-# 
-# #for running across many trees. not finished.
+
+# Run model --------------------------------------------------------------------
 # sensimod <- my_tree_phylm_new(formula = I(vlog(cost)) ~ PC1 + PC2 + PC3 + PC4,
 #               data = mydata,
 #               phy = trees,
@@ -453,10 +480,20 @@ This block takes a while, don't rerun. Load from save.
 # my_sensimod(sensimod)
 # save(sensimod, file = "modelResults_sensitivity.rdata")
 ```
+<br/><br/>
 
-```{r}
-load(file = "modelResults_sensitivity.rdata")
+
+```{R Visualize sensitivity model results}
+# load data ----------------------------
+load(file = "~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/Analyze_Processed_Cluster_Outputs/Data/modelResults_sensitivity.rdata")
+
+
+# review results -----------------------
 my_sensimod(sensimod)
+summary(sensimod)
+
+# viz --------------------------------------------------------------------------
+# PC1, Panel A -------------------------
 pA <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC1))+
   geom_point()+
   geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[2]), intercept = 18.42128, color = "red")+
@@ -464,18 +501,24 @@ pA <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC1))+
   ylab("Log Elevational Cost")+
   xlab("Thermal Niche Breadth (PC1)")+
   labs(tag = "A")
+
+# PC2, Panel B -------------------------
 pB <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC2))+
   geom_point()+
   theme_VJF() +
   ylab("Log Elevational Cost")+
   xlab("Mountain Mass & Elevation (PC2)")+
   labs(tag = "B")
+
+# PC3, Panel C -------------------------
 pC <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC3))+
   geom_point()+
   theme_VJF() +
   ylab("Log Elevational Cost")+
   xlab("Range Separation & Size, \n Precipitation (PC3)")+
   labs(tag = "C")
+
+# PC4, Panel D -------------------------
 pD <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC4))+
   geom_point()+
   theme_VJF() +
@@ -483,6 +526,7 @@ pD <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC4))+
   xlab("Dispersal Ability (PC4)")+
   labs(tag = "D")
 
+# output viz ---------------------------
 pdf("Sensitivity_Model.pdf", width = 8.5, height = 8.5)
 grid.arrange(pA, pB, pC, pD)
 dev.off()
@@ -490,29 +534,5 @@ dev.off()
 png("Sensitivity_Model.png", width = 8.5, height = 8.5, units = "in", res = 300)
 grid.arrange(pA, pB, pC, pD)
 dev.off()
-
-my_sensimod(sensimod)
-summary(sensimod)
+rm(pA, pB, pC, pD)
 ```
-
-
-
-
-
-
-
-# code to mine----- old and unknown.
-```{r}
-world <- ne_coastline(scale = "medium", returnclass = "sf")
-size = 3
-alpha = 0.25
-# Visualize
-for(i in c("PC1", "PC2", "PC3", "PC4")){
-  p <- ggplot(world)+ geom_sf() + geom_point(data = mydata[order(mydata[, i], decreasing = F),],
-                                             aes(y=lat, x=lon, color = scale(myBCtransform(mydata[, i]))), alpha = alpha, size = size, pch = 20)+
-    ggtitle(i)+
-    scale_color_viridis()
-  print(p)
-}
-```
- <br><br><br><br><br>
