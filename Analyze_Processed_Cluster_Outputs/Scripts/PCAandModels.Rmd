@@ -395,6 +395,35 @@ rm(pA, pB)
 ```
 <br/><br/>
 
+
+```{R thermal breadth and latitude}
+# Distance for autocorrelation correction --------------------------------------
+coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+k1 <- knn2nb(knearneigh(coords, longlat = T))
+all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
+nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
+
+# Run model --------------------------------------------------------------------
+modtb_l <- my_tree_phylm_new(formula = tas_breadth ~ lat + I(lat^2),
+              data = mydata,
+              phy = trees,
+              n.tree = 1000,
+              model = "lambda",
+              nb = nb,
+              basecols = ncol(mydata),
+              track = TRUE,
+              add_median_residuals = TRUE,
+              moran_p = 0.99)
+my_sensimod(modtb_l)
+
+save(modtb_l, file = "modtb_l_results.rdata")
+
+```
+<br/><br/>
+
+
+
+
 Sensitivity Analysis Blocks
 ```{R Prep sensitivity data, include=F}
 #  Load data and subset --------------------------------------------------------
