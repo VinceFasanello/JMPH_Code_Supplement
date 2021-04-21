@@ -268,7 +268,7 @@ pA <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC1))+
   geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[2]), intercept = 18.59079, color = "red")+
   theme_VJF() +
   ylab("Log Elevational Cost")+
-  xlab("Thermal Niche Breadth (PC1)")+
+  xlab("Temperature Range (PC1)")+
   labs(tag = "A")
 
 # PC2, Panel B -------------------------
@@ -397,27 +397,60 @@ rm(pA, pB)
 
 
 ```{R thermal breadth and latitude}
-# Distance for autocorrelation correction --------------------------------------
-coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
-k1 <- knn2nb(knearneigh(coords, longlat = T))
-all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
-nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
+# # Distance for autocorrelation correction --------------------------------------
+# coords<-cbind(mydata$lon, mydata$lat); coords<-as.matrix(coords) ; row.names(coords)<-rownames(mydata)
+# k1 <- knn2nb(knearneigh(coords, longlat = T))
+# all.linked <- max(unlist(nbdists(k1, coords, longlat = T)))
+# nb<- dnearneigh(coords,row.names = row.names(coords), d1=0,d2=all.linked,longlat=T)
+# 
+# # Run model --------------------------------------------------------------------
+# modtb_l <- my_tree_phylm_new(formula = tas_breadth ~ lat + I(lat^2),
+#               data = mydata,
+#               phy = trees,
+#               n.tree = 1000,
+#               model = "lambda",
+#               nb = nb,
+#               basecols = ncol(mydata),
+#               track = TRUE,
+#               add_median_residuals = TRUE,
+#               moran_p = 0.99)
+# my_sensimod(modtb_l)
+# 
+# save(modtb_l, file = "modtb_l_results.rdata")
+load(file = "modtb_l_results.rdata")
 
-# Run model --------------------------------------------------------------------
-modtb_l <- my_tree_phylm_new(formula = tas_breadth ~ lat + I(lat^2),
-              data = mydata,
-              phy = trees,
-              n.tree = 1000,
-              model = "lambda",
-              nb = nb,
-              basecols = ncol(mydata),
-              track = TRUE,
-              add_median_residuals = TRUE,
-              moran_p = 0.99)
+# review results -----------------------
 my_sensimod(modtb_l)
+summary(modtb_l)
 
-save(modtb_l, file = "modtb_l_results.rdata")
+# viz --------------------------------------------------------------------------
+# linedata -----------------------------
+xdata <- seq(min(mydata$lat), max(mydata$lat), length.out = 200)
+ydata <- as.numeric(my_sensimod(modtb_l)$summodel$Estimate[3])*xdata + 
+  as.numeric(my_sensimod(modtb_l)$summodel$Estimate[2])*xdata^2 + 
+  as.numeric(my_sensimod(modtb_l)$summodel$Estimate[1])
 
+summary(mydata$tas_breadth)
+
+# PC1, Panel A -------------------------
+pA <- ggplot()+
+  geom_point(data = mydata, aes(y = tas_breadth, x = lat))+
+  # stat_smooth(data = mydata, aes(y = tas_breadth, x = lat), method = "lm", formula = y ~ x + I(x^2), color = "red")+
+  geom_line(aes(x = xdata, y = ydata), inherit.aes = F, color = "red")+
+  theme_VJF() +
+  ylab("Temperature Range")+
+  xlab("Latitude")+
+  labs(tag = "A")
+
+# output viz ---------------------------
+pdf("modtb_l.pdf", width = 8.5, height = 8.5/1.5)
+pA
+dev.off()
+
+png("modtb_l.png", width = 8.5, height = 8.5/1.5, units = "in", res = 300)
+pA
+dev.off()
+rm(pA)
 ```
 <br/><br/>
 
@@ -528,7 +561,7 @@ pA <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC1))+
   geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[2]), intercept = 18.42128, color = "red")+
   theme_VJF() +
   ylab("Log Elevational Cost")+
-  xlab("Thermal Niche Breadth (PC1)")+
+  xlab("Temperature Range (PC1)")+
   labs(tag = "A")
 
 # PC2, Panel B -------------------------
