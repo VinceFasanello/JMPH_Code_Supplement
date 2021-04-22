@@ -224,7 +224,6 @@ rm(myPCA)
 <br/><br/>
 
 
-
 ```{R main model on 1k trees, message=F, warning=F}
 # DO NOT RERUN, LOAD FROM FILE -- takes several hours to complete. 
 
@@ -454,6 +453,44 @@ rm(pA)
 ```
 <br/><br/>
 
+
+
+```{R Exploratory Plots}
+
+# pc1
+plot((mydata$tas_breadth) , (mydata$pcp_position))
+plot((mydata$tas_breadth) , (mydata$npamcells))
+plot((mydata$tas_breadth) , vlog(mydata$distance))
+plot((mydata$tas_breadth) , (mydata$pcp_breadth))
+plot((mydata$tas_breadth) , (mydata$wtr_mass2))
+plot((mydata$tas_breadth) , (mydata$tas_position))
+
+plot((mydata$PC1) , abs(mydata$lat))
+
+plot((mydata$PC1) , (mydata$tas_breadth))
+plot((mydata$PC1) , (mydata$pcp_position))
+plot((mydata$PC1) , (mydata$npamcells))
+plot((mydata$PC1) , vlog(mydata$distance))
+plot((mydata$PC1) , (mydata$pcp_breadth))
+plot((mydata$PC1) , (mydata$wtr_mass2))
+plot((mydata$PC1) , (mydata$tas_position))
+
+plot(abs(mydata$lat) , (mydata$tas_breadth))
+plot(abs(mydata$lat) , (mydata$pcp_position))
+plot(abs(mydata$lat) , (mydata$npamcells))
+plot(abs(mydata$lat) , vlog(mydata$distance))
+plot(abs(mydata$lat) , (mydata$pcp_breadth))
+plot(abs(mydata$lat) , (mydata$wtr_mass2))
+plot(abs(mydata$lat) , (mydata$tas_position))
+
+# pc2
+plot((mydata$meanEle) , (mydata$tas_position))
+
+# pc3
+plot(vlog(mydata$cost) , vlog(mydata$distance))
+plot(vlog(mydata$npamcells) , vlog(mydata$distance))
+
+```
 
 
 
