@@ -465,7 +465,26 @@ plot((mydata$tas_breadth) , (mydata$pcp_breadth))
 plot((mydata$tas_breadth) , (mydata$wtr_mass2))
 plot((mydata$tas_breadth) , (mydata$tas_position))
 
-plot((mydata$PC1) , abs(mydata$lat))
+plot((mydata$lat) , (mydata$PC1), xlab = "Latitude", ylab = "PC1")
+pA <- ggplot()+
+  geom_point(data = mydata, aes(y = PC1, x = lat))+
+  theme_VJF() +
+  ylab("PC1")+
+  xlab("Latitude")
+pA
+pdf("PC1LAT.pdf", width = 5, height = 3)
+pA
+dev.off()
+
+pA <- ggplot()+
+  geom_point(data = mydata, aes(y = PC1, x = abs(lat)))+
+  theme_VJF() +
+  ylab("PC1")+
+  xlab("Absolute Latitude")
+pA
+pdf("PC1ABSLAT.pdf", width = 5, height = 3)
+pA
+dev.off()
 
 plot((mydata$PC1) , (mydata$tas_breadth))
 plot((mydata$PC1) , (mydata$pcp_position))
@@ -485,10 +504,41 @@ plot(abs(mydata$lat) , (mydata$tas_position))
 
 # pc2
 plot((mydata$meanEle) , (mydata$tas_position))
+pA <- ggplot()+
+  geom_point(data = mydata, aes(y = meanEle, x = mtn_mass2))+
+  theme_VJF() +
+  ylab("Mean Elev.")+
+  xlab("Mtn. Mass")
+pB <- ggplot()+
+  geom_point(data = mydata, aes(y = meanEle, x = tas_position))+
+  theme_VJF() +
+  ylab("Mean Elev")+
+  xlab("Mean Temp.")
+pC <- ggplot()+
+  geom_point(data = mydata, aes(y = tas_position, x = mtn_mass2))+
+  theme_VJF() +
+  ylab("Mean Temp.")+
+  xlab("Mtn. Mass")
+grid.arrange(pA, pB,pC,  nrow = 2)
+
+pdf("PC2bivar.pdf", width = 10, height = 6)
+grid.arrange(pA, pB,pC,  nrow = 2)
+dev.off()
+
 
 # pc3
 plot(vlog(mydata$cost) , vlog(mydata$distance))
 plot(vlog(mydata$npamcells) , vlog(mydata$distance))
+
+pA <- ggplot()+
+  geom_point(data = mydata, aes(x = npamcells, y = log(distance)))+
+  theme_VJF() +
+  xlab("Range Size")+
+  ylab("ln Distance")
+pA
+pdf("PC3bivar.pdf", width = 5, height = 3)
+pA
+dev.off()
 
 ```
 
