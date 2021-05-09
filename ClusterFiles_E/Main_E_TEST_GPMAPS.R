@@ -10,8 +10,8 @@ require(gdistance) # will load dependencies: raster, sp, igraph, Matrix
 require(rgeos)
 
 # directory paths --------------------------------------------------------------
-wdin <- "/scratch/vincefasanello/inputs_e"
-wdout <- "/scratch/vincefasanello/outputs_e"
+wdin <- "~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/ClusterFiles_E/to_scratch_inputs_e"
+wdout <- "~/Box Sync/CB_VF_Shared/Dry_Lab/Projects/JMPH/ClusterFiles_E"
 
 # inputs -----------------------------------------------------------------------
 setwd(wdin)
@@ -21,7 +21,9 @@ load(file = paste0("cbPAM", batchNumber, ".rdata")); cbPAM <- get(paste0("cbPAM"
 load(file = "Elev_raster.rdata")
 Elev_raster[values(Elev_raster) <= 0] <- NA
 load(file = paste0("cooneyp", batchNumber, ".rdata")); cooneyp <- get(paste0("cooneyp", batchNumber)); rm(list = paste0("cooneyp", batchNumber)); gc()
+cooneyp <- cooneyp[c(1,2),]
 load(file = paste0("a_mats_block", batchNumber, ".rdata"))
+
 
 setwd(wdout)
 # load(file = paste0(batchNumber, "_Main_Batch_Results_origin_",originStart,"_to_",originEnd,"_E.rdata")) # willy only exist if there is a hotstart
@@ -88,8 +90,12 @@ for (i in sp_start:nrow(cooneyp)){
         if (!is.na(mypath_id)){
           savelist_full_paths_ele <- c(savelist_full_paths_ele, mypaths$sPath[mypath_id])
 
-          # plot(log(cost_map+1), col = terrain.colors(255)); points(coordinates(data.frame(lon = m_a_lons_block[i,j],lat = m_a_lats_block[i,j]))); lines(mypaths$sPath)
-          # lines(mypaths$sPath[mypath_id], col = "cyan")
+          pdf("test_gp_allpaths_pt4.pdf", width = 10, height = 9)
+          plot(log(cost_map+1), col = terrain.colors(255),ylim = c(-20,20), xlim = c(-90,-45), legend = F)
+          points(coordinates(data.frame(lon = m_a_lons_block[i,j],lat = m_a_lats_block[i,j])), cex = 2.5);
+          lines(mypaths$sPath, lwd = 3)
+          lines(mypaths$sPath[mypath_id], col = "cyan", lwd = 2)
+          dev.off()
 
           m_aB_ele_mcosts_block[i,j] <- mypaths$mcost[mypath_id]
           m_aB_ele_plengths_block[i,j] <- mypaths$plen[mypath_id]
