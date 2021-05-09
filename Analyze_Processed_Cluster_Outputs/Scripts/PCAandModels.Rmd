@@ -266,7 +266,7 @@ pA <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC1))+
   geom_point()+
   geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[2]), intercept = 18.59079, color = "red")+
   theme_VJF() +
-  ylab("Log Elevational Cost")+
+  ylab("ln Elevational Barrier Size")+
   xlab("Temperature Range (PC1)")+
   labs(tag = "A")
 
@@ -275,7 +275,7 @@ pB <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC2))+
   geom_point()+
   geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[3]), intercept = 18.59079, color = "red")+
   theme_VJF() +
-  ylab("Log Elevational Cost")+
+  ylab("ln Elevational Barrier Size")+
   xlab("Mountain Mass & Elevation (PC2)")+
   labs(tag = "B")
 
@@ -284,8 +284,8 @@ pC <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC3))+
   geom_point()+
   geom_abline(slope = as.numeric(my_sensimod(sensimod)$summodel$Estimate[4]), intercept = 18.59079, color = "red")+
   theme_VJF() +
-  ylab("Log Elevational Cost")+
-  xlab("Range Separation & Size (PC3)")+
+  ylab("ln Elevational Barrier Size")+
+  xlab("Distance (PC3)")+
   labs(tag = "C")
 
 # PC4, Panel D -------------------------
@@ -293,7 +293,7 @@ pC <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC3))+
 pD <- ggplot(data = mydata, aes(y = I((vlog(cost))), x = PC4))+
   geom_point()+
   theme_VJF() +
-  ylab("Log Elevational Cost")+
+  ylab("ln Elevational Barrier Size")+
   xlab("Dispersal Ability (PC4)")+
   labs(tag = "D")
 
@@ -318,7 +318,7 @@ rm(pA, pB, pC, pD)
 world <- ne_coastline(scale = "medium", returnclass = "sf")
 
 # set plotting parameters --------------
-size = 3
+size = 1.75
 alpha = 0.25
 i <- "lat"
 
@@ -342,7 +342,7 @@ pB <- ggplot(data = mydata, aes(x = lat))+
   scale_x_continuous(limits = c(-85, 85), breaks = c(-80, -60, -40, -20, 0, 20, 40, 60, 80), expand = c(0,0))+
   scale_y_continuous(expand = c(0,0))+
   theme_VJF() +
-  xlab("") +
+  xlab("") + ylab("Density")+
   coord_flip()+
   labs(tag = "B")
 
