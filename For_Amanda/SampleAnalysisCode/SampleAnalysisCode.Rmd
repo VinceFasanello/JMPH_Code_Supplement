@@ -1,0 +1,408 @@
+---
+title: "SampleAnalysisCode"
+output: html_document
+---
+
+This R Notebook file contains sanitized sample code for Vincent Fasanello's NA Plant Health 
+Risk Assessment Scientist Application at Bayer. 
+
+Description:
+    This script executes a phylogenetic linear model analysis that accounts for phylogenetic
+    uncertainty (variation in hypothesized phylogenetic relationships among species), while also
+    accounting for spatial autocorrelation via eigenvector spatial filtering. Biological,
+    climatological, and geospatial data are used to predict variation in dispersal costs for
+    sister species pairs (pairs of species that are each-others closest living relative). These 
+    data frequently suffer from multicollinearity. Therefore, dimensionality reduction is employed
+    upstream of model implementation. Sample data are provided for 235 avian sister species pairs 
+    for which Janzen's physiological barrier hypothesis 
+    (Janzen 1967, https://doi.org/10.1093/icb/icj003) is likely to apply. However, this analysis 
+    script is flexible and capable of successfully conducting the above analyses for a wide range
+    of inputs that follow the "Inputs" specifications outlined below. 
+    
+Inputs:
+  sample_data.rdata -- a .rdata file containing a single dataframe named "mydata". Each row in this
+  dataframe corresponds to a sister species pair. Row names must be species names, but it does not 
+  matter which species from the pair is used for the row naming, either will be acceptable. Formatting
+  requirements follow. Note: the number of rows in this dataframe is the primary determinant for the
+  run time of this script. 
+      Column 1: response variable (here, dispersal cost, but any continuous response variable 
+      is acceptable as long as it is named "cost").
+      Column 2: Longitude in the longlat projection coordinate reference system, "lon"
+      Column 3: Latitude in the longlat projection coordinate reference system, "lat"
+      Column 4 - Column N: Predictors for the model, any naming scheme is acceptable and predictors
+      can be continuous, categorical, or ordinal. At least 2 columns must be provided, however,
+      There is no restriction on the upper limit for the number of columns (predictors).  
+      
+  tree_sample.rdata -- a .rdata file containing (at a minimum) a single multiPhylo object named 
+  "trees" with at least 2 phylogenetic hypotheses. There is no upper limit on the number of 
+  phylogenetic hypotheses that can be included in this file, but note that the "n.tree" 
+  specification in the "Control Block" code block is one of the major determinants of run time
+  for this script. 
+  
+  ***Row Names in the "mydata" object must be species names using the same naming scheme 
+     that is used in the phylogenetic hypotheses in "trees". Row names that are in "mydata" but not
+     in phylogenetic tree tips in "trees" will be dropped and visa versa. 
+    
+Outputs:
+  sample_code_results.rdata -- a .rdata file containing three objects 
+      phylores: phylogenetic linear model output object.
+      pcares: principal component analysis output object.
+      resp_logged: Boolean indicating whether or not the response variable was log transformed
+      by the script.
+  sample_code_pca_summary.csv -- loadings and variance data for PCA as a .csv file. 
+  sample_code_phylo_summary.csv -- phylogenetic linear model summary as a .csv file. 
+
+```{r Clean Workspace}
+rm(list = ls())
+gc()
+```
+
+```{r Control Block}
+# set specifications for phylogenetic regression -------------------------------
+n.tree <- 10 # numeric: number of phylogenetic trees to use (1:n.tree from tree_sample.rdata input file)
+  # ***Set n.tree to 10 for a very quick example run (< 5 minutes on my 2015 Macbook Pro).
+  # ***Set n.tree to 1000 for a full run of this script (> 1 hour on my 2015 Macbook Pro). 
+model <- "lambda" # character: covariance model, options = "BM", "OUrandomRoot", "OUfixedRoot", "lambda", "kappa", "delta", "EB", "trend"
+moran_p <- 0.99 # numeric: Moran's I test threshold under which spatial filtering will be applied.
+track <- TRUE # Boolean: Include progress bar?
+add_median_residuals <- TRUE # Boolean: Add residuals to model output?
+track_spatial_vectors <- TRUE # Boolean: Track n spatial eigenvectors as printout while running?
+```
+
+```{r Set Directories}
+wdIn <- "~/ReplaceThisTextWithInputDirectoryPath-LocationWhereThisFileAndAssociatedDataReside" # input directory
+wdOut <- "~/ReplaceThisTextWithDesiredOutputDirectoryPath" # output directory
+```
+
+```{r Load Packages}
+# load packages if installed. Install and load if not installed.
+for (i in c("EnvStats", "psych", "geiger", "phylolm", "sensiPhy", "tidyr",
+            "raster", "dplyr", "spdep", "spatialreg", "lasso2")){
+  if(!require(i, character.only = TRUE)) {install.packages(i, dependencies = TRUE)}
+  require(i, character.only = TRUE)
+}
+```
+
+```{r Load Input Data}
+setwd(wdIn) 
+load("sample_data.rdata") # load dataframe for analysis
+load("tree_sample.rdata") # load phylogenetic hypotheses
+```
+
+```{r Define Functions}
+# FUNCTION: safeLog ################################################################################
+#     --------------------------------------------------------------------------
+#     Description: natural logarithm transformation safe for negative values.
+#     Inputs:
+#         x = a vector of numeric values.
+#     Outputs:
+#         natural logarithm transformed x.
+#     --------------------------------------------------------------------------
+safeLog <- function(x) {log( x + abs(min( x , na.rm = T)) + 1)}
+
+# FUNCTION: bcTransform ############################################################################
+#     --------------------------------------------------------------------------
+#     Description: transform for normality using boxcox transformation.
+#     Inputs:
+#         x = a vector of numeric values.
+#     Outputs:
+#         x transformed for normality and scaled.
+#     --------------------------------------------------------------------------
+bcTransform <- function(x) {
+  # shift scale to positive numbers and identify optimal lambda for box-cox transformation
+  mylambda <- boxcox(as.numeric(x)-min(as.numeric(x))+1, optimize = T)$lambda
+  x <- scale(boxcoxTransform(as.numeric(x)-min(as.numeric(x))+1, mylambda)) # transform & scale
+  return(x)
+}
+
+# FUNCTION: sfMultiPhylolm #########################################################################
+#     --------------------------------------------------------------------------
+#     Description: Build on the phylogenetic linear model function from the phylolm package to 
+#                  account for phylogenetic uncertainty and spatial autocorrelation. 
+#     Inputs:
+#         formula = a model formula.
+#         data = a data frame containing variables in the model.
+#         phy = a set of phylogenetic tree of type multiPhylo [with branch lengths]
+#         n.tree = a numeric, first n elements to use from phy
+#         model = a model for the covariance 
+#         nb = a list of integer vectors giving the region id numbers for neighbors satisfying the
+#              distance criteria --> Generated by dnearneigh {spdep}
+#         basecols = a numeric, n columns in data.
+#         moran_p = a numeric. the p-value for the Moran.test assessment.
+#         track = a boolean for progress bar inclusion.
+#         add_median_residuals = a boolean for species residuals calculation.
+#         track_spatial_vectors = a boolean for spatial vector reporting inclusion.
+#     Outputs:
+#         A list containing model outputs.
+#     --------------------------------------------------------------------------
+sfMultiPhylolm <- function(formula, data, phy, n.tree = 2, model = "lambda", nb, basecols, moran_p = 0.05,
+                             track = TRUE, add_median_residuals = TRUE, track_spatial_vectors = TRUE, ...) {
+  
+  # Catch Common Errors --------------------------------------------------------
+  if (!inherits(formula, "formula")) {stop("formula must be class 'formula'")}
+  if (!inherits(data, "data.frame")) {stop("data must be class 'data.frame'")}
+  if (!inherits(phy, "multiPhylo")) {stop("phy must be class 'multiPhylo'")}
+  if (length(phy) < n.tree) {stop("'n.tree' must be smaller (or equal) than the number of trees in the 'multiPhylo' object")}
+  if ((model == "trend") && (sum(ape::is.ultrametric(phy)) > 1)) {stop("Trend is unidentifiable for ultrametric trees., see ?phylolm for details")}
+  
+  # On pass, match data and phylogeny ------------------------------------------
+  else {datphy <- match_dataphy(formula, data, phy, ...)}
+  full.data <- datphy[[1]] # cropped data matching phylogeny
+  phy <- datphy[[2]] # cropped phylogeny matching data
+  
+  # run model on first phylogeny in set ----------------------------------------
+  # to capture data for output formatting. 
+  mod = try(phylolm::phylolm(formula, data = full.data, model = model, phy = phy[[1]]), FALSE)
+  
+  # init model results frame ---------------------------------------------------
+  formula_args <- names(coef(mod)) # capture the predictors...
+  formula_args <- formula_args[!formula_args %in% "(Intercept)"]
+  p<-expand.grid(c("(Intercept)", formula_args), c("", ".se", ".pval")) # add slots
+  sensi.estimates.cols <- c("n.tree",paste(p$Var1, p$Var2, sep = ""), "aic", "optpar") # format...
+  sensi.estimates <- data.frame(matrix(rep(NA, length(sensi.estimates.cols)), nrow = 1))
+  sensi.estimates <- sensi.estimates[-1, ]
+  names(sensi.estimates) <- sensi.estimates.cols
+  
+  # init tracking --------------------------------------------------------------
+  counter = 1 # tree counter
+  errors <- NULL # model errors...
+  c.data <- list()
+  residuals <- data.frame("Species" = rownames(full.data)) # residuals
+  if (track == TRUE) {pb <- utils::txtProgressBar(min = 0, max = n.tree, style = 3)} # progress bar
+  
+  # MAIN LOOP: run phylogenetic models with spatial ----------------------------
+  # eigenvector filtering for n.tree trees. 
+  for (j in seq(from = 1,to = n.tree)) { # for each tree 1:n.tree...
+    # prep data ------------------------------------------------------
+    full.data <- full.data[phy[[j]]$tip.label, ] # drop rows not in phylogeny
+    
+    # Run phylogenetic model -----------------------------------------
+    mod = try(phylolm::phylolm(formula, data = full.data, model = model, phy = phy[[j]]), FALSE)
+    
+    # Catch errors & step if error -----------------------------------
+    if (isTRUE(class(mod) == "try-error")) {
+      error <- j
+      names(error) <- rownames(c.data$full.data)[j]
+      errors <- c(errors, error)
+      next
+    }
+    
+    # Proceed if no error --------------------------------------------
+    else {
+      # Calculate spatial autocorrelation ------------------
+      mor <- moran.test(residuals(mod), nb2listw(nb, zero.policy = TRUE), zero.policy = TRUE) 
+      
+      # Add spatial eigenvectors if autocorr below thresh --
+      if (mor$p.value <= moran_p) {
+        sarcol <- SpatialFiltering(formula = formula, data = full.data, nb = nb, style = "W", ExactEV = TRUE, zero.policy = TRUE) # spatial eigenvector calculation
+        full.data[ ,c((basecols + 1):(basecols + 1 + dim(fitted(sarcol))[2] - 1))] <- fitted(sarcol) # append to dataframe...
+        colnames(full.data)[(basecols + 1):ncol(full.data)] <- c(paste0("V", 1:length((basecols + 1):ncol(full.data))))
+        nspace_terms <- ncol(full.data) - basecols # capture number of spatial terms
+        
+        # add all spatial vectors ----------------
+        if(nspace_terms == 0) {formula_space <- formula; vadded <- 0}
+        else if(nspace_terms == 1) {formula_space <-  merge(formula, ~V1); vadded <- 1}
+        else if(nspace_terms == 2) {formula_space <-  merge(formula, ~V1 + V2); vadded <- 2}
+        else if(nspace_terms == 3) {formula_space <-  merge(formula, ~V1 + V2 + V3); vadded <- 3}
+        else if(nspace_terms == 4) {formula_space <-  merge(formula, ~V1 + V2 + V3 + V4); vadded <- 4}
+        else if(nspace_terms == 5) {formula_space <-  merge(formula, ~V1 + V2 + V3 + V4 + V5); vadded <- 5}
+        else if(nspace_terms == 6) {formula_space <-  merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6); vadded <- 6}
+        else if(nspace_terms == 7) {formula_space <-  merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7); vadded <- 7}
+        else if(nspace_terms == 8) {formula_space <-  merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8); vadded <- 8}
+        else if(nspace_terms == 9) {formula_space <-  merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9); vadded <- 9}
+        else if(nspace_terms == 10) {formula_space <- merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9 + V10); vadded <- 10}
+        else if(nspace_terms == 11) {formula_space <- merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9 + V10 + V11); vadded <- 11}
+        else if(nspace_terms == 12) {formula_space <- merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9 + V10 + V11 + V12); vadded <- 12}
+        else if(nspace_terms == 13) {formula_space <- merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9 + V10 + V11 + V12 + V13); vadded <- 13}
+        else if(nspace_terms == 14) {formula_space <- merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9 + V10 + V11 + V12 + V13 + V14); vadded <- 14}
+        else if(nspace_terms == 15) {formula_space <- merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9 + V10 + V11 + V12 + V13 + V14 + V15); vadded <- 15}
+        else if(nspace_terms >= 16) {formula_space <- merge(formula, ~V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9 + V10 + V11 + V12 + V13 + V14 + V15 + V16); vadded <- 16}
+        
+        # report n spatial vectors added ---------
+        if(track_spatial_vectors == TRUE) {print(paste0("spatial filtering applied to tree #: ", j, ": ", nspace_terms, " spatial terms added"))}
+        
+        # rerun model with spatial vectors -------
+        mod = try(phylolm::phylolm(formula_space, data = full.data, model = model, phy = phy[[j]]), FALSE)
+        full.data <- full.data[ ,1:basecols] # cleaning...
+        rm(sarcol, nspace_terms, formula_space)
+        
+        # track no added vectors if pass autorcorr test ------
+      } else {vadded <- 0}
+      
+      # store model results for this tree ----------------------------
+      # Beta Values ----------------------------------------
+      Beta <- data.frame(phylolm::summary.phylolm(mod)$coefficients[ ,c(1,2,4)])
+      Beta <- Beta[1:(nrow(Beta) - vadded), ] # omit spatial eigenvector results (not tracked, just accounted for)
+      Beta <- cbind(rownames(Beta), Beta)
+      names(Beta) <- c("var", "_", ".se", ".pval")
+      rownames(Beta) <- NULL
+      Beta_df <- gather(Beta, "_", ".se", ".pval", key = "p", value = "number")
+      Beta_df$p <- gsub(Beta_df$p, pattern = "_", replacement = "")
+      Beta_df$pp <- paste(Beta_df$var, Beta_df$p, sep = "")
+      newdf <- t(as.matrix(data.frame("pp" = Beta_df$pp, "number" = Beta_df$number)))
+      newdf <- as.data.frame(newdf)
+      Beta_df <- newdf
+      cnames <- as.character(as.matrix(Beta_df[1, ]))
+      Beta_df <- Beta_df[2, ]
+      colnames(Beta_df) <- cnames
+      
+      # aic, ntree, deviance, optimization param ------------
+      aic.mod <- mod$aic
+      n <- mod$n # ntree
+      d <- mod$d # deviance
+      if (model != "BM") {optpar <- mod$optpar} # optimization parameter
+      if (model == "BM") {optpar <- NA} # no optpar for Brownian Motion
+      
+      # combine and append -----------------------
+      estim.simu <- as.data.frame(t(as.matrix(c(j, as.numeric(as.matrix(Beta_df[1, ])), aic.mod, optpar))))
+      colnames(estim.simu) <- c(j, colnames(Beta_df), "aic.mod", "optpar")
+      sensi.estimates[counter, ] <- as.numeric(as.matrix(estim.simu))
+      
+      # update progress bar --------------------------------
+      if (track == TRUE) {utils::setTxtProgressBar(pb, counter)}
+    }
+    
+    # store residuals for this iteration -----------------------------
+    if (add_median_residuals) {
+      these_residuals <- residuals(mod)[residuals$Species]
+      residuals <- cbind(residuals, "res" = these_residuals)
+      colnames(residuals) <- c("Species", paste("iteration", 1:counter, sep = "_"))
+    }
+    
+    # increment phylogeny counter ------------------------------------
+    counter = counter + 1
+  }
+  
+  # terminate progress bar -----------------------------------------------------
+  if (track == TRUE) {on.exit(close(pb))}
+  
+  # calculate results statistics -----------------------------------------------
+  statresults <- data.frame(median = apply(sensi.estimates, 2, median),
+                            min = apply(sensi.estimates, 2, min),
+                            max = apply(sensi.estimates, 2, max),
+                            sd_tree = apply(sensi.estimates, 2, stats::sd))
+  statresults$row <- row.names(statresults)
+  statresults <- statresults[order(statresults$row), ]
+  statresults$row <- NULL
+  
+  # calculate species median residuals -----------------------------------------
+  if (add_median_residuals) {
+    residuals$median_residuals <- apply(residuals[ ,2:ncol(residuals)], 1, median)
+    residuals <- residuals[ ,colnames(residuals) %in% c("Species", "median_residuals")]
+  }
+  
+  # format output --------------------------------------------------------------
+  res <- list(call = match.call(), formula = formula,
+              sensi.estimates = sensi.estimates, N.obs = n, 
+              stats = round(statresults, digits = 3),
+              all.stats = statresults)
+  if (add_median_residuals) {res$residuals <- residuals} # append species residuals
+  class(res) <- "sensiTree"
+  
+  # return output --------------------------------------------------------------
+  return(res)
+}
+
+# FUNCTION: sumSfMultiPhylolm ######################################################################
+#     ----------------------------------------------------------------------------------------------
+#     Description: Summarize model output from sfMultiPhylolm in a concise and readable format.
+#     Inputs:
+#         mod = A list containing model outputs [output of sfMultiPhylolm]
+#     Outputs:
+#         A list containing a formatted model summary.
+#     ----------------------------------------------------------------------------------------------
+sumSfMultiPhylolm <- function(mod) {
+  coefs <- mod$all.stats # capture model stat outputs
+  
+  # summary statistics ---------------------------------------------------------
+  ntreestats <- coefs[rownames(coefs) %in% "n.tree", c(3)] # n phylogenies
+  aicstats <- coefs[rownames(coefs) %in% "aic", ] # akaike information criterion
+  optparstats <- coefs[rownames(coefs) %in% "optpar", ] # optimization parameter
+  listrest <- list(ntreestats, aicstats, optparstats)
+  
+  # get coefficient names ------------------------------------------------------
+  allvars <- rownames(coefs)
+  allvars <- allvars[!allvars %in% c("n.tree","aic","optpar")] # omit vars from above. 
+  vars <- allvars[grep(".pval", allvars)]
+  vars <- gsub(".pval", "", vars)
+  
+  # build coefficient summary --------------------------------------------------
+  summodel <- data.frame("Var" = vars, "Estimate" = 0, "StdErr" = 0, "pval" = 0, "pval_star" = "", "perc_sig" = 0, "sd_tree" = 0)
+  for (j in 1:length(summodel[ ,1])) { # for each coefficient...
+    varj <- summodel$Var[j] # name
+    estimj <- coefs[rownames(coefs) %in% varj, ]$median # median estimate
+    sej <- coefs[rownames(coefs) %in% paste0(varj, ".se"), ]$median # StdErr estimate
+    streej <- coefs[rownames(coefs) %in% varj, ]$sd_tree # phylogenetic uncertainty
+    pvalj <- coefs[rownames(coefs) %in% paste0(varj, ".pval"), ]$median # median p.value
+    pvalstarj <- ifelse(pvalj < 0.001, "***", 
+                        ifelse(pvalj >= 0.001 & pvalj < 0.01, "**",
+                               ifelse(pvalj > 0.01 & pvalj < 0.05, "*",
+                                      ""))) # asterisk for p.value
+    psign <- sum(mod$sensi.estimates[ ,colnames(mod$sensi.estimates) %in% paste0(varj, ".pval")] < 0.05) / 
+      length(mod$sensi.estimates[ ,colnames(mod$sensi.estimates) %in% paste0(varj, ".pval")]) # proportion significant
+    summodel[j, ] <- c(varj, estimj, sej, pvalj, pvalstarj, psign, streej)
+  }
+  
+  # final format and return ----------------------------------------------------
+  out <- list(summodel, listrest[[1]], listrest[[2]], listrest[[3]])
+  names(out) <- c("summodel","n_Phylogenies", "AIC", "Optimization_Parameter")
+  return(out)
+}
+```
+
+```{r Principal Component Analysis}
+
+# transform inputs for normality -----------------------------------------------
+for(i in 4:ncol(mydata)){
+  mydata[ , i] <- bcTransform(mydata[ , i])
+}
+
+# Run PCA ----------------------------------------------------------------------
+myPCA <- principal(mydata[ , c(colnames(mydata)[4:ncol(mydata)])],
+                   nfactors = (ncol(mydata) - 4), rotate = "none")
+
+# extract informative components -----------------------------------------------
+myPCAdata <- cbind(mydata[,c(1,2,3)], myPCA$scores[,which(myPCA$Vaccounted["SS loadings",] >= 1)])
+colnames(myPCAdata)[1:3] <- c("cost", "lon", "lat")
+```
+
+```{r Phylogenetic Regression, warning=F}
+# set distance for spatial autocorrelation correction --------------------------
+coords <- cbind(mydata$lon, mydata$lat) # get coordinates...
+coords <- as.matrix(coords)
+row.names(coords) <- rownames(mydata)
+nb <- knn2nb(knearneigh(coords, longlat = T)) # get neighbors for each row
+all.linked <- max(unlist(nbdists(nb, coords, longlat = T))) # find distance that creates a single connected graph (no breaks)
+nb <- dnearneigh(coords, row.names = row.names(coords), d1 = 0, d2 = all.linked, longlat = T) # update neighbors with all.linked distance
+myPCAdata <- myPCAdata[, - c(2,3)]
+
+# transform response variable ---------------------------------------------------
+#     Cost data are frequently right (+) skewed. Transform if skew is extreme. 
+resp_logged <- FALSE
+if(skew(myPCAdata$cost) > 1) {myPCAdata$cost <- safeLog(myPCAdata$cost); resp_logged <- TRUE}
+
+# Run Phylogenetic Regression --------------------------------------------------
+mymod <- sfMultiPhylolm(
+  formula = cost ~ .,
+  data = myPCAdata,
+  phy = trees,
+  n.tree = n.tree,
+  model = model,
+  nb = nb,
+  basecols = ncol(myPCAdata),
+  moran_p = moran_p,
+  track = track,
+  add_median_residuals = add_median_residuals,
+  track_spatial_vectors = track_spatial_vectors)
+```
+
+```{r Output Results}
+setwd(wdOut)
+phylores <- mymod # informative names for "save" statement...
+pcares <- myPCA
+save(phylores, pcares, resp_logged, file = "sample_code_results.rdata") # save full rdata for phylogenetic model and pca. note whether or not response was logged.
+write.csv(rbind(pcares$loadings, pcares$Vaccounted), file = "sample_code_pca_summary.csv") # save loadings and variance data for PCA
+write.csv(sumSfMultiPhylolm(phylores)$summodel, file = "sample_code_phylo_summary.csv") # save phylogenetic model summary
+```
+
+
